@@ -18,3 +18,8 @@ env/
 *.njsproj
 *.sln
 *.swp
+node_modules/
+frontend/dist/
+frontend/.astro/
+*.egg-info/
+backend/.venv/

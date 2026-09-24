@@ -71,7 +71,7 @@ El Sistema de Préstamos gestiona el préstamo de recursos (equipos, libros, mat
 - RNF03: Trazabilidad: cada cambio de estado relevante (préstamo, sanción, ítem) debe quedar registrado con fecha/hora y usuario responsable (auditoría mínima).
 - RNF04: Disponibilidad de consulta de catálogo sin necesidad de autenticación; operaciones de préstamo/reserva sí requieren autenticación.
 - RNF05: Tiempos de respuesta aceptables para consultas de catálogo (uso típico de laboratorio/biblioteca universitaria, no alta concurrencia masiva).
-- RNF06: Extensibilidad: agregar un nuevo tipo de recurso (p. ej. "kits de robótica") no debe requerir rediseñar el modelo de inventario.
+- RNF06: Extensibilidad: agregar un nuevo tipo de recurso (p. ej. visores de realidad virtual) no debe requerir rediseñar el modelo de inventario.
 
 ---
 

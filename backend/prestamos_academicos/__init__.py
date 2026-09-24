@@ -1,0 +1,1 @@
+"""Sistema de Préstamos Académicos."""

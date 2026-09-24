@@ -7,7 +7,7 @@
 
 ## 1. Introducción y Alcance del Proyecto
 
-El presente proyecto nace como una solución integral para organizar y automatizar el control de préstamos de recursos dentro de la Escuela Profesional de Ciencia de la Computación. Actualmente, la escuela maneja diversos tipos de bienes (equipos de laboratorio, placas de desarrollo, libros especializados, kits de electrónica y accesorios diversos) que son requeridos tanto por estudiantes como por docentes.
+El presente proyecto nace como una solución integral para organizar y automatizar el control de préstamos de recursos dentro de la Escuela Profesional de Ciencia de la Computación. Actualmente, la escuela maneja diversos tipos de bienes (equipos de laboratorio, visores de realidad virtual, libros especializados y accesorios diversos) que son requeridos tanto por estudiantes como por docentes.
 
 El objetivo general del sistema es gestionar todo el ciclo de vida del préstamo: desde la publicación y reserva de un ítem hasta su entrega física, devolución, control de fechas de vencimiento, aplicación de sanciones en caso de faltas, y el registro de un historial completo de movimientos para auditoría.
 
@@ -47,7 +47,7 @@ Hemos agrupado las funcionalidades requeridas en módulos lógicos para facilita
 * **Atributos Específicos:**
   * *Libros:* ISBN, autor, editorial, edición.
   * *Equipos:* Número de serie, marca, modelo, especificaciones técnicas.
-  * *Materiales/Accesorios:* Categoría del material, unidad de medida o componentes del kit.
+  * *Materiales/Accesorios:* Categoría del material y unidad de medida, cuando corresponda.
 * **Control de Estados:** Cada ítem mantendrá un estado actualizado en tiempo real (`Disponible`, `Prestado`, `Reservado`, `En Mantenimiento`, `Dado de Baja`).
 
 ### C. Módulo de Reservas y Préstamos

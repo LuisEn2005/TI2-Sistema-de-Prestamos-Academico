@@ -1,0 +1,85 @@
+---
+const titulo = 'Sistema de Préstamos Académicos';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulo}</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="etiqueta">Prototipo</span>
+        <h1>{titulo}</h1>
+        <p>Consulta los recursos y registra préstamos o devoluciones.</p>
+      </header>
+
+      <p id="mensaje" class="mensaje" role="status" aria-live="polite"></p>
+
+      <section aria-labelledby="titulo-catalogo">
+        <h2 id="titulo-catalogo">Catálogo</h2>
+        <ul id="recursos" class="lista"></ul>
+      </section>
+
+      <div class="columnas">
+        <section aria-labelledby="titulo-prestar">
+          <h2 id="titulo-prestar">Nuevo préstamo</h2>
+          <form id="formulario-prestamo">
+            <label for="usuario">Usuario</label>
+            <select id="usuario" name="usuario" required></select>
+
+            <label for="recurso">Recurso disponible</label>
+            <select id="recurso" name="recurso" required></select>
+
+            <button id="boton-prestar" type="submit">Registrar préstamo</button>
+          </form>
+        </section>
+
+        <section aria-labelledby="titulo-prestamos">
+          <h2 id="titulo-prestamos">Préstamos activos</h2>
+          <ul id="prestamos" class="lista"></ul>
+        </section>
+      </div>
+    </main>
+    <script>
+      import '../scripts/mvp.ts';
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f7f8fa; color: #17202c; font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  header { margin-bottom: 2rem; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); line-height: 1.15; margin: .5rem 0; }
+  h2 { font-size: 1.2rem; margin: 0 0 1rem; }
+  p { color: #495568; margin: .4rem 0; }
+  .etiqueta { font-size: .8rem; font-weight: 700; color: #245a91; text-transform: uppercase; letter-spacing: .08em; }
+  section { background: white; border: 1px solid #dce1e7; border-radius: 10px; padding: 1.4rem; margin-bottom: 1.25rem; }
+  .columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .columnas section { margin: 0; }
+  .lista { list-style: none; padding: 0; margin: 0; }
+  .lista li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem 0; border-top: 1px solid #edf0f3; }
+  .lista li:first-child { border-top: 0; }
+  .lista small { display: block; color: #607084; }
+  .lista strong { display: block; font-weight: 600; }
+  .estado { font-size: .85rem; white-space: nowrap; }
+  .disponible { color: #16704d; }
+  .ocupado { color: #9a5b1b; }
+  label { display: block; font-weight: 600; margin: .9rem 0 .35rem; }
+  select, button { font: inherit; }
+  select { width: 100%; padding: .65rem; border: 1px solid #acb8c6; border-radius: 6px; background: white; }
+  button { cursor: pointer; border: 0; border-radius: 6px; background: #245a91; color: white; padding: .7rem 1rem; }
+  button:hover { background: #1a466f; }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  form button { width: 100%; margin-top: 1.25rem; }
+  .lista button { font-size: .85rem; padding: .5rem .75rem; }
+  .mensaje:empty { display: none; }
+  .mensaje { padding: .7rem 1rem; border-radius: 6px; background: #e9f2fb; color: #17456e; margin-bottom: 1rem; }
+  .mensaje.error { background: #fff0ee; color: #992f24; }
+  @media (max-width: 680px) { .columnas { grid-template-columns: 1fr; } main { padding-top: 2rem; } }
+</style>
