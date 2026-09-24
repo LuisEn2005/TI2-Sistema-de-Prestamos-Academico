@@ -1,0 +1,22 @@
+Codigo generado a partir del diagrama de dominio del Sistema de
+Prestamos.
+(un .py por clase/enum, organizado por bounded context = carpeta).
+
+Estructura:
+  shared_kernel/   -> Value Objects de identidad (Shared Kernel)
+  prestamos/        -> Prestamo, DetallePrestamo, eventos de dominio, etc.
+  reservas/         -> Reserva y sus eventos
+  sanciones/        -> Sancion, Monto, eventos
+  inventario/       -> Item (abstracta) + Libro/Equipo/Mobiliario/Material
+  identidad/        -> Usuario, Perfiles por rol, Permiso, ServicioAutorizacionRol
+  configuracion/    -> PoliticaServicio, Modalidad, PoliticaSancion
+  auditoria/        -> HistorialMovimiento, TipoEvento
+
+Cada clase es un @dataclass con sus atributos tipados y stubs de los
+metodos del diagrama (levantan NotImplementedError, son para rellenar).
+Los enums son subclases de (str, Enum) con los literales del diagrama.
+
+Esto es el ESQUELETO del dominio, no el proyecto Flask completo: falta
+SQLAlchemy (mapear estas clases a tablas), los endpoints, y las carpetas
+de infraestructura/aplicacion. Es el punto de partida para ir llenando
+la logica de negocio de cada metodo.
