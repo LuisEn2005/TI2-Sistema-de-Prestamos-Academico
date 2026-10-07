@@ -32,7 +32,9 @@ def upgrade():
                 rol_aplicable, max_items_simultaneos, dias_prestamo_default,
                 dias_gracia_reserva, tipos_recurso_permitidos
             )
-            SELECT :rol, :maximos, :dias, :gracia, :tipos
+            SELECT CAST(:rol AS VARCHAR(30)), CAST(:maximos AS INTEGER),
+                   CAST(:dias AS INTEGER), CAST(:gracia AS INTEGER),
+                   CAST(:tipos AS VARCHAR(200))
             WHERE NOT EXISTS (
                 SELECT 1 FROM politicas_servicio WHERE rol_aplicable = :rol
             )
