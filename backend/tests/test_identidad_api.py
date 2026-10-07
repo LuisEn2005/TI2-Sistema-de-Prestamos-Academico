@@ -13,6 +13,11 @@ class AutenticacionTest(ApiBase):
         self.assertNotIn("CONFIGURAR_POLITICAS", r.json["usuario"]["permisos"])
         self.assertNotIn("password", str(r.json).lower())
 
+        admin = self.cliente.post(
+            "/api/auth/login", json={"correo": ADMIN, "password": CLAVE}).json["usuario"]
+        self.assertEqual(admin["roles"], ["ADMINISTRADOR_SISTEMA"])
+        self.assertIn("GESTIONAR_USUARIOS_Y_ROLES", admin["permisos"])
+
     def test_login_no_distingue_correo_inexistente_de_clave_incorrecta(self):
         a = self.cliente.post("/api/auth/login", json={"correo": ESTUDIANTE, "password": "mala"})
         b = self.cliente.post("/api/auth/login", json={"correo": "nadie@x.edu", "password": "mala"})
@@ -80,11 +85,16 @@ class GestionUsuariosTest(ApiBase):
         "perfiles": {"ESTUDIANTE": {"codigo_estudiante": "EST-2026-050"}},
     }
 
-    def test_solo_el_gestor_gestiona_usuarios(self):
+    def test_solo_el_administrador_gestiona_usuarios(self):
         h = self.ingresar(ESTUDIANTE)
         self.assertEqual(self.cliente.get("/api/usuarios", headers=h).status_code, 403)
         self.assertEqual(self.cliente.post("/api/usuarios", headers=h, json=self.NUEVO).status_code, 403)
         self.assertEqual(self.cliente.get("/api/usuarios").status_code, 401)
+        gestor = self.ingresar(GESTOR_DOCENTE)
+        self.assertEqual(self.cliente.get("/api/usuarios", headers=gestor).status_code, 403)
+        prestatarios = self.cliente.get("/api/usuarios/prestatarios", headers=gestor)
+        self.assertEqual(prestatarios.status_code, 200)
+        self.assertEqual(set(prestatarios.json[0]), {"id", "nombre"})
 
     def test_registrar_usuario_asigna_politica_del_perfil(self):
         h = self.ingresar()
@@ -212,41 +222,39 @@ class GestionUsuariosTest(ApiBase):
     def test_filtros_de_listado(self):
         h = self.ingresar()
         gestores = self.cliente.get("/api/usuarios?rol=GESTOR_INVENTARIO", headers=h).json
-        self.assertEqual({u["correo"] for u in gestores}, {ADMIN, GESTOR_DOCENTE})
+        self.assertEqual({u["correo"] for u in gestores}, {GESTOR_DOCENTE})
+        administradores = self.cliente.get(
+            "/api/usuarios?rol=ADMINISTRADOR_SISTEMA", headers=h).json
+        self.assertEqual({u["correo"] for u in administradores}, {ADMIN})
         self.assertEqual([u["correo"] for u in
                           self.cliente.get("/api/usuarios?q=jesus", headers=h).json], [ESTUDIANTE])
         self.assertEqual(self.cliente.get("/api/usuarios?rol=XX", headers=h).status_code, 400)
         self.assertEqual(self.cliente.get("/api/usuarios?activo=quizas", headers=h).status_code, 400)
 
-    def test_no_puede_autodesactivarse_ni_quitarse_el_gestor(self):
+    def test_no_puede_autodesactivarse_ni_quitarse_la_administracion(self):
         h = self.ingresar()
         yo = self.usuario_id(ADMIN, h)
         self.assertEqual(self.cliente.patch(f"/api/usuarios/{yo}", headers=h,
                                             json={"activo": False}).status_code, 409)
         self.assertEqual(self.cliente.patch(f"/api/usuarios/{yo}", headers=h, json={
-            "perfiles": {"GESTOR_INVENTARIO": None}}).status_code, 409)
+            "perfiles": {"ADMINISTRADOR_SISTEMA": None}}).status_code, 409)
 
-    def test_siempre_queda_un_gestor_activo(self):
+    def test_siempre_queda_un_administrador_activo(self):
         h = self.ingresar()
-        luis = self.usuario_id(GESTOR_DOCENTE, h)
-        self.assertEqual(self.cliente.patch(f"/api/usuarios/{luis}", headers=h,
-                                            json={"activo": False}).status_code, 200)
-        h_luis = None  # Luis ya no puede entrar; el admin es el último gestor activo
         admin = self.usuario_id(ADMIN, h)
         otro = self.cliente.post("/api/usuarios", headers=h, json=dict(
-            self.NUEVO, correo="g2@escuela.edu", perfiles={"GESTOR_INVENTARIO": {
-                "codigo_empleado": "G-2", "area_responsable": "X"}})).json["id"]
-        h2 = self.ingresar("g2@escuela.edu", "clave-segura-1")
-        # g2 intenta desactivar al último otro gestor mientras existen dos: permitido
+            self.NUEVO, correo="a2@escuela.edu", perfiles={"ADMINISTRADOR_SISTEMA": {
+                "codigo_empleado": "A-2"}})).json["id"]
+        h2 = self.ingresar("a2@escuela.edu", "clave-segura-1")
+        # El segundo administrador puede desactivar al primero.
         self.assertEqual(self.cliente.patch(f"/api/usuarios/{admin}", headers=h2,
                                             json={"activo": False}).status_code, 200)
-        # ahora g2 es el único gestor activo: nadie puede quitarle el rol
+        # Ahora es el único administrador activo y no puede quitarse el perfil.
         self.assertEqual(self.cliente.patch(f"/api/usuarios/{otro}", headers=h2,
-                                            json={"perfiles": {"GESTOR_INVENTARIO": None,
+                                            json={"perfiles": {"ADMINISTRADOR_SISTEMA": None,
                                                                "DOCENTE": {"codigo_empleado": "X",
                                                                            "tipo_contrato": "Y"}}}
                                             ).status_code, 409)
-        self.assertIsNone(h_luis)
 
     def test_usuario_inexistente(self):
         h = self.ingresar()

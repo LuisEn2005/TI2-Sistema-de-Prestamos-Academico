@@ -36,20 +36,20 @@ def preparar_datos(fabrica_sesiones, *, datos_demo, admin_correo=None, admin_pas
 
     if datos_demo:
         _actualizar_nombres_demo_anteriores(fabrica_sesiones)
-        identidad.asegurar_gestor_inicial(admin_correo or CORREO_ADMIN_DEMO,
-                                          admin_password or PASSWORD_DEMO)
+        identidad.asegurar_administrador_inicial(admin_correo or CORREO_ADMIN_DEMO,
+                                                 admin_password or PASSWORD_DEMO)
         _cargar_demo(uow, identidad)
     else:
         if bool(admin_correo) != bool(admin_password):
             raise RuntimeError("Configure ADMIN_CORREO y ADMIN_PASSWORD juntos.")
         with uow() as u:
-            hay_gestor = bool(u.usuarios.listar(rol=RolUsuario.GESTOR_INVENTARIO))
-        if not hay_gestor and not (admin_correo and admin_password):
+            hay_admin = bool(u.usuarios.listar(rol=RolUsuario.ADMINISTRADOR_SISTEMA))
+        if not hay_admin and not (admin_correo and admin_password):
             raise RuntimeError(
                 "La base está vacía: configure ADMIN_CORREO y ADMIN_PASSWORD "
-                "para crear el primer gestor, o active DATOS_DEMO=1 para pruebas.")
+                "para crear el primer administrador, o active DATOS_DEMO=1 para pruebas.")
         if admin_correo and admin_password:
-            identidad.asegurar_gestor_inicial(admin_correo, admin_password)
+            identidad.asegurar_administrador_inicial(admin_correo, admin_password)
 
 
 def _actualizar_nombres_demo_anteriores(fabrica_sesiones):

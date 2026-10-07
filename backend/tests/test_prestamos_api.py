@@ -14,6 +14,16 @@ class PrestamosTest(ApiBase):
             "usuario_id": 1, "item_id": 1}).status_code, 403)
         self.assertEqual(self.cliente.post("/api/prestamos/1/devolucion", headers=h).status_code, 403)
 
+    def test_gestor_opera_prestamos_sin_administrar_usuarios(self):
+        gestor = self.ingresar(GESTOR_DOCENTE)
+        prestatarios = self.cliente.get("/api/usuarios/prestatarios", headers=gestor)
+        self.assertEqual(prestatarios.status_code, 200)
+        jesus = next(u for u in prestatarios.json if u["nombre"] == "Jesus Perez")
+        entrega = self.cliente.post("/api/prestamos", headers=gestor, json={
+            "usuario_id": jesus["id"], "item_id": self.item_id("LIB-CLRS")})
+        self.assertEqual(entrega.status_code, 201, entrega.json)
+        self.assertEqual(self.cliente.get("/api/usuarios", headers=gestor).status_code, 403)
+
     def test_ciclo_prestar_y_devolver_actualiza_el_estado_del_item(self):
         h = self.ingresar()
         iid = self.item_id("LIB-CLRS")

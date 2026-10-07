@@ -82,7 +82,7 @@ class MigracionTest(unittest.TestCase):
             self.assertEqual(c2.get("/api/items/1").json["estado"], "PRESTADO")
             self.assertEqual(c2.get("/api/items").json["total"], 3)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0005")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0006")
 
     def test_claves_foraneas_activas(self):
         with TemporaryDirectory() as d:
@@ -119,6 +119,7 @@ class SinDatosDemoTest(unittest.TestCase):
         self.assertEqual(c.get("/api/items").json["total"], 0)
         r = c.post("/api/auth/login", json={"correo": "root@escuela.edu", "password": "clave-larga-1"})
         self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json["usuario"]["roles"], ["ADMINISTRADOR_SISTEMA"])
         self.assertEqual(c.post("/api/auth/login", json={
             "correo": "admin@escuela.edu", "password": CLAVE}).status_code, 401)
 
@@ -138,6 +139,7 @@ class SinDatosDemoTest(unittest.TestCase):
             cabeceras = {"Authorization": f"Bearer {acceso.json['token']}"}
             usuarios = cliente.get("/api/usuarios", headers=cabeceras).json
             self.assertEqual([u["correo"] for u in usuarios], ["gestor@escuela.edu"])
+            self.assertEqual(usuarios[0]["roles"], ["ADMINISTRADOR_SISTEMA"])
 
             nuevo_usuario = cliente.post("/api/usuarios", headers=cabeceras, json={
                 "nombre": "Usuario de prueba", "correo": "prueba@escuela.edu",

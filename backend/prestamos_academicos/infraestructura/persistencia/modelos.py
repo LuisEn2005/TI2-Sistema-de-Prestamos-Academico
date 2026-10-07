@@ -128,6 +128,18 @@ class PerfilGestorInventarioDB(Base):
     fecha_asignacion: Mapped[date] = mapped_column(Date, nullable=False)
 
 
+class PerfilAdministradorSistemaDB(Base):
+    __tablename__ = "perfiles_administrador_sistema"
+    __table_args__ = (CheckConstraint(
+        "length(trim(codigo_empleado)) > 0", name="ck_admin_sistema_codigo_no_vacio"),)
+
+    usuario_id: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True
+    )
+    codigo_empleado: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    fecha_asignacion: Mapped[date] = mapped_column(Date, nullable=False)
+
+
 class ItemDB(Base):
     """Catálogo común. Los atributos propios de cada tipo van en `atributos` (JSON),
     de modo que un tipo nuevo no requiere cambiar el esquema (RNF06)."""

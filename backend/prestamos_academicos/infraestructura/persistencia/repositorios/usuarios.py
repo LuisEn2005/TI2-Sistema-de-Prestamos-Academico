@@ -4,8 +4,8 @@ from ....dominio.identidad import IUsuarioRepository
 from ....dominio.shared_kernel import RolUsuario
 from .. import mapeador
 from ..modelos import (
-    PerfilAdministrativoDB, PerfilDocenteDB, PerfilEstudianteDB,
-    PerfilGestorInventarioDB, UsuarioDB,
+    PerfilAdministradorSistemaDB, PerfilAdministrativoDB, PerfilDocenteDB,
+    PerfilEstudianteDB, PerfilGestorInventarioDB, UsuarioDB,
 )
 
 _TABLAS = {
@@ -13,12 +13,14 @@ _TABLAS = {
     "docente": PerfilDocenteDB,
     "administrativo": PerfilAdministrativoDB,
     "gestor": PerfilGestorInventarioDB,
+    "administrador_sistema": PerfilAdministradorSistemaDB,
 }
 _ROL_A_TABLA = {
     RolUsuario.ESTUDIANTE: "estudiante",
     RolUsuario.DOCENTE: "docente",
     RolUsuario.ADMINISTRATIVO: "administrativo",
     RolUsuario.GESTOR_INVENTARIO: "gestor",
+    RolUsuario.ADMINISTRADOR_SISTEMA: "administrador_sistema",
 }
 
 
@@ -73,10 +75,10 @@ class SqlAlchemyUsuarioRepository(IUsuarioRepository):
             consulta = consulta.where(UsuarioDB.id.in_(select(tabla.usuario_id)))
         return self._a_dominio(list(self.sesion.scalars(consulta)))
 
-    def contar_gestores_activos(self):
+    def contar_administradores_activos(self):
         return self.sesion.scalar(
-            select(func.count()).select_from(PerfilGestorInventarioDB)
-            .join(UsuarioDB, UsuarioDB.id == PerfilGestorInventarioDB.usuario_id)
+            select(func.count()).select_from(PerfilAdministradorSistemaDB)
+            .join(UsuarioDB, UsuarioDB.id == PerfilAdministradorSistemaDB.usuario_id)
             .where(UsuarioDB.activo.is_(True))
         )
 
@@ -95,8 +97,11 @@ class SqlAlchemyUsuarioRepository(IUsuarioRepository):
             fila.password_hash = password_hash
         self.sesion.flush()
 
-        e, d, a, g = (usuario.perfilEstudiante, usuario.perfilDocente,
-                      usuario.perfilAdministrativo, usuario.perfilGestorInventario)
+        e, d, a, g, adm = (
+            usuario.perfilEstudiante, usuario.perfilDocente,
+            usuario.perfilAdministrativo, usuario.perfilGestorInventario,
+            usuario.perfilAdministradorSistema,
+        )
         pid = lambda p: p.valor if p else None  # noqa: E731
         self._sincronizar("estudiante", fila.id, e and dict(
             codigo_estudiante=e.codigoEstudiante, matricula_vigente=bool(e.matriculaVigente),
@@ -112,6 +117,8 @@ class SqlAlchemyUsuarioRepository(IUsuarioRepository):
         self._sincronizar("gestor", fila.id, g and dict(
             codigo_empleado=g.codigoEmpleado, area_responsable=g.areaResponsable,
             fecha_asignacion=g.fechaAsignacion))
+        self._sincronizar("administrador_sistema", fila.id, adm and dict(
+            codigo_empleado=adm.codigoEmpleado, fecha_asignacion=adm.fechaAsignacion))
         self.sesion.flush()
         return self.find_by_id(fila.id)
 

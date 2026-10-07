@@ -1,7 +1,6 @@
 """
 <<domain service>> ServicioAutorizacionRol
-Encapsula la matriz rol -> permisos del modelo (jerarquía:
-GESTOR_INVENTARIO > DOCENTE/ADMINISTRATIVO > ESTUDIANTE).
+Encapsula la matriz rol -> permisos del modelo.
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -21,7 +20,17 @@ _MATRIZ = {
     RolUsuario.ESTUDIANTE: _BASE_PRESTATARIO,
     RolUsuario.DOCENTE: _BASE_PRESTATARIO,
     RolUsuario.ADMINISTRATIVO: _BASE_PRESTATARIO,
-    RolUsuario.GESTOR_INVENTARIO: frozenset(Permiso),
+    RolUsuario.GESTOR_INVENTARIO: frozenset({
+        Permiso.CONSULTAR_PRESTATARIOS,
+        Permiso.REGISTRAR_ITEM_INVENTARIO,
+        Permiso.ACTUALIZAR_ESTADO_ITEM,
+        Permiso.CONFIRMAR_RESERVA,
+        Permiso.REGISTRAR_ENTREGA_PRESTAMO,
+        Permiso.REGISTRAR_DEVOLUCION_PRESTAMO,
+        Permiso.GENERAR_SANCION_MANUAL,
+        Permiso.CONSULTAR_HISTORIAL_GLOBAL,
+    }),
+    RolUsuario.ADMINISTRADOR_SISTEMA: frozenset(Permiso),
 }
 
 

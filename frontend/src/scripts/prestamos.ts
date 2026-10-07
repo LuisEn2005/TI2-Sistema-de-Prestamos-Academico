@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { ItemDTO, PaginaItemsDTO, PrestamoDTO, UsuarioDTO } from './contratos';
+import type { ItemDTO, PaginaItemsDTO, PrestamoDTO } from './contratos';
 import { exigirSesion, tienePermiso } from './sesion';
 import { $, avisar, el, fechaLegible, mensajeDe, opciones } from './ui';
 
@@ -40,7 +40,7 @@ function dibujar(prestamos: PrestamoDTO[]) {
 
 async function cargarFormulario() {
   const [usuarios, items] = await Promise.all([
-    api.get<UsuarioDTO[]>('/api/usuarios', { habilitado: 'true' }),
+    api.get<{ id: number; nombre: string }[]>('/api/usuarios/prestatarios'),
     api.get<PaginaItemsDTO>('/api/items', { estado: 'DISPONIBLE', limite: 100 }),
   ]);
   opciones($('#usuario'), usuarios.map((u) => [String(u.id), u.nombre]));

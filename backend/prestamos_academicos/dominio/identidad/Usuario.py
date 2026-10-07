@@ -10,6 +10,7 @@ from .PerfilEstudiante import PerfilEstudiante
 from .PerfilDocente import PerfilDocente
 from .PerfilAdministrativo import PerfilAdministrativo
 from .PerfilGestorInventario import PerfilGestorInventario
+from .PerfilAdministradorSistema import PerfilAdministradorSistema
 
 _ROLES_PRESTATARIOS = (RolUsuario.DOCENTE, RolUsuario.ADMINISTRATIVO)
 
@@ -27,6 +28,7 @@ class Usuario:
     perfilDocente: Optional[PerfilDocente] = None
     perfilAdministrativo: Optional[PerfilAdministrativo] = None
     perfilGestorInventario: Optional[PerfilGestorInventario] = None
+    perfilAdministradorSistema: Optional[PerfilAdministradorSistema] = None
 
     def invalidarSesiones(self) -> None:
         self.versionSesion += 1
@@ -38,6 +40,7 @@ class Usuario:
             (RolUsuario.DOCENTE, self.perfilDocente),
             (RolUsuario.ADMINISTRATIVO, self.perfilAdministrativo),
             (RolUsuario.GESTOR_INVENTARIO, self.perfilGestorInventario),
+            (RolUsuario.ADMINISTRADOR_SISTEMA, self.perfilAdministradorSistema),
         )
         self.roles = [rol for rol, perfil in pares if perfil is not None]
 

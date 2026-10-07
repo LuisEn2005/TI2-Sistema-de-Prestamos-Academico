@@ -51,12 +51,20 @@ class AutorizacionTest(unittest.TestCase):
         self.assertEqual(self.servicio.permisosDe(RolUsuario.DOCENTE), base)
         self.assertEqual(self.servicio.permisosDe(RolUsuario.ADMINISTRATIVO), base)
 
-    def test_gestor_tiene_todos_los_permisos(self):
-        self.assertEqual(self.servicio.permisosDe(RolUsuario.GESTOR_INVENTARIO), set(Permiso))
+    def test_gestor_solo_tiene_permisos_operativos(self):
+        permisos = self.servicio.permisosDe(RolUsuario.GESTOR_INVENTARIO)
+        self.assertIn(Permiso.REGISTRAR_ENTREGA_PRESTAMO, permisos)
+        self.assertIn(Permiso.REGISTRAR_ITEM_INVENTARIO, permisos)
+        self.assertNotIn(Permiso.GESTIONAR_USUARIOS_Y_ROLES, permisos)
+        self.assertNotIn(Permiso.CONFIGURAR_POLITICAS, permisos)
+
+    def test_administrador_tiene_todos_los_permisos(self):
+        self.assertEqual(self.servicio.permisosDe(RolUsuario.ADMINISTRADOR_SISTEMA), set(Permiso))
 
     def test_varios_roles_unen_permisos(self):
         self.assertTrue(self.servicio.rolesTienenPermiso(
-            [RolUsuario.ESTUDIANTE, RolUsuario.GESTOR_INVENTARIO], Permiso.CONFIGURAR_POLITICAS))
+            [RolUsuario.ESTUDIANTE, RolUsuario.ADMINISTRADOR_SISTEMA],
+            Permiso.CONFIGURAR_POLITICAS))
 
 
 class UsuarioTest(unittest.TestCase):

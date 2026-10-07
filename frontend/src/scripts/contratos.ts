@@ -2,7 +2,9 @@
 
 export type Estado =
   | 'DISPONIBLE' | 'PRESTADO' | 'RESERVADO' | 'EN_MANTENIMIENTO' | 'DADO_DE_BAJA' | 'EXTRAVIADO';
-export type Rol = 'ESTUDIANTE' | 'DOCENTE' | 'ADMINISTRATIVO' | 'GESTOR_INVENTARIO';
+export type Rol =
+  | 'ESTUDIANTE' | 'DOCENTE' | 'ADMINISTRATIVO'
+  | 'GESTOR_INVENTARIO' | 'ADMINISTRADOR_SISTEMA';
 
 export type ItemDTO = {
   id: number; codigo: string; nombre: string; categoria: string; tipo: string;
@@ -37,4 +39,5 @@ export const ETIQUETA_ESTADO: Record<Estado, string> = {
 export const ETIQUETA_ROL: Record<Rol, string> = {
   ESTUDIANTE: 'Estudiante', DOCENTE: 'Docente', ADMINISTRATIVO: 'Administrativo',
   GESTOR_INVENTARIO: 'Gestor de inventario',
+  ADMINISTRADOR_SISTEMA: 'Administrador del sistema',
 };

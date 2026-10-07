@@ -24,6 +24,10 @@ const CAMPOS: Record<Rol, CampoPerfil[]> = {
     { clave: 'area_responsable', etiqueta: 'Área responsable' },
     { clave: 'fecha_asignacion', etiqueta: 'Fecha de asignación', tipo: 'date' },
   ],
+  ADMINISTRADOR_SISTEMA: [
+    { clave: 'codigo_empleado', etiqueta: 'Código de empleado' },
+    { clave: 'fecha_asignacion', etiqueta: 'Fecha de asignación', tipo: 'date' },
+  ],
 };
 const ROLES = Object.keys(CAMPOS) as Rol[];
 

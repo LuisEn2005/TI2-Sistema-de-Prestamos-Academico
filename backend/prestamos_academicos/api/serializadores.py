@@ -35,6 +35,11 @@ def usuario_a_json(usuario, permisos=None):
         perfiles["GESTOR_INVENTARIO"] = {
             "codigo_empleado": p.codigoEmpleado, "area_responsable": p.areaResponsable,
             "fecha_asignacion": _fecha(p.fechaAsignacion)}
+    if usuario.perfilAdministradorSistema:
+        p = usuario.perfilAdministradorSistema
+        perfiles["ADMINISTRADOR_SISTEMA"] = {
+            "codigo_empleado": p.codigoEmpleado,
+            "fecha_asignacion": _fecha(p.fechaAsignacion)}
     datos = {
         "id": usuario.id.valor,
         "nombre": usuario.nombre,
@@ -49,6 +54,10 @@ def usuario_a_json(usuario, permisos=None):
     if permisos is not None:
         datos["permisos"] = sorted(Permiso(p).value for p in permisos)
     return datos
+
+
+def prestatario_a_json(usuario):
+    return {"id": usuario.id.valor, "nombre": usuario.nombre}
 
 
 def item_a_json(item):

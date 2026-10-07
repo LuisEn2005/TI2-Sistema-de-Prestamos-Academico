@@ -11,7 +11,7 @@ from .autenticacion import (
 from .peticion import (
     booleano_consulta, cuerpo_json, id_ruta, parametros_permitidos, texto_consulta,
 )
-from .serializadores import usuario_a_json
+from .serializadores import prestatario_a_json, usuario_a_json
 
 bp = Blueprint("identidad", __name__, url_prefix="/api")
 
@@ -72,6 +72,14 @@ def listar_usuarios():
 @requiere_permiso(Permiso.GESTIONAR_USUARIOS_Y_ROLES)
 def obtener_usuario(usuario_id):
     return jsonify(usuario_a_json(servicios().identidad.obtener_usuario(id_ruta(usuario_id))))
+
+
+@bp.get("/usuarios/prestatarios")
+@requiere_permiso(Permiso.CONSULTAR_PRESTATARIOS)
+def listar_prestatarios():
+    parametros_permitidos()
+    usuarios = servicios().identidad.listar_usuarios(habilitado=True)
+    return jsonify([prestatario_a_json(u) for u in usuarios])
 
 
 @bp.post("/usuarios")

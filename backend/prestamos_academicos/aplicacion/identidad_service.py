@@ -6,8 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..dominio.identidad import (
-    PerfilAdministrativo, PerfilDocente, PerfilEstudiante, PerfilGestorInventario,
-    Permiso, ServicioAutorizacionRol, Usuario,
+    PerfilAdministradorSistema, PerfilAdministrativo, PerfilDocente, PerfilEstudiante,
+    PerfilGestorInventario, Permiso, ServicioAutorizacionRol, Usuario,
 )
 from ..dominio.shared_kernel import PoliticaServicioId, RolUsuario
 from . import validacion as v
@@ -93,6 +93,7 @@ class IdentidadApplicationService:
                                         "vinculacion_vigente", "politica_servicio_id"},
             RolUsuario.GESTOR_INVENTARIO: {"codigo_empleado", "area_responsable",
                                            "fecha_asignacion"},
+            RolUsuario.ADMINISTRADOR_SISTEMA: {"codigo_empleado", "fecha_asignacion"},
         }
         v.campos(datos, campos_perfil[rol], f"el perfil {rol.value}")
         politica = existente_politica or self._politica_id(uow, rol)
@@ -135,13 +136,21 @@ class IdentidadApplicationService:
                     datos, "vinculacion_vigente",
                     defecto=previo.vinculacionVigente if previo else True),
                 politicaServicioId=politica)
-        else:
+        elif rol == RolUsuario.GESTOR_INVENTARIO:
             previo = usuario.perfilGestorInventario
             usuario.perfilGestorInventario = PerfilGestorInventario(
                 codigoEmpleado=v.texto(datos, "codigo_empleado", maximo=30,
                                        etiqueta="código de empleado"),
                 areaResponsable=v.texto(datos, "area_responsable", maximo=80,
                                         etiqueta="área responsable"),
+                fechaAsignacion=v.fecha(
+                    datos, "fecha_asignacion",
+                    defecto=previo.fechaAsignacion if previo else date.today()))
+        else:
+            previo = usuario.perfilAdministradorSistema
+            usuario.perfilAdministradorSistema = PerfilAdministradorSistema(
+                codigoEmpleado=v.texto(datos, "codigo_empleado", maximo=30,
+                                       etiqueta="código de empleado"),
                 fechaAsignacion=v.fecha(
                     datos, "fecha_asignacion",
                     defecto=previo.fechaAsignacion if previo else date.today()))
@@ -160,6 +169,7 @@ class IdentidadApplicationService:
             RolUsuario.DOCENTE: usuario.perfilDocente,
             RolUsuario.ADMINISTRATIVO: usuario.perfilAdministrativo,
             RolUsuario.GESTOR_INVENTARIO: usuario.perfilGestorInventario,
+            RolUsuario.ADMINISTRADOR_SISTEMA: usuario.perfilAdministradorSistema,
         }[rol]
 
     @staticmethod
@@ -169,6 +179,7 @@ class IdentidadApplicationService:
             RolUsuario.DOCENTE: "perfilDocente",
             RolUsuario.ADMINISTRATIVO: "perfilAdministrativo",
             RolUsuario.GESTOR_INVENTARIO: "perfilGestorInventario",
+            RolUsuario.ADMINISTRADOR_SISTEMA: "perfilAdministradorSistema",
         }[rol]
         setattr(usuario, campo, None)
 
@@ -211,7 +222,8 @@ class IdentidadApplicationService:
             usuario = uow.usuarios.find_by_id(usuario_id)
             if usuario is None:
                 raise NoEncontrado("El usuario no existe.")
-            era_gestor_activo = usuario.activo and usuario.tieneRol(RolUsuario.GESTOR_INVENTARIO)
+            era_admin_activo = usuario.activo and usuario.tieneRol(
+                RolUsuario.ADMINISTRADOR_SISTEMA)
 
             if "nombre" in datos:
                 usuario.nombre = v.texto(datos, "nombre", maximo=120)
@@ -233,8 +245,10 @@ class IdentidadApplicationService:
                     datos.get("perfiles") or {}, "«perfiles»").items():
                 rol = self._leer_rol(nombre_rol)
                 if datos_perfil is None:
-                    if rol == RolUsuario.GESTOR_INVENTARIO and actor.id.valor == usuario_id:
-                        raise ErrorAplicacion("No puede quitarse su propio rol de gestor.", 409)
+                    if rol == RolUsuario.ADMINISTRADOR_SISTEMA \
+                            and actor.id.valor == usuario_id:
+                        raise ErrorAplicacion(
+                            "No puede quitarse su propio rol de administrador.", 409)
                     self._quitar_perfil(usuario, rol)
                 else:
                     previo = self._perfil_de(usuario, rol)
@@ -247,10 +261,11 @@ class IdentidadApplicationService:
             if not usuario.roles:
                 raise ErrorAplicacion("El usuario debe conservar al menos un perfil.", 400)
 
-            sigue_gestor_activo = usuario.activo and usuario.tieneRol(RolUsuario.GESTOR_INVENTARIO)
-            if era_gestor_activo and not sigue_gestor_activo \
-                    and uow.usuarios.contar_gestores_activos() <= 1:
-                raise Conflicto("Debe existir al menos un gestor activo en el sistema.")
+            sigue_admin_activo = usuario.activo and usuario.tieneRol(
+                RolUsuario.ADMINISTRADOR_SISTEMA)
+            if era_admin_activo and not sigue_admin_activo \
+                    and uow.usuarios.contar_administradores_activos() <= 1:
+                raise Conflicto("Debe existir al menos un administrador activo en el sistema.")
 
             nuevo_hash = None
             if datos.get("password") not in (None, ""):
@@ -293,13 +308,13 @@ class IdentidadApplicationService:
             raise SinPermiso()
 
     # -- arranque ---------------------------------------------------------
-    def asegurar_gestor_inicial(self, correo, password, nombre="Administrador"):
-        """Crea el primer gestor si el sistema aún no tiene ninguno."""
+    def asegurar_administrador_inicial(self, correo, password, nombre="Administrador"):
+        """Crea el primer administrador si el sistema aún no tiene ninguno."""
         with self._uow() as uow:
-            if uow.usuarios.listar(rol=RolUsuario.GESTOR_INVENTARIO):
+            if uow.usuarios.listar(rol=RolUsuario.ADMINISTRADOR_SISTEMA):
                 return None
         return self.registrar_usuario({
             "nombre": nombre, "correo": correo, "password": password,
-            "perfiles": {"GESTOR_INVENTARIO": {
-                "codigo_empleado": "ADMIN-001", "area_responsable": "Administración"}},
+            "perfiles": {"ADMINISTRADOR_SISTEMA": {
+                "codigo_empleado": "ADMIN-001"}},
         })

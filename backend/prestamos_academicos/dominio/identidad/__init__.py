@@ -3,6 +3,7 @@ from .PerfilEstudiante import PerfilEstudiante
 from .PerfilDocente import PerfilDocente
 from .PerfilAdministrativo import PerfilAdministrativo
 from .PerfilGestorInventario import PerfilGestorInventario
+from .PerfilAdministradorSistema import PerfilAdministradorSistema
 from .Usuario import Usuario
 from .ServicioAutorizacionRol import ServicioAutorizacionRol
 from .IUsuarioRepository import IUsuarioRepository

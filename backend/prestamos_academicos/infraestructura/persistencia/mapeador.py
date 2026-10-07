@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from ...dominio.configuracion import PoliticaServicio
 from ...dominio.identidad import (
-    PerfilAdministrativo, PerfilDocente, PerfilEstudiante, PerfilGestorInventario, Usuario,
+    PerfilAdministradorSistema, PerfilAdministrativo, PerfilDocente, PerfilEstudiante,
+    PerfilGestorInventario, Usuario,
 )
 from ...dominio.inventario import EstadoItem
 from ...dominio.inventario.TiposItem import obtener_tipo
@@ -14,7 +15,8 @@ from ...dominio.shared_kernel import (
 )
 from .modelos import (
     ItemDB, PerfilAdministrativoDB, PerfilDocenteDB, PerfilEstudianteDB,
-    PerfilGestorInventarioDB, PoliticaServicioDB, PrestamoDB, UsuarioDB,
+    PerfilAdministradorSistemaDB, PerfilGestorInventarioDB, PoliticaServicioDB,
+    PrestamoDB, UsuarioDB,
 )
 
 
@@ -44,6 +46,7 @@ def usuario_a_dominio(fila: UsuarioDB, perfiles: dict) -> Usuario:
     d = perfiles.get("docente")
     a = perfiles.get("administrativo")
     g = perfiles.get("gestor")
+    adm = perfiles.get("administrador_sistema")
     usuario = Usuario(
         id=UsuarioId(fila.id),
         nombre=fila.nombre,
@@ -64,6 +67,8 @@ def usuario_a_dominio(fila: UsuarioDB, perfiles: dict) -> Usuario:
             politicaServicioId=_pid(a.politica_servicio_id)),
         perfilGestorInventario=g and PerfilGestorInventario(
             g.codigo_empleado, g.area_responsable, g.fecha_asignacion),
+        perfilAdministradorSistema=adm and PerfilAdministradorSistema(
+            adm.codigo_empleado, adm.fecha_asignacion),
     )
     usuario.sincronizarRoles()
     return usuario
