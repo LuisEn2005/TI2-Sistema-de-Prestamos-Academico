@@ -22,10 +22,14 @@ class Usuario:
     roles: Optional[List[RolUsuario]] = None
     tieneSancionActivaCache: Optional[bool] = False
     activo: bool = True
+    versionSesion: int = 0
     perfilEstudiante: Optional[PerfilEstudiante] = None
     perfilDocente: Optional[PerfilDocente] = None
     perfilAdministrativo: Optional[PerfilAdministrativo] = None
     perfilGestorInventario: Optional[PerfilGestorInventario] = None
+
+    def invalidarSesiones(self) -> None:
+        self.versionSesion += 1
 
     def sincronizarRoles(self) -> None:
         """Los roles se deducen de los perfiles presentes (patrón Party/Role)."""

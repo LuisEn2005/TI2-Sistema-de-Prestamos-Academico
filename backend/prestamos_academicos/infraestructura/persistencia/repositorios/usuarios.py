@@ -89,6 +89,7 @@ class SqlAlchemyUsuarioRepository(IUsuarioRepository):
         fila.nombre = usuario.nombre
         fila.correo = usuario.correoElectronico
         fila.activo = usuario.activo
+        fila.version_sesion = usuario.versionSesion
         fila.tiene_sancion_activa_cache = bool(usuario.tieneSancionActivaCache)
         if password_hash is not None:
             fila.password_hash = password_hash

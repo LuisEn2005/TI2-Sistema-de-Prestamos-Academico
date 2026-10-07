@@ -3,8 +3,13 @@ import { $, avisar, mensajeDe } from './ui';
 
 function destino() {
   const siguiente = new URLSearchParams(window.location.search).get('siguiente') ?? '/';
-  // Solo rutas internas: evita redirecciones abiertas.
-  return siguiente.startsWith('/') && !siguiente.startsWith('//') ? siguiente : '/';
+  try {
+    const url = new URL(siguiente, window.location.origin);
+    if (url.origin !== window.location.origin) return '/';
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '/';
+  }
 }
 
 $('#formulario').addEventListener('submit', async (evento) => {

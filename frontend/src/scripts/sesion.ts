@@ -1,9 +1,12 @@
 // Sesión del usuario y navegación según permisos.
-import { api, ApiError, guardarToken, olvidarToken, token } from './api';
+import {
+  api, ApiError, EVENTO_SESION_INVALIDADA, guardarToken, olvidarToken, token,
+} from './api';
 import type { UsuarioDTO } from './contratos';
 import { el } from './ui';
 
 let actual: UsuarioDTO | null | undefined;
+window.addEventListener(EVENTO_SESION_INVALIDADA, () => { actual = null; });
 
 export async function usuarioActual(): Promise<UsuarioDTO | null> {
   if (actual !== undefined) return actual;
@@ -11,8 +14,12 @@ export async function usuarioActual(): Promise<UsuarioDTO | null> {
   try {
     actual = await api.get<UsuarioDTO>('/api/auth/yo');
   } catch (error) {
-    if (error instanceof ApiError && error.estado === 401) olvidarToken();
-    actual = null;
+    if (error instanceof ApiError && error.estado === 401) {
+      olvidarToken();
+      actual = null;
+      return actual;
+    }
+    throw error;
   }
   return actual;
 }
@@ -35,7 +42,17 @@ export function cerrarSesion() {
 
 /** Redirige a /login si no hay sesión; devuelve null si falta el permiso. */
 export async function exigirSesion(permiso?: string): Promise<UsuarioDTO | null> {
-  const usuario = await usuarioActual();
+  let usuario: UsuarioDTO | null;
+  try {
+    usuario = await usuarioActual();
+  } catch (error) {
+    document.querySelector('main')?.replaceChildren(
+      el('h1', {}, 'Servidor no disponible'),
+      el('p', {}, error instanceof Error ? error.message : 'No se pudo validar la sesión.'),
+      el('a', { href: window.location.pathname }, 'Reintentar'),
+    );
+    return null;
+  }
   if (!usuario) {
     const destino = encodeURIComponent(window.location.pathname);
     window.location.href = `/login?siguiente=${destino}`;
@@ -55,7 +72,15 @@ export async function exigirSesion(permiso?: string): Promise<UsuarioDTO | null>
 export async function dibujarNavegacion() {
   const nav = document.querySelector('#navegacion');
   if (!nav) return;
-  const usuario = await usuarioActual();
+  let usuario: UsuarioDTO | null;
+  try {
+    usuario = await usuarioActual();
+  } catch {
+    nav.replaceChildren(el('a', { href: '/' }, 'Catálogo'));
+    const zona = document.querySelector('#zona-sesion');
+    zona?.replaceChildren(el('span', { class: 'meta' }, 'Servidor no disponible'));
+    return;
+  }
   const enlaces: [string, string][] = [['/', 'Catálogo']];
   if (usuario) enlaces.push(['/prestamos', 'Préstamos']);
   if (tienePermiso(usuario, 'REGISTRAR_ITEM_INVENTARIO')) enlaces.push(['/admin/inventario', 'Inventario']);
@@ -81,4 +106,4 @@ export async function dibujarNavegacion() {
   }
 }
 
-dibujarNavegacion();
+void dibujarNavegacion();

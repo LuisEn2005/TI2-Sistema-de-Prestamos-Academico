@@ -82,7 +82,7 @@ class MigracionTest(unittest.TestCase):
             self.assertEqual(c2.get("/api/items/1").json["estado"], "PRESTADO")
             self.assertEqual(c2.get("/api/items").json["total"], 3)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0004")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0005")
 
     def test_claves_foraneas_activas(self):
         with TemporaryDirectory() as d:

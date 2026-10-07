@@ -16,13 +16,20 @@ class EmisorTokens:
         self._serializador = URLSafeTimedSerializer(clave_secreta, salt="prestamos-auth")
         self.duracion = duracion
 
-    def emitir(self, usuario_id):
-        return self._serializador.dumps({"uid": usuario_id})
+    def emitir(self, usuario):
+        return self._serializador.dumps({
+            "uid": usuario.id.valor, "version_sesion": usuario.versionSesion,
+        })
 
     def verificar(self, token):
         try:
-            return self._serializador.loads(token, max_age=self.duracion)["uid"]
-        except (BadSignature, SignatureExpired, KeyError):
+            datos = self._serializador.loads(token, max_age=self.duracion)
+            usuario_id = datos["uid"]
+            version = datos["version_sesion"]
+            if type(usuario_id) is not int or type(version) is not int:
+                return None
+            return usuario_id, version
+        except (BadSignature, SignatureExpired, KeyError, TypeError):
             return None
 
 
@@ -64,8 +71,8 @@ def requiere_autenticacion(vista):
     @wraps(vista)
     def envoltura(*args, **kwargs):
         token = _token_de_la_peticion()
-        usuario_id = servicios().tokens.verificar(token) if token else None
-        usuario = servicios().identidad.usuario_de_sesion(usuario_id) if usuario_id else None
+        sesion = servicios().tokens.verificar(token) if token else None
+        usuario = servicios().identidad.usuario_de_sesion(*sesion) if sesion else None
         if usuario is None:
             raise NoAutenticado("Inicie sesión para continuar.")
         g.usuario = usuario

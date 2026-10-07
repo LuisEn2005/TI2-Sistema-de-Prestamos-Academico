@@ -4,6 +4,7 @@ from flask import Blueprint, g, jsonify, request
 
 from ..dominio.identidad import Permiso
 from ..aplicacion import validacion as v
+from ..aplicacion.errores import NoAutenticado
 from .autenticacion import (
     requiere_autenticacion, requiere_permiso, servicios,
 )
@@ -28,12 +29,12 @@ def iniciar_sesion():
     limitador.verificar(clave)
     try:
         usuario = servicios().identidad.autenticar(datos.get("correo"), datos.get("password"))
-    except Exception:
+    except NoAutenticado:
         limitador.registrar_fallo(clave)
         raise
     limitador.limpiar(clave)
     return jsonify({
-        "token": servicios().tokens.emitir(usuario.id.valor),
+        "token": servicios().tokens.emitir(usuario),
         "usuario": _usuario_json(usuario),
     })
 

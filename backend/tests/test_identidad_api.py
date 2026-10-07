@@ -50,7 +50,18 @@ class AutenticacionTest(ApiBase):
         ok = self.cliente.post("/api/auth/cambiar-password", headers=h,
                                json={"password_actual": CLAVE, "password_nueva": "nueva-clave-1"})
         self.assertEqual(ok.status_code, 200)
+        self.assertEqual(self.cliente.get("/api/auth/yo", headers=h).status_code, 401)
         self.ingresar(ESTUDIANTE, "nueva-clave-1")
+
+    def test_reinicio_de_password_por_gestor_revoca_la_sesion_anterior(self):
+        admin = self.ingresar()
+        anterior = self.ingresar(ESTUDIANTE)
+        uid = self.usuario_id(ESTUDIANTE, admin)
+        cambio = self.cliente.patch(
+            f"/api/usuarios/{uid}", headers=admin, json={"password": "reiniciada-123"})
+        self.assertEqual(cambio.status_code, 200, cambio.json)
+        self.assertEqual(self.cliente.get("/api/auth/yo", headers=anterior).status_code, 401)
+        self.ingresar(ESTUDIANTE, "reiniciada-123")
 
     def test_usuario_desactivado_pierde_acceso_aunque_tenga_token(self):
         admin = self.ingresar()

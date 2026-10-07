@@ -1,6 +1,7 @@
 // ApiClient: único punto de comunicación del frontend con la API Flask (HTTP/JSON).
 
 const CLAVE_TOKEN = 'prestamos.token';
+export const EVENTO_SESION_INVALIDADA = 'prestamos:sesion-invalidada';
 
 export class ApiError extends Error {
   constructor(mensaje: string, public estado: number) {
@@ -32,6 +33,10 @@ async function solicitar<T>(ruta: string, { metodo = 'GET', cuerpo }: Opciones =
   }
   const datos = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) {
+    if (respuesta.status === 401 && actual) {
+      olvidarToken();
+      window.dispatchEvent(new Event(EVENTO_SESION_INVALIDADA));
+    }
     throw new ApiError(datos.error || 'No se pudo completar la operación.', respuesta.status);
   }
   return datos as T;

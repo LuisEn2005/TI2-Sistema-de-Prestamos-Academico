@@ -42,6 +42,7 @@ class UsuarioDB(Base):
         CheckConstraint("length(trim(nombre)) > 0", name="ck_usuario_nombre_no_vacio"),
         CheckConstraint("correo = lower(trim(correo))", name="ck_usuario_correo_canonico"),
         CheckConstraint("length(trim(correo)) > 0", name="ck_usuario_correo_no_vacio"),
+        CheckConstraint("version_sesion >= 0", name="ck_usuario_version_sesion_no_negativa"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -50,6 +51,7 @@ class UsuarioDB(Base):
     # NULL = sin acceso al sistema hasta que un gestor asigne una contraseña.
     password_hash: Mapped[str | None] = mapped_column(String(255))
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    version_sesion: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     tiene_sancion_activa_cache: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )

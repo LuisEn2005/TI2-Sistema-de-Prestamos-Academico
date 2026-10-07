@@ -54,11 +54,14 @@ class IdentidadApplicationService:
             raise NoAutenticado("La cuenta está desactivada. Consulte con un gestor.")
         return usuario
 
-    def usuario_de_sesion(self, usuario_id):
+    def usuario_de_sesion(self, usuario_id, version_sesion=None):
         """Carga el usuario con sus roles vigentes; None si ya no puede acceder."""
         with self._uow() as uow:
             usuario = uow.usuarios.find_by_id(usuario_id)
-        return usuario if usuario and usuario.activo else None
+        return usuario if (
+            usuario and usuario.activo
+            and (version_sesion is None or usuario.versionSesion == version_sesion)
+        ) else None
 
     def permisos_de(self, usuario):
         return self.autorizacion.permisosDeRoles(usuario.roles or [])
@@ -70,6 +73,7 @@ class IdentidadApplicationService:
             if not hash_guardado or not check_password_hash(hash_guardado, actual or ""):
                 raise NoAutenticado("La contraseña actual no es correcta.")
             usuario = uow.usuarios.find_by_id(usuario_id)
+            usuario.invalidarSesiones()
             uow.usuarios.save(usuario, generate_password_hash(nueva))
             uow.commit()
 
@@ -218,7 +222,10 @@ class IdentidadApplicationService:
                     raise Conflicto("Ya existe un usuario con ese correo.")
                 usuario.correoElectronico = nuevo
             if "activo" in datos:
-                usuario.activo = v.booleano(datos, "activo")
+                nuevo_activo = v.booleano(datos, "activo")
+                if nuevo_activo != usuario.activo:
+                    usuario.invalidarSesiones()
+                usuario.activo = nuevo_activo
                 if not usuario.activo and actor.id.valor == usuario_id:
                     raise ErrorAplicacion("No puede desactivar su propia cuenta.", 409)
 
@@ -248,6 +255,7 @@ class IdentidadApplicationService:
             nuevo_hash = None
             if datos.get("password") not in (None, ""):
                 nuevo_hash = generate_password_hash(validar_password(datos["password"]))
+                usuario.invalidarSesiones()
             return self._confirmar(uow, usuario, nuevo_hash)
 
     @staticmethod

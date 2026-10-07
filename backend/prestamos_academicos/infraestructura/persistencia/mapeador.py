@@ -50,6 +50,7 @@ def usuario_a_dominio(fila: UsuarioDB, perfiles: dict) -> Usuario:
         correoElectronico=fila.correo,
         tieneSancionActivaCache=fila.tiene_sancion_activa_cache,
         activo=fila.activo,
+        versionSesion=fila.version_sesion,
         perfilEstudiante=e and PerfilEstudiante(
             codigoEstudiante=e.codigo_estudiante, matriculaVigente=e.matricula_vigente,
             politicaServicioId=_pid(e.politica_servicio_id)),
