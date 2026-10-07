@@ -33,7 +33,7 @@ docs/                                Análisis y modelo de dominio
 README.md                            Guía y plan del proyecto
 ```
 
-El frontend consume respuestas JSON de `/api`. En desarrollo, Astro redirige esa ruta a Flask. En despliegue se deberá publicar la API bajo el mismo prefijo mediante el servidor web o un proxy. Las entidades del dominio y las clases ORM se mantienen separadas: el MVP usa casos de uso mínimos y tablas propias, mientras el modelo de dominio completo sirve de referencia para los sprints posteriores.
+El frontend consume respuestas JSON de `/api`. En desarrollo, Astro redirige esa ruta a Flask. En despliegue se deberá publicar la API bajo el mismo prefijo mediante el servidor web o un proxy. Las entidades del dominio y las clases ORM se mantienen separadas; las migraciones conservan los datos del MVP y actualizan su esquema para los módulos de identidad e inventario.
 
 ## Plan de funcionalidades por sprint
 
@@ -74,6 +74,8 @@ La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación
 
 **Cuentas de demostración** (contraseña `demo1234`; solo con `DATOS_DEMO=1`): `admin@escuela.edu` (gestor), `luis.ramos@escuela.edu` (docente y gestor) y `jesus.perez@escuela.edu` (estudiante). **Cámbielas o desactive la demostración fuera del desarrollo.**
 
+El catálogo inicial de una base nueva contiene únicamente *Introduction to Algorithms (CLRS)*, *Clean Code: A Handbook of Agile Software Craftsmanship* y *Meta Quest*. Los datos ya existentes en una base previa se conservan al migrar.
+
 Para ejecutar las migraciones manualmente: `DATABASE_URL=... alembic upgrade head` desde `backend/`.
 
 **Frontend** (en otra terminal):
@@ -83,6 +85,8 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Para comprobar tipos y generar el frontend: `npm run build` (ejecuta `astro check` y `astro build`).
 
 Astro sirve la aplicación en `http://localhost:4321` y redirige `/api` a Flask. Pruebas del backend:
 

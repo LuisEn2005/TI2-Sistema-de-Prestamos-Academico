@@ -4,7 +4,7 @@
 
 El **Sprint 2 está terminado**. Reemplaza los usuarios y recursos fijos del MVP por datos gestionados desde el sistema: usuarios con credenciales, perfiles y políticas, y un inventario con atributos por tipo, estados y búsqueda. Se añadieron autenticación, autorización por rol, migraciones de esquema y las capas de la arquitectura objetivo (repositorios, mapeador, unidad de trabajo y servicios de aplicación) para estos contextos.
 
-Se verificó con 60 pruebas automatizadas (dominio, API y migraciones), con la compilación de Astro y con ejecuciones manuales contra **SQLite y PostgreSQL 16**, incluida la actualización de una base creada por el Sprint 1. No se ejecutaron pruebas automáticas de la interfaz en un navegador; los scripts del frontend se comprobaron por compilación, por coherencia con los identificadores de cada página y por peticiones reales a través del proxy de Astro.
+Se verificó con 61 pruebas automatizadas (dominio, API y migraciones), con la comprobación de tipos y compilación de Astro y con ejecuciones manuales contra **SQLite y PostgreSQL 16** durante la implementación, incluida la actualización de una base creada por el Sprint 1. La revisión posterior del sprint repitió las pruebas automatizadas sobre SQLite y el build; no repitió la comprobación manual de PostgreSQL. No se ejecutaron pruebas automáticas de la interfaz en un navegador.
 
 ## Requisitos
 
@@ -31,6 +31,7 @@ Se verificó con 60 pruebas automatizadas (dominio, API y migraciones), con la c
 
 ### Inventario
 - **Catálogo común** con atributos propios en una columna JSON, definidos por un **registro de tipos** (`TiposItem`). Un tipo nuevo se agrega con su subclase y una entrada en el registro, sin cambiar tabla ni API (RNF06; hay una prueba que lo demuestra).
+- **Datos de demostración acotados** a tres recursos de la Escuela de Computación: *Introduction to Algorithms (CLRS)*, *Clean Code: A Handbook of Agile Software Craftsmanship* y *Meta Quest*. Los demás tipos se pueden registrar desde la administración sin precargarlos.
 - **Estados y transiciones** (`EstadoItem`): `DADO_DE_BAJA` es terminal. `PRESTADO` y `RESERVADO` solo los fijan los flujos de préstamo y reserva; mientras un ítem está en uno de ellos no admite cambios manuales de estado.
 - **Búsqueda pública** por texto (nombre, código, categoría y atributos), tipo, categoría y estado, con paginación. Los comodines `%` y `_` se tratan como texto.
 
@@ -67,6 +68,8 @@ Códigos usados: 400 datos inválidos, 401 sin sesión o credenciales incorrecta
 ## Frontend
 
 Páginas Astro con un único cliente HTTP (`ApiClient`): catálogo público con filtros y detalle, inicio de sesión, préstamos (entrega y devolución para el gestor; lista propia para los demás), mi cuenta (política y cambio de contraseña), administración de inventario (formulario dinámico según el tipo) y de usuarios (perfiles por rol). La navegación se adapta a los permisos del usuario. El token se guarda en `sessionStorage` y todo el texto de la API se inserta con `textContent`.
+
+El comando `npm run build` ejecuta primero `astro check` y luego genera las seis páginas. Si no se pueden obtener los tipos de recurso, la administración muestra el error y desactiva el alta en lugar de abrir un formulario incompleto. La auditoría de dependencias del frontend no reportó vulnerabilidades al cerrar esta revisión.
 
 ## Decisiones y límites
 
