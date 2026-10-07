@@ -1,5 +1,7 @@
 # Sprint 1 — Primer MVP: préstamo y devolución de recursos
 
+> **Nota:** este documento describe el MVP original. El [Sprint 2](sprint_02.md) sustituyó sus tablas y endpoints (por ejemplo `/api/recursos` → `/api/items`, `recurso_id` → `item_id`) y añadió autenticación; las rutas de préstamo ahora requieren sesión.
+
 ## Objetivo y resultado
 
 El **Sprint 1 está terminado**. Se implementó un prototipo funcional que permite recorrer la idea central del sistema: **consultar un recurso, entregarlo en préstamo a un usuario y registrar su devolución**. La interfaz y las reglas se mantuvieron deliberadamente simples para validar el flujo completo antes de ampliar el alcance.

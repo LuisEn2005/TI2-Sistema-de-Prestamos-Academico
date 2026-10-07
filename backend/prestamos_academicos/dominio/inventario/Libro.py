@@ -3,8 +3,8 @@
 Generado a partir del bounded context: inventario
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 from .Item import Item
 
 
@@ -14,3 +14,7 @@ class Libro(Item):
     autor: Optional[str] = None
     editorial: Optional[str] = None
 
+    TIPO = "LIBRO"
+
+    def atributosEspecificos(self) -> Dict[str, Any]:
+        return {"isbn": self.isbn, "autor": self.autor, "editorial": self.editorial}

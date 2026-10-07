@@ -1,0 +1,20 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base titulo="Préstamos">
+  <div class="encabezado-pagina"><h1 id="titulo">Préstamos</h1><p id="subtitulo"></p></div>
+
+  <section id="nuevo" hidden>
+    <h2>Registrar entrega</h2>
+    <form id="formulario" class="barra">
+      <div><label for="usuario">Usuario habilitado</label><select id="usuario" required></select></div>
+      <div><label for="item">Recurso disponible</label><select id="item" required></select></div>
+      <button id="prestar" type="submit">Registrar entrega</button>
+    </form>
+  </section>
+
+  <h2 id="titulo-lista">Préstamos activos</h2>
+  <ul id="lista" class="indice"></ul>
+  <script>import '../scripts/prestamos.ts';</script>
+</Base>

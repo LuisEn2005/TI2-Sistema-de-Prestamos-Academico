@@ -4,3 +4,5 @@ from .Libro import Libro
 from .Equipo import Equipo
 from .Mobiliario import Mobiliario
 from .Material import Material
+from .IItemRepository import IItemRepository
+from . import TiposItem

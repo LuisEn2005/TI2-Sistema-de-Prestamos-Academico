@@ -16,3 +16,7 @@ Las clases del modelo están agrupadas por contexto en `backend/prestamos_academ
 Cada clase se mantiene en un módulo propio, como en el modelo original. Las clases de datos tienen atributos tipados y los métodos pendientes todavía lanzan `NotImplementedError`. Los enums heredan de `str` y `Enum`.
 
 La API Flask, los casos de uso del MVP y los modelos SQLAlchemy están en carpetas separadas del dominio. Las clases actuales del dominio no son tablas de SQLAlchemy; el prototipo usa tres tablas mínimas mientras se desarrolla el modelo completo.
+
+## Estado tras el Sprint 2
+
+Se implementaron las reglas de `identidad` (roles, permisos, habilitación), `inventario` (estados con transiciones y registro de tipos) y el registro de devolución de `prestamos`. Los repositorios del dominio (`IUsuarioRepository`, `IItemRepository`, `IPoliticaRepository`, `IPrestamoRepository`) tienen implementación SQLAlchemy. Los demás contextos conservan sus métodos con `NotImplementedError` hasta su sprint.

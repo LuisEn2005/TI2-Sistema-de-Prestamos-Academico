@@ -5,3 +5,4 @@ from .PerfilAdministrativo import PerfilAdministrativo
 from .PerfilGestorInventario import PerfilGestorInventario
 from .Usuario import Usuario
 from .ServicioAutorizacionRol import ServicioAutorizacionRol
+from .IUsuarioRepository import IUsuarioRepository

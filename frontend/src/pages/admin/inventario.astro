@@ -1,0 +1,46 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base titulo="Inventario">
+  <div class="encabezado-pagina"><h1>Inventario</h1>
+    <p>Registre recursos, corrija sus datos y cambie su estado. Prestado y reservado los fijan los flujos de préstamo y reserva.</p></div>
+
+  <div class="barra">
+    <div><label for="q">Buscar</label><input id="q" type="search" /></div>
+    <div><label for="tipo">Tipo</label><select id="tipo"></select></div>
+    <div><label for="estado">Estado</label><select id="estado"></select></div>
+    <button id="nuevo" type="button">Nuevo recurso</button>
+  </div>
+
+  <div class="tabla-envoltura"><table>
+    <thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody id="filas"></tbody>
+  </table></div>
+  <div class="paginacion">
+    <button id="anterior" type="button" class="secundario">Anterior</button>
+    <span id="pagina" class="tenue pequeno"></span>
+    <button id="siguiente" type="button" class="secundario">Siguiente</button>
+  </div>
+
+  <dialog id="dialogo">
+    <form id="formulario" method="dialog">
+      <h2 id="titulo-dialogo">Nuevo recurso</h2>
+      <label for="f-tipo">Tipo de recurso</label>
+      <select id="f-tipo" required></select>
+      <div class="dos-columnas">
+        <div><label for="f-codigo">Código</label><input id="f-codigo" maxlength="30" required /></div>
+        <div><label for="f-categoria">Categoría</label><input id="f-categoria" maxlength="80" required /></div>
+      </div>
+      <label for="f-nombre">Nombre</label>
+      <input id="f-nombre" maxlength="160" required />
+      <fieldset><legend>Datos específicos</legend><div id="f-atributos" class="dos-columnas"></div></fieldset>
+      <p id="f-error" class="mensaje error" role="alert"></p>
+      <div class="pie">
+        <button type="button" class="secundario" id="cancelar">Cancelar</button>
+        <button type="submit">Guardar recurso</button>
+      </div>
+    </form>
+  </dialog>
+  <script>import '../../scripts/admin-inventario.ts';</script>
+</Base>
