@@ -7,7 +7,7 @@ Los roles de un usuario se deducen de los perfiles que tiene (patrón Party/Role
 from datetime import date, datetime, timezone
 
 from sqlalchemy import (
-    JSON, Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text,
+    JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,13 @@ def _ahora():
 
 class PoliticaServicioDB(Base):
     __tablename__ = "politicas_servicio"
+    __table_args__ = (
+        CheckConstraint("max_items_simultaneos > 0", name="ck_politica_max_positivo"),
+        CheckConstraint("dias_prestamo_default > 0", name="ck_politica_dias_positivo"),
+        CheckConstraint("dias_gracia_reserva >= 0", name="ck_politica_gracia_no_negativa"),
+        CheckConstraint("length(trim(tipos_recurso_permitidos)) > 0",
+                        name="ck_politica_tipos_no_vacios"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     rol_aplicable: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
@@ -31,6 +38,11 @@ class PoliticaServicioDB(Base):
 
 class UsuarioDB(Base):
     __tablename__ = "usuarios"
+    __table_args__ = (
+        CheckConstraint("length(trim(nombre)) > 0", name="ck_usuario_nombre_no_vacio"),
+        CheckConstraint("correo = lower(trim(correo))", name="ck_usuario_correo_canonico"),
+        CheckConstraint("length(trim(correo)) > 0", name="ck_usuario_correo_no_vacio"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -48,6 +60,8 @@ class UsuarioDB(Base):
 
 class PerfilEstudianteDB(Base):
     __tablename__ = "perfiles_estudiante"
+    __table_args__ = (CheckConstraint(
+        "length(trim(codigo_estudiante)) > 0", name="ck_estudiante_codigo_no_vacio"),)
 
     usuario_id: Mapped[int] = mapped_column(
         ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True
@@ -61,6 +75,10 @@ class PerfilEstudianteDB(Base):
 
 class PerfilDocenteDB(Base):
     __tablename__ = "perfiles_docente"
+    __table_args__ = (
+        CheckConstraint("length(trim(codigo_empleado)) > 0", name="ck_docente_codigo_no_vacio"),
+        CheckConstraint("length(trim(tipo_contrato)) > 0", name="ck_docente_contrato_no_vacio"),
+    )
 
     usuario_id: Mapped[int] = mapped_column(
         ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True
@@ -75,6 +93,12 @@ class PerfilDocenteDB(Base):
 
 class PerfilAdministrativoDB(Base):
     __tablename__ = "perfiles_administrativo"
+    __table_args__ = (
+        CheckConstraint("length(trim(codigo_empleado)) > 0",
+                        name="ck_administrativo_codigo_no_vacio"),
+        CheckConstraint("length(trim(cargo_administrativo)) > 0",
+                        name="ck_administrativo_cargo_no_vacio"),
+    )
 
     usuario_id: Mapped[int] = mapped_column(
         ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True
@@ -89,6 +113,10 @@ class PerfilAdministrativoDB(Base):
 
 class PerfilGestorInventarioDB(Base):
     __tablename__ = "perfiles_gestor_inventario"
+    __table_args__ = (
+        CheckConstraint("length(trim(codigo_empleado)) > 0", name="ck_gestor_codigo_no_vacio"),
+        CheckConstraint("length(trim(area_responsable)) > 0", name="ck_gestor_area_no_vacia"),
+    )
 
     usuario_id: Mapped[int] = mapped_column(
         ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True
@@ -106,6 +134,14 @@ class ItemDB(Base):
     __table_args__ = (
         Index("ix_items_tipo_estado", "tipo", "estado"),
         Index("ix_items_categoria", "categoria"),
+        CheckConstraint("codigo = upper(trim(codigo))", name="ck_item_codigo_canonico"),
+        CheckConstraint("length(trim(codigo)) > 0", name="ck_item_codigo_no_vacio"),
+        CheckConstraint("length(trim(nombre)) > 0", name="ck_item_nombre_no_vacio"),
+        CheckConstraint("length(trim(categoria)) > 0", name="ck_item_categoria_no_vacia"),
+        CheckConstraint("length(trim(tipo)) > 0", name="ck_item_tipo_no_vacio"),
+        CheckConstraint(
+            "estado IN ('DISPONIBLE','PRESTADO','RESERVADO','EN_MANTENIMIENTO',"
+            "'DADO_DE_BAJA','EXTRAVIADO')", name="ck_item_estado_valido"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -126,6 +162,9 @@ class ItemDB(Base):
 
 class PrestamoDB(Base):
     __tablename__ = "prestamos"
+    __table_args__ = (CheckConstraint(
+        "fecha_devolucion IS NULL OR fecha_devolucion >= fecha_prestamo",
+        name="ck_prestamo_fechas_ordenadas"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)

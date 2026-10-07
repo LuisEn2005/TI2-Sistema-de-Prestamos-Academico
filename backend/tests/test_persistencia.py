@@ -82,7 +82,7 @@ class MigracionTest(unittest.TestCase):
             self.assertEqual(c2.get("/api/items/1").json["estado"], "PRESTADO")
             self.assertEqual(c2.get("/api/items").json["total"], 3)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0003")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0004")
 
     def test_claves_foraneas_activas(self):
         with TemporaryDirectory() as d:
@@ -92,6 +92,20 @@ class MigracionTest(unittest.TestCase):
             motor, _ = crear_fabrica_sesiones(f"sqlite:///{ruta}")
             with motor.connect() as con:
                 self.assertEqual(con.exec_driver_sql("PRAGMA foreign_keys").scalar(), 1)
+
+    def test_restricciones_rechazan_estado_y_codigo_no_canonicos(self):
+        from sqlalchemy import text
+        from sqlalchemy.exc import IntegrityError
+        from prestamos_academicos.infraestructura.persistencia.conexion import crear_fabrica_sesiones
+
+        with TemporaryDirectory() as d:
+            ruta = Path(d) / "integridad.sqlite"
+            create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k")
+            motor, _ = crear_fabrica_sesiones(f"sqlite:///{ruta}")
+            with self.assertRaises(IntegrityError), motor.begin() as con:
+                con.execute(text("UPDATE items SET estado = 'ROTO' WHERE codigo = 'LIB-CLRS'"))
+            with self.assertRaises(IntegrityError), motor.begin() as con:
+                con.execute(text("UPDATE items SET codigo = 'lib-clrs' WHERE codigo = 'LIB-CLRS'"))
 
 
 class SinDatosDemoTest(unittest.TestCase):

@@ -42,3 +42,12 @@ def objeto(valor, nombre="el cuerpo"):
     if not isinstance(valor, dict):
         raise ErrorAplicacion(f"Se esperaba un objeto JSON en {nombre}.", 400)
     return valor
+
+
+def campos(datos, permitidos, nombre="el cuerpo"):
+    """Rechaza errores tipográficos y propiedades que la API no procesa."""
+    desconocidos = set(datos) - set(permitidos)
+    if desconocidos:
+        lista = ", ".join(f"«{campo}»" for campo in sorted(desconocidos))
+        raise ErrorAplicacion(f"Campos no admitidos en {nombre}: {lista}.", 400)
+    return datos

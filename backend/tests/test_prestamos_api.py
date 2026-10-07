@@ -73,6 +73,8 @@ class PrestamosTest(ApiBase):
         post = lambda cuerpo: self.cliente.post("/api/prestamos", headers=h, json=cuerpo)  # noqa: E731
         self.assertEqual(post({}).status_code, 400)
         self.assertEqual(post({"usuario_id": "1", "item_id": 1}).status_code, 400)
+        self.assertEqual(post({"usuario_id": 1, "item_id": 1, "forzar": True}).status_code, 400)
+        self.assertEqual(post({"usuario_id": 2 ** 63, "item_id": 1}).status_code, 400)
         self.assertEqual(post({"usuario_id": 999, "item_id": 1}).status_code, 404)
         self.assertEqual(post({"usuario_id": self.usuario_id(ESTUDIANTE, h), "item_id": 999}).status_code, 404)
         self.assertEqual(self.cliente.post("/api/prestamos/999/devolucion", headers=h).status_code, 404)

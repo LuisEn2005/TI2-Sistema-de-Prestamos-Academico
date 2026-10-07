@@ -40,7 +40,11 @@ class CatalogoPublicoTest(ApiBase):
         self.assertEqual((len(p1["items"]), len(p2["items"]), p1["total"]), (2, 1, 3))
         self.assertFalse({i["id"] for i in p1["items"]} & {i["id"] for i in p2["items"]})
         self.assertEqual(self.cliente.get("/api/items?limite=abc").status_code, 400)
-        self.assertEqual(len(self.cliente.get("/api/items?limite=100000").json["items"]), 3)
+        self.assertEqual(self.cliente.get("/api/items?limite=100000").status_code, 400)
+        self.assertEqual(self.cliente.get("/api/items?pagina=999999999999999999").status_code, 400)
+        self.assertEqual(self.cliente.get("/api/items?pagina=0").status_code, 400)
+        self.assertEqual(self.cliente.get(f"/api/items?q={'x' * 121}").status_code, 400)
+        self.assertEqual(self.cliente.get("/api/items?orden=nombre").status_code, 400)
 
     def test_detalle_tipos_y_categorias(self):
         self.assertEqual(self.cliente.get("/api/items/999").status_code, 404)
@@ -105,10 +109,26 @@ class AdministracionInventarioTest(ApiBase):
         r = self.cliente.post("/api/items", headers=h, json=dict(LIBRO, codigo="lib-ddd"))
         self.assertEqual(r.status_code, 409)
 
+    def test_codigo_se_guarda_en_formato_canonico(self):
+        h = self.ingresar()
+        r = self.cliente.post("/api/items", headers=h, json=dict(LIBRO, codigo=" lib-ddd "))
+        self.assertEqual(r.status_code, 201, r.json)
+        self.assertEqual(r.json["codigo"], "LIB-DDD")
+
     def test_el_estado_inicial_no_se_puede_forzar(self):
         h = self.ingresar()
         r = self.cliente.post("/api/items", headers=h, json=dict(LIBRO, estado="PRESTADO"))
-        self.assertEqual(r.json["estado"], "DISPONIBLE")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("estado", r.json["error"])
+
+    def test_rechaza_campos_desconocidos(self):
+        h = self.ingresar()
+        self.assertEqual(self.cliente.post(
+            "/api/items", headers=h, json=dict(LIBRO, nombre_item="otro")).status_code, 400)
+        iid = self.item_id("LIB-CLRS")
+        self.assertEqual(self.cliente.post(
+            f"/api/items/{iid}/estado", headers=h,
+            json={"estado": "EN_MANTENIMIENTO", "forzar": True}).status_code, 400)
 
     def test_actualizar_item(self):
         h = self.ingresar()

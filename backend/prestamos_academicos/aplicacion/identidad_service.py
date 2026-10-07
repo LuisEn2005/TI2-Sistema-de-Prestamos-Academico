@@ -80,6 +80,17 @@ class IdentidadApplicationService:
 
     def _aplicar_perfil(self, uow, usuario, rol, datos, existente_politica=None):
         datos = v.objeto(datos, f"el perfil {rol.value}")
+        campos_perfil = {
+            RolUsuario.ESTUDIANTE: {"codigo_estudiante", "matricula_vigente",
+                                    "politica_servicio_id"},
+            RolUsuario.DOCENTE: {"codigo_empleado", "tipo_contrato",
+                                 "vinculacion_vigente", "politica_servicio_id"},
+            RolUsuario.ADMINISTRATIVO: {"codigo_empleado", "cargo_administrativo",
+                                        "vinculacion_vigente", "politica_servicio_id"},
+            RolUsuario.GESTOR_INVENTARIO: {"codigo_empleado", "area_responsable",
+                                           "fecha_asignacion"},
+        }
+        v.campos(datos, campos_perfil[rol], f"el perfil {rol.value}")
         politica = existente_politica or self._politica_id(uow, rol)
         if "politica_servicio_id" in datos:
             solicitada = datos["politica_servicio_id"]
@@ -167,6 +178,7 @@ class IdentidadApplicationService:
 
     def registrar_usuario(self, datos):
         datos = v.objeto(datos)
+        v.campos(datos, {"nombre", "correo", "password", "activo", "perfiles"})
         perfiles = v.objeto(datos.get("perfiles") or {}, "«perfiles»")
         if not perfiles:
             raise ErrorAplicacion("Indique al menos un perfil (rol) para el usuario.", 400)
@@ -190,6 +202,7 @@ class IdentidadApplicationService:
 
     def actualizar_usuario(self, usuario_id, datos, actor):
         datos = v.objeto(datos)
+        v.campos(datos, {"nombre", "correo", "password", "activo", "perfiles"})
         with self._uow() as uow:
             usuario = uow.usuarios.find_by_id(usuario_id)
             if usuario is None:

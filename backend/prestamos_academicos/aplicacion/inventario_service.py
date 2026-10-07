@@ -26,6 +26,10 @@ class InventarioApplicationService:
 
     def buscar(self, *, texto=None, tipo=None, categoria=None, estado=None,
                pagina=1, limite=20):
+        if type(pagina) is not int or pagina < 1 or pagina > 100_000:
+            raise ErrorAplicacion("La página debe estar entre 1 y 100000.", 400)
+        if type(limite) is not int or limite < 1 or limite > LIMITE_MAXIMO:
+            raise ErrorAplicacion(f"El límite debe estar entre 1 y {LIMITE_MAXIMO}.", 400)
         if tipo:
             try:
                 obtener_tipo(tipo)  # valida el nombre del tipo
@@ -37,8 +41,6 @@ class InventarioApplicationService:
                 estado_item = EstadoItem(estado.upper())
             except ValueError:
                 raise ErrorAplicacion(f"Estado desconocido: {estado!r}.", 400)
-        pagina = max(1, pagina)
-        limite = min(max(1, limite), LIMITE_MAXIMO)
         with self._uow() as uow:
             items, total = uow.items.buscar(
                 texto=texto, tipo=tipo, categoria=categoria, estado=estado_item,
@@ -68,12 +70,13 @@ class InventarioApplicationService:
 
     def registrar_item(self, datos):
         datos = v.objeto(datos)
+        v.campos(datos, {"tipo", "codigo", "nombre", "categoria", "atributos"})
         try:
             tipo = obtener_tipo(v.texto(datos, "tipo", etiqueta="tipo"))
         except ErrorDominio as e:
             raise ErrorAplicacion(str(e), 400)
         item = tipo.clase(
-            codigo=v.texto(datos, "codigo", maximo=30, etiqueta="código"),
+            codigo=v.texto(datos, "codigo", maximo=30, etiqueta="código").upper(),
             nombre=v.texto(datos, "nombre", maximo=160, etiqueta="nombre"),
             categoria=v.texto(datos, "categoria", maximo=80, etiqueta="categoría"),
             estado=EstadoItem.DISPONIBLE,
@@ -91,6 +94,7 @@ class InventarioApplicationService:
 
     def actualizar_item(self, item_id, datos):
         datos = v.objeto(datos)
+        v.campos(datos, {"tipo", "codigo", "nombre", "categoria", "atributos"})
         with self._uow() as uow:
             item = uow.items.find_by_id(item_id)
             if item is None:
@@ -99,7 +103,7 @@ class InventarioApplicationService:
                 raise ErrorAplicacion("No se puede cambiar el tipo de un recurso.", 400)
             tipo = obtener_tipo(item.TIPO)
             if "codigo" in datos:
-                nuevo = v.texto(datos, "codigo", maximo=30, etiqueta="código")
+                nuevo = v.texto(datos, "codigo", maximo=30, etiqueta="código").upper()
                 otro = uow.items.find_by_codigo(nuevo)
                 if otro and otro.id.valor != item_id:
                     raise Conflicto(f"Ya existe un recurso con el código {nuevo}.")
@@ -120,7 +124,10 @@ class InventarioApplicationService:
                 raise Conflicto("El código indicado ya está en uso.")
         return guardado
 
-    def cambiar_estado(self, item_id, nuevo_estado):
+    def cambiar_estado(self, item_id, datos):
+        datos = v.objeto(datos)
+        v.campos(datos, {"estado"})
+        nuevo_estado = datos.get("estado")
         try:
             nuevo = EstadoItem(str(nuevo_estado).upper())
         except ValueError:

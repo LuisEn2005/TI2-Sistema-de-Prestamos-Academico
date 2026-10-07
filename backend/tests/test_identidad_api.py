@@ -29,6 +29,9 @@ class AutenticacionTest(ApiBase):
         self.assertEqual(self.cliente.post("/api/auth/login", data="x").status_code, 400)
         self.assertEqual(self.cliente.post(
             "/api/auth/login", json={"correo": 1, "password": 2}).status_code, 401)
+        self.assertEqual(self.cliente.post(
+            "/api/auth/login", json={"correo": ESTUDIANTE, "password": CLAVE,
+                                     "recordarme": True}).status_code, 400)
 
     def test_yo_requiere_token_valido(self):
         self.assertEqual(self.cliente.get("/api/auth/yo").status_code, 401)
@@ -108,6 +111,24 @@ class GestionUsuariosTest(ApiBase):
         for nombre, cuerpo in casos.items():
             r = self.cliente.post("/api/usuarios", headers=h, json=cuerpo)
             self.assertEqual(r.status_code, 400, nombre)
+
+    def test_rechaza_campos_desconocidos_en_usuario_y_perfil(self):
+        h = self.ingresar()
+        self.assertEqual(self.cliente.post(
+            "/api/usuarios", headers=h, json=dict(self.NUEVO, apodo="Ana")).status_code, 400)
+        invalido = dict(self.NUEVO, correo="perfil-invalido@escuela.edu", perfiles={
+            "ESTUDIANTE": {"codigo_estudiante": "EST-404", "carrera": "CC"}})
+        self.assertEqual(self.cliente.post(
+            "/api/usuarios", headers=h, json=invalido).status_code, 400)
+
+    def test_limita_parametros_de_busqueda_e_identificadores(self):
+        h = self.ingresar()
+        self.assertEqual(self.cliente.get(
+            f"/api/usuarios?q={'x' * 121}", headers=h).status_code, 400)
+        self.assertEqual(self.cliente.get(
+            "/api/usuarios?orden=nombre", headers=h).status_code, 400)
+        self.assertEqual(self.cliente.get(
+            "/api/usuarios/999999999999999999999999", headers=h).status_code, 400)
 
     def test_correo_y_codigo_duplicados(self):
         h = self.ingresar()

@@ -3,10 +3,13 @@
 from flask import Blueprint, g, jsonify, request
 
 from ..dominio.identidad import Permiso
+from ..aplicacion import validacion as v
 from .autenticacion import (
     requiere_autenticacion, requiere_permiso, servicios,
 )
-from .peticion import booleano_consulta, cuerpo_json
+from .peticion import (
+    booleano_consulta, cuerpo_json, id_ruta, parametros_permitidos, texto_consulta,
+)
 from .serializadores import usuario_a_json
 
 bp = Blueprint("identidad", __name__, url_prefix="/api")
@@ -19,6 +22,7 @@ def _usuario_json(usuario):
 @bp.post("/auth/login")
 def iniciar_sesion():
     datos = cuerpo_json()
+    v.campos(datos, {"correo", "password"})
     clave = (request.remote_addr or "?", str(datos.get("correo", "")).strip().lower())
     limitador = servicios().limitador
     limitador.verificar(clave)
@@ -44,6 +48,7 @@ def mi_perfil():
 @requiere_autenticacion
 def cambiar_password():
     datos = cuerpo_json()
+    v.campos(datos, {"password_actual", "password_nueva"})
     servicios().identidad.cambiar_password(
         g.usuario.id.valor, datos.get("password_actual"), datos.get("password_nueva"))
     return jsonify({"mensaje": "Contraseña actualizada."})
@@ -52,9 +57,10 @@ def cambiar_password():
 @bp.get("/usuarios")
 @requiere_permiso(Permiso.GESTIONAR_USUARIOS_Y_ROLES)
 def listar_usuarios():
+    parametros_permitidos("q", "rol", "activo", "habilitado")
     usuarios = servicios().identidad.listar_usuarios(
-        texto=request.args.get("q") or None,
-        rol=request.args.get("rol") or None,
+        texto=texto_consulta("q", maximo=120),
+        rol=texto_consulta("rol", maximo=30),
         activo=booleano_consulta("activo"),
         habilitado=booleano_consulta("habilitado"),
     )
@@ -64,7 +70,7 @@ def listar_usuarios():
 @bp.get("/usuarios/<int:usuario_id>")
 @requiere_permiso(Permiso.GESTIONAR_USUARIOS_Y_ROLES)
 def obtener_usuario(usuario_id):
-    return jsonify(usuario_a_json(servicios().identidad.obtener_usuario(usuario_id)))
+    return jsonify(usuario_a_json(servicios().identidad.obtener_usuario(id_ruta(usuario_id))))
 
 
 @bp.post("/usuarios")
@@ -77,5 +83,6 @@ def registrar_usuario():
 @bp.patch("/usuarios/<int:usuario_id>")
 @requiere_permiso(Permiso.GESTIONAR_USUARIOS_Y_ROLES)
 def actualizar_usuario(usuario_id):
-    usuario = servicios().identidad.actualizar_usuario(usuario_id, cuerpo_json(), g.usuario)
+    usuario = servicios().identidad.actualizar_usuario(
+        id_ruta(usuario_id), cuerpo_json(), g.usuario)
     return jsonify(usuario_a_json(usuario))
