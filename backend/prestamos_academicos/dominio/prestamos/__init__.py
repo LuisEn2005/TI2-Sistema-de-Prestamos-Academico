@@ -6,3 +6,4 @@ from .CondicionDevolucion import CondicionDevolucion
 from .PrestamoRealizado import PrestamoRealizado
 from .PrestamoDevuelto import PrestamoDevuelto
 from .PrestamoDevueltoTarde import PrestamoDevueltoTarde
+from .IPrestamoRepository import IPrestamoRepository

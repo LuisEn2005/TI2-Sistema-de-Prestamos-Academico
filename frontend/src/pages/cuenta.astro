@@ -1,0 +1,19 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base titulo="Mi cuenta">
+  <div class="encabezado-pagina"><h1>Mi cuenta</h1></div>
+  <section id="datos"></section>
+  <h2>Política de servicio</h2>
+  <div id="politicas" class="tabla-envoltura"></div>
+  <h2 style="margin-top:2rem">Cambiar contraseña</h2>
+  <form id="formulario" class="tarjeta-formulario">
+    <label for="actual">Contraseña actual</label>
+    <input id="actual" type="password" autocomplete="current-password" required />
+    <label for="nueva">Contraseña nueva (mínimo 8 caracteres)</label>
+    <input id="nueva" type="password" autocomplete="new-password" minlength="8" required />
+    <button type="submit">Cambiar contraseña</button>
+  </form>
+  <script>import '../scripts/cuenta.ts';</script>
+</Base>

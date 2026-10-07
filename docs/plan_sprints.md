@@ -2,7 +2,7 @@
 
 ## Alcance y estado
 
-Este plan parte de los [requisitos originales RF01–RF18 y RNF01–RNF06](analisis_requisitos_modelo_dominio.md). **Sprint 1 está implementado** y corresponde al [primer MVP](mvp_01.md). **Sprints 2–6 están planificados**: describen entregas esperadas, no funcionalidades existentes. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
+Este plan parte de los [requisitos originales RF01–RF18 y RNF01–RNF06](analisis_requisitos_modelo_dominio.md). **Sprints 1 y 2 están implementados** ([MVP](mvp_01.md) y [Sprint 2](sprint_02.md)). **Sprints 3–6 están planificados**: describen entregas esperadas, no funcionalidades existentes. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
 
 Cada sprint debe entregar una funcionalidad visible en Astro, una API y reglas en Flask, persistencia cuando corresponda y comprobaciones de su recorrido principal. La cobertura parcial de un requisito en un sprint no equivale a su cierre; la tabla de trazabilidad indica dónde quedará completo.
 
@@ -18,7 +18,7 @@ Cada sprint debe entregar una funcionalidad visible en Astro, una API y reglas e
 
 Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una implementación **parcial** de RF01, RF04–RF06, RF10–RF11 y RF13. No hay autenticación, políticas, reservas ni sanciones. Los endpoints, datos de demostración, pruebas y límites se detallan en el [documento del Sprint 1](mvp_01.md).
 
-## Sprint 2 — Identidad e inventario administrable · Planificado
+## Sprint 2 — Identidad e inventario administrable · Terminado
 
 **Objetivo.** Sustituir los datos de demostración por usuarios y recursos gestionados desde el sistema.
 
@@ -26,6 +26,7 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Frontend:** acceso según rol, formularios de usuarios y recursos, catálogo público con búsqueda y filtros, detalle de ítem y estado visible.
 - **Cierre:** RF01, RF03, RF04 y RF06 completos. RF02 avanza con la verificación de vinculación; RF05 incorpora los estados de inventario, pero su integración con reservas se cerrará en Sprint 4.
 - **Demostración:** un encargado registra un recurso y un usuario habilitado; un visitante encuentra el recurso mediante el catálogo sin autenticarse.
+- **Resultado:** implementado; ver [Sprint 2](sprint_02.md) para el alcance real, los endpoints y lo que quedó pendiente.
 
 ## Sprint 3 — Préstamos completos · Planificado
 

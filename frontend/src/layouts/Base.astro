@@ -1,0 +1,33 @@
+---
+import '../styles/global.css';
+interface Props { titulo: string }
+const { titulo } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulo} · Préstamos Académicos</title>
+  </head>
+  <body>
+    <header class="cabecera">
+      <div class="cabecera-interior">
+        <a class="marca" href="/">
+          <strong>Préstamos Académicos</strong>
+          <span>Escuela de Ciencia de la Computación · UNSA</span>
+        </a>
+        <nav id="navegacion" aria-label="Principal"></nav>
+        <div id="zona-sesion" class="sesion"></div>
+      </div>
+    </header>
+    <main>
+      <p id="mensaje" class="mensaje" role="status" aria-live="polite"></p>
+      <slot />
+    </main>
+    <script>
+      import '../scripts/sesion.ts';
+    </script>
+  </body>
+</html>

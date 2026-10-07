@@ -1,0 +1,39 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base titulo="Usuarios">
+  <div class="encabezado-pagina"><h1>Usuarios</h1>
+    <p>Registre a estudiantes y personal de la Escuela, asigne sus perfiles y controle su acceso. Cada perfil recibe automáticamente su política de servicio.</p></div>
+
+  <div class="barra">
+    <div><label for="q">Buscar</label><input id="q" type="search" placeholder="Nombre o correo" /></div>
+    <div><label for="rol">Perfil</label><select id="rol"></select></div>
+    <button id="nuevo" type="button">Nuevo usuario</button>
+  </div>
+
+  <div class="tabla-envoltura"><table>
+    <thead><tr><th>Nombre</th><th>Perfiles</th><th>Situación</th><th>Acciones</th></tr></thead>
+    <tbody id="filas"></tbody>
+  </table></div>
+
+  <dialog id="dialogo">
+    <form id="formulario" method="dialog">
+      <h2 id="titulo-dialogo">Nuevo usuario</h2>
+      <div class="dos-columnas">
+        <div><label for="f-nombre">Nombre completo</label><input id="f-nombre" maxlength="120" required /></div>
+        <div><label for="f-correo">Correo</label><input id="f-correo" type="email" maxlength="160" required /></div>
+      </div>
+      <label for="f-password" id="et-password">Contraseña inicial (mínimo 8 caracteres)</label>
+      <input id="f-password" type="password" autocomplete="new-password" minlength="8" />
+      <label class="casilla"><input id="f-activo" type="checkbox" checked />Cuenta activa</label>
+      <div id="f-perfiles"></div>
+      <p id="f-error" class="mensaje error" role="alert"></p>
+      <div class="pie">
+        <button type="button" class="secundario" id="cancelar">Cancelar</button>
+        <button type="submit">Guardar usuario</button>
+      </div>
+    </form>
+  </dialog>
+  <script>import '../../scripts/admin-usuarios.ts';</script>
+</Base>

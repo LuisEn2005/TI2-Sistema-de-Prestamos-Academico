@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base titulo="Iniciar sesión">
+  <div class="encabezado-pagina"><h1>Iniciar sesión</h1>
+    <p>Use el correo registrado en la Escuela. Si aún no tiene acceso, solicítelo a un gestor de inventario.</p></div>
+  <form id="formulario" class="tarjeta-formulario">
+    <label for="correo">Correo</label>
+    <input id="correo" type="email" autocomplete="username" required />
+    <label for="password">Contraseña</label>
+    <input id="password" type="password" autocomplete="current-password" required />
+    <button type="submit" id="entrar">Iniciar sesión</button>
+  </form>
+  <script>import '../scripts/login.ts';</script>
+</Base>

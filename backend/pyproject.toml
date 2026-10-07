@@ -11,7 +11,11 @@ dependencies = [
     "Flask>=3.1,<4",
     "SQLAlchemy>=2.0,<3",
     "psycopg>=3.2,<4",
+    "alembic>=1.13,<2",
 ]
 
 [tool.setuptools.packages.find]
 include = ["prestamos_academicos*"]
+
+[tool.setuptools.package-data]
+"prestamos_academicos.infraestructura.migraciones" = ["script.py.mako"]

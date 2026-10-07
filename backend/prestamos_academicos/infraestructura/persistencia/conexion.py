@@ -1,10 +1,18 @@
-"""Motor y sesiones de SQLAlchemy para el prototipo."""
+"""Motor y sesiones de SQLAlchemy."""
 
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+
+
+def _activar_claves_foraneas_sqlite(motor):
+    @event.listens_for(motor, "connect")
+    def _pragma(conexion, _registro):
+        cursor = conexion.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 def crear_fabrica_sesiones(database_url=None):
@@ -15,4 +23,6 @@ def crear_fabrica_sesiones(database_url=None):
         url = f"sqlite:///{ruta}"
 
     motor = create_engine(url)
+    if motor.dialect.name == "sqlite":
+        _activar_claves_foraneas_sqlite(motor)
     return motor, sessionmaker(bind=motor, expire_on_commit=False)
