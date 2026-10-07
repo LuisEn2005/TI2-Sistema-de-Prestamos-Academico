@@ -56,7 +56,9 @@ test('el administrador registra usuario, recurso, entrega y devolución', async 
   await expect(page.getByRole('cell', { name: 'LIB-E2E' })).toBeVisible();
 
   await page.goto('/prestamos');
-  await page.getByLabel('Usuario habilitado').selectOption({ label: 'María Prueba' });
+  await page.getByLabel('Usuario habilitado').selectOption({
+    label: 'María Prueba (maria.prueba@escuela.edu)',
+  });
   await page.getByLabel('Recurso disponible').selectOption({
     label: 'Libro de navegador (LIB-E2E)',
   });

@@ -9,7 +9,7 @@ if (usuario) {
     el('p', {}, el('strong', {}, usuario.nombre), ` · ${usuario.correo}`),
     el('p', {}, ...usuario.roles.map((r) => el('span', { class: 'etiqueta-rol' }, ETIQUETA_ROL[r]))),
     usuario.habilitado
-      ? el('p', { class: 'tenue' }, 'Su cuenta está habilitada para solicitar préstamos.')
+      ? el('p', { class: 'tenue' }, 'Su cuenta está habilitada para recibir préstamos.')
       : el('p', { class: 'tenue' }, usuario.motivo_no_habilitado ?? ''),
   );
 

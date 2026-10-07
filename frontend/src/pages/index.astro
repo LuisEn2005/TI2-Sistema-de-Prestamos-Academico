@@ -5,11 +5,11 @@ import Base from '../layouts/Base.astro';
 <Base titulo="Catálogo">
   <div class="encabezado-pagina">
     <h1>Catálogo de recursos</h1>
-    <p>Libros, equipos, materiales y mobiliario de la Escuela. La consulta es abierta; para reservar o pedir un préstamo se necesita iniciar sesión.</p>
+    <p>Libros, equipos, materiales y mobiliario de la Escuela. La consulta es pública; las entregas y devoluciones se registran en el módulo de préstamos.</p>
   </div>
 
   <form id="filtros" class="filtros" role="search">
-    <div><label for="q">Buscar</label><input id="q" type="search" placeholder="Título, autor, código, marca…" /></div>
+    <div><label for="q">Buscar</label><input id="q" type="search" maxlength="120" placeholder="Título, autor, código, marca…" /></div>
     <div><label for="tipo">Tipo</label><select id="tipo"></select></div>
     <div><label for="categoria">Categoría</label><select id="categoria"></select></div>
     <div><label for="estado">Estado</label><select id="estado"></select></div>

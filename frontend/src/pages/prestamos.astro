@@ -7,11 +7,16 @@ import Base from '../layouts/Base.astro';
 
   <section id="nuevo" hidden>
     <h2>Registrar entrega</h2>
+    <div class="barra">
+      <div><label for="buscar-usuario">Buscar usuario</label><input id="buscar-usuario" type="search" maxlength="120" placeholder="Nombre o correo" /></div>
+      <div><label for="buscar-item">Buscar recurso</label><input id="buscar-item" type="search" maxlength="120" placeholder="Código o nombre" /></div>
+    </div>
     <form id="formulario" class="barra">
       <div><label for="usuario">Usuario habilitado</label><select id="usuario" required></select></div>
       <div><label for="item">Recurso disponible</label><select id="item" required></select></div>
       <button id="prestar" type="submit">Registrar entrega</button>
     </form>
+    <p class="tenue pequeno">Se muestran hasta 50 coincidencias por búsqueda.</p>
   </section>
 
   <h2 id="titulo-lista">Préstamos activos</h2>

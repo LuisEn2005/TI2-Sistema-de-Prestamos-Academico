@@ -2,87 +2,122 @@
 
 ## Objetivo y resultado
 
-El **Sprint 2 está terminado**. Reemplaza los usuarios y recursos fijos del MVP por datos gestionados desde el sistema: usuarios con credenciales, perfiles y políticas, y un inventario con atributos por tipo, estados y búsqueda. Se añadieron autenticación, autorización por rol, migraciones de esquema y las capas de la arquitectura objetivo (repositorios, mapeador, unidad de trabajo y servicios de aplicación) para estos contextos.
+El **Sprint 2 está terminado**. Su objetivo fue convertir el prototipo del Sprint 1 en una base funcional y mantenible para los siguientes incrementos. Los usuarios y recursos fijos fueron reemplazados por identidad, permisos e inventario administrables desde Astro, respaldados por Flask, SQLAlchemy y migraciones Alembic.
 
-Se verificó con 61 pruebas automatizadas (dominio, API y migraciones), con la comprobación de tipos y compilación de Astro y con ejecuciones manuales contra **SQLite y PostgreSQL 16** durante la implementación, incluida la actualización de una base creada por el Sprint 1. La revisión posterior del sprint repitió las pruebas automatizadas sobre SQLite y el build; no repitió la comprobación manual de PostgreSQL. No se ejecutaron pruebas automáticas de la interfaz en un navegador.
+El resultado permite autenticar usuarios, administrar perfiles y vinculaciones, consultar el catálogo público, gestionar recursos y registrar la entrega y devolución básica de un ítem. Las reservas, renovaciones, sanciones, auditoría, modalidades y límites efectivos de préstamo siguen asignados a los Sprints 3–6.
 
-## Requisitos
+## Requisitos cubiertos
 
-| Requisito | Estado tras el Sprint 2 | Qué falta |
+| Requisito | Estado al cerrar el Sprint 2 | Trabajo posterior |
 | --- | --- | --- |
-| RF01 Registrar usuarios, rol y vinculación | **Completo** | — |
-| RF02 Verificar usuario habilitado | Parcial | Sanciones activas (Sprint 5); hoy valida cuenta activa, rol prestatario y matrícula vigente. |
-| RF03 Política según perfil | **Completo** en asociación | Aplicar sus límites y plazos al préstamo (Sprints 3 y 5). |
-| RF04 Registrar ítems con atributos por tipo | **Completo** | — |
-| RF05 Estados del ítem | Parcial | Reserva y su liberación (Sprint 4). |
-| RF06 Consultar disponibilidad | **Completo** | — |
-| RF10, RF11, RF13 | Siguen parciales | Modalidades, varios ítems, plazo, condición y límites (Sprint 3). |
-| RNF01, RNF02, RNF04, RNF06 | Cubiertos para estos contextos | Verificación integral en el Sprint 6. |
-| RNF03 Trazabilidad | **No implementado** | Auditoría (Sprint 6). |
+| RF01 · Usuarios, rol y vinculación | **Completo** | — |
+| RF02 · Usuario habilitado | Parcial | Integrar sanciones activas en el Sprint 5. |
+| RF03 · Política según perfil | **Completo en asociación** | Aplicar cupos y plazos en los Sprints 3 y 5. |
+| RF04 · Ítems y atributos por tipo | **Completo** | — |
+| RF05 · Estados del ítem | Parcial | Incorporar el flujo de reserva en el Sprint 4. |
+| RF06 · Consulta de disponibilidad | **Completo** | — |
+| RF10, RF11 y RF13 · Préstamo y devolución | Parcial | Modalidad, varios ítems, plazo, condición y cupos en el Sprint 3. |
+| RNF01, RNF02, RNF04 y RNF06 | Cubiertos para el alcance actual | Validación integral en el Sprint 6. |
+| RNF03 · Trazabilidad | Pendiente | Auditoría en el Sprint 6. |
 
-## Qué se implementó
+## Funcionalidad implementada
 
-### Identidad
-- **Usuario con perfiles** (patrón Party/Role): los roles se deducen de los perfiles presentes (`ESTUDIANTE`, `DOCENTE`, `ADMINISTRATIVO`, `GESTOR_INVENTARIO`); un usuario puede tener varios.
-- **Autorización** (`ServicioAutorizacionRol`): estudiante, docente y administrativo comparten los permisos de prestatario; el gestor tiene todos. Con varios roles se unen los permisos.
-- **Habilitación** (`Usuario.estaHabilitado`): cuenta activa, rol prestatario, vinculación vigente (personal, o estudiante con matrícula vigente) y sin sanción activa. Un gestor sin rol prestatario no recibe préstamos.
-- **Políticas de servicio base** por perfil (RF03): estudiante 3 ítems y 7 días; docente y administrativo 5 ítems y 15 días. Al crear un perfil se le asocia la política de su rol. El gestor no tiene política. Son valores iniciales; se vuelven editables en el Sprint 5.
-- **Reglas de seguridad:** contraseñas con hash de Werkzeug; mensaje idéntico para correo inexistente y clave incorrecta; bloqueo temporal tras 5 intentos fallidos; un gestor no puede desactivarse ni quitarse su rol, y siempre debe quedar al menos un gestor activo.
+### Identidad, acceso y sesiones
 
-### Inventario
-- **Catálogo común** con atributos propios en una columna JSON, definidos por un **registro de tipos** (`TiposItem`). Un tipo nuevo se agrega con su subclase y una entrada en el registro, sin cambiar tabla ni API (RNF06; hay una prueba que lo demuestra).
-- **Datos de demostración acotados** a tres recursos de la Escuela de Computación: *Introduction to Algorithms (CLRS)*, *Clean Code: A Handbook of Agile Software Craftsmanship* y *Meta Quest*. Los demás tipos se pueden registrar desde la administración sin precargarlos.
-- **Estados y transiciones** (`EstadoItem`): `DADO_DE_BAJA` es terminal. `PRESTADO` y `RESERVADO` solo los fijan los flujos de préstamo y reserva; mientras un ítem está en uno de ellos no admite cambios manuales de estado.
-- **Búsqueda pública** por texto (nombre, código, categoría y atributos), tipo, categoría y estado, con paginación. Los comodines `%` y `_` se tratan como texto.
+- El agregado `Usuario` admite varios perfiles: estudiante, docente, administrativo, gestor de inventario y administrador del sistema.
+- Estudiantes, docentes y administrativos son prestatarios. La habilitación exige cuenta activa, matrícula o vinculación vigente y ausencia de sanción activa.
+- Cada perfil prestatario recibe una política de servicio compatible. Las migraciones reparan perfiles heredados que no tenían esa relación.
+- El administrador gestiona usuarios y perfiles y concentra los permisos administrativos. El gestor de inventario opera recursos, entregas y devoluciones, y solo consulta los datos necesarios de prestatarios habilitados.
+- Siempre debe existir al menos un administrador activo. Un administrador no puede desactivar su propia cuenta ni retirar su propio perfil administrativo.
+- Las contraseñas se almacenan con hash de Werkzeug. El login usa un mensaje uniforme para credenciales incorrectas y limita cinco intentos fallidos por dirección y correo durante la ventana configurada.
+- Los tokens duran ocho horas e incluyen una versión de sesión. Cambiar o restablecer la contraseña, desactivar o reactivar la cuenta invalida los tokens emitidos antes del cambio.
+- El frontend elimina el token ante una respuesta `401`, diferencia una sesión vencida de un fallo de conexión y solo acepta redirecciones de login del mismo origen.
 
-### Préstamos (integración mínima)
-El préstamo y la devolución del MVP siguen siendo de **un ítem por préstamo**, ahora protegidos: solo los registra un gestor, validan que el usuario esté habilitado, cambian el estado del ítem con un cambio atómico (`DISPONIBLE`→`PRESTADO`) y cada usuario ve solo sus préstamos. Plazos, modalidades y condición de devolución llegan en el Sprint 3.
+### Inventario y catálogo
 
-### Infraestructura
-- **Alembic**: `0001` (esquema del MVP, idempotente) y `0002` (este sprint). Se ejecutan al iniciar la aplicación y con la CLI. Una base del Sprint 1 se actualiza conservando datos: los usuarios heredados reciben el perfil de estudiante `HEREDADO-<id>`, un correo provisional `@sin-correo.local` y **ningún acceso** hasta que un gestor les asigne correo y contraseña. La migración `0002` no tiene reversión automática.
-- **Claves foráneas** activadas también en SQLite.
-- **Repositorios SQLAlchemy**, `DomainMapper` y `SqlAlchemyUnitOfWork` para usuarios, ítems, políticas y préstamos.
+- El catálogo usa una tabla común y atributos JSON definidos mediante el registro extensible `TiposItem`. Se incluyen libro, equipo, material y mobiliario.
+- Los códigos se normalizan en mayúsculas y la base protege su formato, los campos obligatorios y los estados válidos mediante restricciones `CHECK`.
+- La búsqueda pública admite nombre, código, categoría y atributos, además de filtros por tipo, categoría y estado.
+- Los comodines `%` y `_` se tratan como texto. La consulta limita `q` a 120 caracteres, `pagina` a 1–100 000 y `limite` a 1–100.
+- Las transiciones manuales respetan el estado actual. `DADO_DE_BAJA` es terminal y `PRESTADO` se controla mediante el flujo de préstamos.
+- Los datos ficticios opcionales contienen únicamente *Introduction to Algorithms (CLRS)*, *Clean Code: A Handbook of Agile Software Craftsmanship* y *Meta Quest*.
 
-## API
+### Préstamo básico integrado
 
-Todas las rutas usan JSON. Las protegidas esperan `Authorization: Bearer <token>`; el token dura 8 horas y los permisos se leen de la base en cada petición, por lo que desactivar a un usuario o cambiar sus roles tiene efecto inmediato.
+- Un gestor o administrador registra la entrega de un ítem disponible a un prestatario habilitado.
+- La transición `DISPONIBLE` → `PRESTADO` es atómica y evita dos entregas simultáneas del mismo recurso.
+- La devolución libera el recurso. Un usuario prestatario ve sus propios préstamos; gestores y administradores ven el conjunto operativo.
+- El formulario permite buscar prestatarios y recursos, y muestra hasta 50 coincidencias en cada búsqueda. Esto evita depender de los primeros 100 registros del catálogo.
+
+## Arquitectura y persistencia
+
+La solución mantiene separados el dominio, los servicios de aplicación y la infraestructura. `DomainMapper` transforma modelos ORM y objetos del dominio; los repositorios SQLAlchemy se coordinan mediante `SqlAlchemyUnitOfWork`.
+
+Las migraciones se ejecutan al iniciar Flask y también pueden aplicarse con `alembic upgrade head`:
+
+| Migración | Propósito |
+| --- | --- |
+| `0001` | Esquema mínimo compatible con el MVP del Sprint 1. |
+| `0002` | Identidad, perfiles, políticas e inventario extendido. |
+| `0003` | Políticas de usuarios heredados y vinculación del personal. |
+| `0004` | Normalización y restricciones de integridad. |
+| `0005` | Versión revocable de sesión. |
+| `0006` | Separación entre administrador y gestor de inventario. |
+
+Al actualizar una base del Sprint 1, los usuarios heredados reciben un perfil de estudiante `HEREDADO-<id>`, política de estudiante, correo provisional `@sin-correo.local` y ninguna contraseña. Un administrador debe revisar su identidad antes de habilitarles acceso. Al actualizar una instalación del Sprint 2 anterior, el gestor activo más antiguo recibe también el perfil de administrador para conservar el acceso administrativo.
+
+## Contrato HTTP
+
+Todas las escrituras reciben objetos JSON y rechazan propiedades desconocidas. Los identificadores aceptados están entre 1 y el máximo entero de 64 bits.
 
 | Método y ruta | Acceso | Propósito |
 | --- | --- | --- |
-| `GET /api/salud` | Público | Comprobar que la API responde. |
-| `POST /api/auth/login` | Público | Obtener token y datos del usuario con sus permisos. |
-| `GET /api/auth/yo` | Sesión | Usuario actual. |
-| `POST /api/auth/cambiar-password` | Sesión | Cambiar la propia contraseña. |
-| `GET /api/items` | Público | Buscar con `q`, `tipo`, `categoria`, `estado`, `pagina`, `limite`. |
-| `GET /api/items/{id}`, `/tipos`, `/categorias` | Público | Detalle, tipos con sus campos y categorías. |
-| `POST /api/items`, `PATCH /api/items/{id}` | `REGISTRAR_ITEM_INVENTARIO` | Registrar y editar recursos. |
-| `POST /api/items/{id}/estado` | `ACTUALIZAR_ESTADO_ITEM` | Cambiar el estado manualmente. |
-| `GET/POST /api/usuarios`, `GET/PATCH /api/usuarios/{id}` | `GESTIONAR_USUARIOS_Y_ROLES` | Listar (`q`, `rol`, `activo`, `habilitado`), registrar y editar usuarios y perfiles. |
-| `GET /api/politicas` | Sesión | Políticas de servicio por perfil. |
-| `GET /api/prestamos` | Sesión | Todos para un gestor; los propios para los demás. |
-| `POST /api/prestamos` | `REGISTRAR_ENTREGA_PRESTAMO` | Registrar entrega (`usuario_id`, `item_id`). |
-| `POST /api/prestamos/{id}/devolucion` | `REGISTRAR_DEVOLUCION_PRESTAMO` | Registrar devolución. |
+| `GET /api/salud` | Público | Estado de la API. |
+| `POST /api/auth/login` | Público | Autenticación y emisión del token. |
+| `GET /api/auth/yo` | Sesión | Identidad, perfiles y permisos actuales. |
+| `POST /api/auth/cambiar-password` | Sesión | Cambio de contraseña e invalidación de sesiones previas. |
+| `GET /api/items` | Público | Búsqueda y paginación del catálogo. |
+| `GET /api/items/{id}`, `/tipos`, `/categorias` | Público | Detalle y metadatos del inventario. |
+| `POST /api/items`, `PATCH /api/items/{id}` | Inventario | Alta y edición de recursos. |
+| `POST /api/items/{id}/estado` | Inventario | Cambio manual permitido de estado. |
+| `GET/POST /api/usuarios`, `GET/PATCH /api/usuarios/{id}` | Administrador | Gestión completa de usuarios y perfiles. |
+| `GET /api/usuarios/prestatarios` | Gestor o administrador | Lista mínima de usuarios habilitados, con búsqueda opcional `q`. |
+| `GET /api/politicas` | Sesión | Consulta de políticas base. |
+| `GET /api/prestamos` | Sesión | Préstamos visibles según permisos. |
+| `POST /api/prestamos` | Gestor o administrador | Entrega de un recurso. |
+| `POST /api/prestamos/{id}/devolucion` | Gestor o administrador | Devolución de un recurso. |
 
-Códigos usados: 400 datos inválidos, 401 sin sesión o credenciales incorrectas, 403 sin permiso, 404 inexistente, 409 conflicto de estado o duplicado, 422 operación no permitida por una regla (usuario no habilitado, estado que fijan otros flujos), 429 demasiados intentos de login.
+La API usa `400` para entrada inválida, `401` para autenticación ausente o vencida, `403` para permiso insuficiente, `404` para entidades inexistentes, `409` para conflictos, `422` para reglas que impiden la operación y `429` para el límite de intentos de acceso.
 
-## Frontend
+## Calidad y automatización
 
-Páginas Astro con un único cliente HTTP (`ApiClient`): catálogo público con filtros y detalle, inicio de sesión, préstamos (entrega y devolución para el gestor; lista propia para los demás), mi cuenta (política y cambio de contraseña), administración de inventario (formulario dinámico según el tipo) y de usuarios (perfiles por rol). La navegación se adapta a los permisos del usuario. El token se guarda en `sessionStorage` y todo el texto de la API se inserta con `textContent`.
+La suite descubre **74 pruebas backend**: 73 se ejecutan localmente con SQLite y una prueba de integración se activa cuando existe `TEST_POSTGRES_URL`. Esa integración crea el esquema con Alembic en PostgreSQL, crea un usuario y un recurso, y completa una entrega y devolución.
 
-El comando `npm run build` ejecuta primero `astro check` y luego genera las seis páginas. Si no se pueden obtener los tipos de recurso, la administración muestra el error y desactiva el alta en lugar de abrir un formulario incompleto. La auditoría de dependencias del frontend no reportó vulnerabilidades al cerrar esta revisión.
+Playwright añade **4 pruebas de navegador** en Chromium:
 
-## Decisiones y límites
+1. búsqueda y detalle del catálogo público;
+2. rechazo de una redirección externa en el login;
+3. creación de usuario y recurso, entrega y devolución;
+4. acceso operativo del gestor y rechazo de la administración de usuarios.
 
-- **Identificadores enteros.** La base usa claves autoincrementales; los objetos de valor `*Id` del dominio aceptan `int` además de `UUID`. Si el equipo prefiere UUID, requiere una migración de claves.
-- **Token firmado en lugar de sesión de servidor**: simple y sin CSRF, pero no se puede revocar antes de su vencimiento salvo desactivando la cuenta. No hay cierre de sesión en el servidor.
-- **El limitador de intentos es por proceso**; con varios procesos de Flask debe sustituirse por uno compartido.
-- **Las políticas no se editan todavía** (RF18, Sprint 5) y **sus límites aún no se aplican** al préstamo.
-- **Datos de demostración**: solo se cargan con `DATOS_DEMO=1`. Una base nueva inicia sin usuarios ni recursos ficticios; requiere `ADMIN_CORREO` y `ADMIN_PASSWORD` para crear el primer gestor. Cambiar la variable sobre una base existente no borra registros previos.
-- Los documentos de análisis usan «recurso» e «ítem» como sinónimos; la API usa `item`.
+GitHub Actions ejecuta trabajos separados para backend con SQLite, integración con PostgreSQL 16, build y auditoría de Astro, y recorridos Playwright. Los datos de navegador se guardan en una SQLite temporal bajo `/tmp` y se recrean en cada ejecución.
+
+## Límites conocidos
+
+- El préstamo todavía contiene un solo ítem y no calcula modalidad, fecha límite ni condición de devolución.
+- Las políticas se consultan, pero sus cupos y plazos todavía no se aplican ni se editan.
+- Las reservas, renovaciones, sanciones y la auditoría aún no tienen flujos funcionales.
+- El limitador de intentos vive en memoria por proceso; un despliegue con varios procesos requerirá un almacenamiento compartido.
+- El listado operativo de préstamos no está paginado en este incremento.
+- `DATOS_DEMO=1` agrega datos ficticios y nunca debe usarse para la base final. Una instalación limpia exige una base nueva, `DATOS_DEMO=0` y las credenciales del primer administrador.
+
+## Siguiente incremento
+
+El Sprint 3 implementará modalidades, varios ítems por préstamo, fecha límite según política, condición de devolución y aplicación de cupos por perfil.
 
 ## Avance del proyecto
 
-Estimación ponderada: cada requisito funcional vale 1/18 y se le asigna la fracción que ya funciona de extremo a extremo.
+Cada requisito funcional aporta 1/18 y recibe una fracción según el recorrido que ya funciona de extremo a extremo.
 
 | RF | Fracción | RF | Fracción |
 | --- | --- | --- | --- |
@@ -90,10 +125,6 @@ Estimación ponderada: cada requisito funcional vale 1/18 y se le asigna la frac
 | RF02 | 0,30 | RF11 | 0,25 |
 | RF03 | 0,75 | RF13 | 0,15 |
 | RF04 | 1,00 | RF05 | 0,40 |
-| RF06 | 1,00 | Resto (RF07–09, RF12, RF14–18) | 0 |
+| RF06 | 1,00 | RF07–09, RF12 y RF14–18 | 0 |
 
-Suma 5,10 de 18, es decir **≈ 28 %** de los requisitos funcionales (el MVP anterior equivalía a ≈ 4 %). Los criterios de aceptación de los Sprints 3–6 siguen sin cumplirse. Es una estimación del equipo de desarrollo, no una medida de esfuerzo ni de calidad.
-
-## Siguiente paso
-
-Sprint 3: modalidades, préstamos de varios ítems, fecha límite según política y modalidad, condición de devolución y límites por perfil.
+La suma es 5,10 de 18, aproximadamente **28 % del alcance funcional**. Esta cifra mide requisitos terminados o parcialmente utilizables; no representa esfuerzo ni calidad técnica.

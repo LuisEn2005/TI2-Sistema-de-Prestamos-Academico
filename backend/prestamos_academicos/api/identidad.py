@@ -77,9 +77,10 @@ def obtener_usuario(usuario_id):
 @bp.get("/usuarios/prestatarios")
 @requiere_permiso(Permiso.CONSULTAR_PRESTATARIOS)
 def listar_prestatarios():
-    parametros_permitidos()
-    usuarios = servicios().identidad.listar_usuarios(habilitado=True)
-    return jsonify([prestatario_a_json(u) for u in usuarios])
+    parametros_permitidos("q")
+    usuarios = servicios().identidad.listar_usuarios(
+        texto=texto_consulta("q", maximo=120), habilitado=True)
+    return jsonify([prestatario_a_json(u) for u in usuarios[:50]])
 
 
 @bp.post("/usuarios")

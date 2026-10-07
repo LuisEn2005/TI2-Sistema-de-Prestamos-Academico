@@ -1,7 +1,7 @@
 import { api } from './api';
 import type { ItemDTO, PaginaItemsDTO, PrestamoDTO } from './contratos';
 import { exigirSesion, tienePermiso } from './sesion';
-import { $, avisar, el, fechaLegible, mensajeDe, opciones } from './ui';
+import { $, avisar, el, fechaLegible, mensajeDe, opciones, retardo } from './ui';
 
 const usuario = await exigirSesion();
 const gestiona = tienePermiso(usuario, 'REGISTRAR_ENTREGA_PRESTAMO');
@@ -39,11 +39,17 @@ function dibujar(prestamos: PrestamoDTO[]) {
 }
 
 async function cargarFormulario() {
+  const consultaUsuario = $<HTMLInputElement>('#buscar-usuario').value.trim();
   const [usuarios, items] = await Promise.all([
-    api.get<{ id: number; nombre: string }[]>('/api/usuarios/prestatarios'),
-    api.get<PaginaItemsDTO>('/api/items', { estado: 'DISPONIBLE', limite: 100 }),
+    api.get<{ id: number; nombre: string; correo: string }[]>('/api/usuarios/prestatarios', {
+      q: consultaUsuario,
+    }),
+    api.get<PaginaItemsDTO>('/api/items', {
+      estado: 'DISPONIBLE', limite: 50,
+      q: $<HTMLInputElement>('#buscar-item').value.trim(),
+    }),
   ]);
-  opciones($('#usuario'), usuarios.map((u) => [String(u.id), u.nombre]));
+  opciones($('#usuario'), usuarios.map((u) => [String(u.id), `${u.nombre} (${u.correo})`]));
   opciones($('#item'), items.items.map((i: ItemDTO) => [String(i.id), `${i.nombre} (${i.codigo})`]));
   $<HTMLButtonElement>('#prestar').disabled = usuarios.length === 0 || items.items.length === 0;
 }
@@ -61,8 +67,19 @@ if (usuario) {
   if (gestiona) {
     $('#nuevo').hidden = false;
     $('#subtitulo').textContent = 'Registre entregas y devoluciones de todos los usuarios.';
+    const buscarOpciones = retardo(async () => {
+      try {
+        await cargarFormulario();
+      } catch (error) {
+        avisar(mensajeDe(error), true);
+      }
+    });
+    $('#buscar-usuario').addEventListener('input', buscarOpciones);
+    $('#buscar-item').addEventListener('input', buscarOpciones);
     $('#formulario').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const boton = $<HTMLButtonElement>('#prestar');
+      boton.disabled = true;
       try {
         await api.post('/api/prestamos', {
           usuario_id: Number($<HTMLSelectElement>('#usuario').value),
@@ -72,6 +89,7 @@ if (usuario) {
         await cargar();
       } catch (error) {
         avisar(mensajeDe(error), true);
+        boton.disabled = false;
       }
     });
   } else {

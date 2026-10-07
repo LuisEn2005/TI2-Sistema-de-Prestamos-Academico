@@ -94,7 +94,10 @@ class GestionUsuariosTest(ApiBase):
         self.assertEqual(self.cliente.get("/api/usuarios", headers=gestor).status_code, 403)
         prestatarios = self.cliente.get("/api/usuarios/prestatarios", headers=gestor)
         self.assertEqual(prestatarios.status_code, 200)
-        self.assertEqual(set(prestatarios.json[0]), {"id", "nombre"})
+        self.assertEqual(set(prestatarios.json[0]), {"id", "nombre", "correo"})
+        filtrados = self.cliente.get(
+            "/api/usuarios/prestatarios?q=jesus", headers=gestor).json
+        self.assertEqual([u["nombre"] for u in filtrados], ["Jesus Perez"])
 
     def test_registrar_usuario_asigna_politica_del_perfil(self):
         h = self.ingresar()

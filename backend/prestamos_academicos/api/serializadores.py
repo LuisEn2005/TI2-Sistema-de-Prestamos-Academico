@@ -57,7 +57,8 @@ def usuario_a_json(usuario, permisos=None):
 
 
 def prestatario_a_json(usuario):
-    return {"id": usuario.id.valor, "nombre": usuario.nombre}
+    return {"id": usuario.id.valor, "nombre": usuario.nombre,
+            "correo": usuario.correoElectronico}
 
 
 def item_a_json(item):

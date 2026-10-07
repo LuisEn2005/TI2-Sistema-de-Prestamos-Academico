@@ -1,6 +1,6 @@
 # Sistema de Préstamos Académicos
 
-Sistema para administrar recursos de la Escuela de Computación: catálogo, reservas, préstamos, devoluciones, sanciones y trazabilidad. Este repositorio reúne un frontend en **Astro** y una API en **Flask**. El sistema usa **SQLAlchemy** con SQLite local por defecto; **PostgreSQL** sigue siendo la base de datos objetivo del sistema.
+Sistema para administrar recursos de la Escuela de Computación: catálogo, reservas, préstamos, devoluciones, sanciones y trazabilidad. Este repositorio reúne un frontend en **Astro** y una API en **Flask**. El sistema usa **SQLAlchemy**, SQLite para desarrollo local y PostgreSQL para integración y despliegue.
 
 ## Estado actual
 
@@ -28,7 +28,7 @@ frontend/
   astro.config.mjs                  Proxy de /api para desarrollo
   src/pages/                        Catálogo, login, préstamos, cuenta y administración
   src/scripts/                      ApiClient, sesión y lógica de cada página
-  public/                           Recursos estáticos
+  tests/e2e/                        Recorridos automatizados con Playwright
 docs/                                Análisis y modelo de dominio
 README.md                            Guía y plan del proyecto
 ```
@@ -70,9 +70,9 @@ La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación
 | `DATABASE_URL` | Base de datos, por ejemplo `postgresql+psycopg://usuario:clave@localhost:5432/prestamos`. Si falta, se usa SQLite local. |
 | `SECRET_KEY` | Clave que firma los tokens de sesión. **Obligatoria en producción**; sin ella se genera una temporal y las sesiones se pierden al reiniciar. |
 | `DATOS_DEMO` | `0` por defecto: sin usuarios ni recursos ficticios. Use `1` únicamente para pruebas. |
-| `ADMIN_CORREO`, `ADMIN_PASSWORD` | En una base limpia son obligatorios juntos para crear el primer gestor. Después pueden omitirse; el gestor ya existe en la base. |
+| `ADMIN_CORREO`, `ADMIN_PASSWORD` | En una base limpia son obligatorios juntos para crear el primer administrador. Después pueden omitirse; la cuenta ya existe en la base. |
 
-**Cuentas de demostración** (contraseña `demo1234`; solo con `DATOS_DEMO=1`): `admin@escuela.edu` (gestor), `luis.ramos@escuela.edu` (docente y gestor) y `jesus.perez@escuela.edu` (estudiante). **Cámbielas o desactive la demostración fuera del desarrollo.**
+**Cuentas de demostración** (contraseña `demo1234`; solo con `DATOS_DEMO=1`): `admin@escuela.edu` (administrador), `luis.ramos@escuela.edu` (docente y gestor de inventario) y `jesus.perez@escuela.edu` (estudiante). **Cámbielas o desactive la demostración fuera del desarrollo.**
 
 Con `DATOS_DEMO=1`, el catálogo inicial contiene *Introduction to Algorithms (CLRS)*, *Clean Code: A Handbook of Agile Software Craftsmanship* y *Meta Quest*.
 
@@ -81,11 +81,11 @@ Con `DATOS_DEMO=1`, el catálogo inicial contiene *Introduction to Algorithms (C
 ```bash
 DATABASE_URL='sqlite:////ruta/absoluta/prestamos-reales.sqlite' \
 SECRET_KEY='clave-aleatoria-larga' DATOS_DEMO=0 \
-ADMIN_CORREO='gestor@escuela.edu' ADMIN_PASSWORD='clave-inicial-segura' \
+ADMIN_CORREO='admin@escuela.edu' ADMIN_PASSWORD='clave-inicial-segura' \
 .venv/bin/python -m flask --app prestamos_academicos.web run
 ```
 
-El primer acceso se hace con ese gestor; desde **Usuarios** e **Inventario** podrá registrar sus propios datos. Las políticas base y el gestor inicial son los únicos registros necesarios. Cambiar `DATOS_DEMO` a `0` sobre una base que ya recibió datos de prueba **no los borra**: para la entrega final use una base nueva y conserve la de pruebas por separado.
+El primer acceso se hace con ese administrador; desde **Usuarios** e **Inventario** podrá registrar los datos reales. Las políticas base y el administrador inicial son los únicos registros necesarios. Cambiar `DATOS_DEMO` a `0` sobre una base que ya recibió datos de prueba **no los borra**: para la entrega final use una base nueva y conserve la de pruebas por separado.
 
 Para ejecutar las migraciones manualmente: `DATABASE_URL=... alembic upgrade head` desde `backend/`.
 
@@ -93,7 +93,7 @@ Para ejecutar las migraciones manualmente: `DATABASE_URL=... alembic upgrade hea
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -103,8 +103,18 @@ Astro sirve la aplicación en `http://localhost:4321` y redirige `/api` a Flask.
 
 ```bash
 cd backend
-.venv/bin/python -m unittest discover -s tests -t . -v
+.venv/bin/python -m unittest discover
 ```
+
+Pruebas de navegador, después de instalar Chromium una vez:
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+```
+
+La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y cuatro recorridos Playwright. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
 
 ## Documentación de referencia
 
@@ -119,6 +129,7 @@ cd backend
 
 - **Visitante:** consultar el catálogo con búsqueda, filtros por tipo, categoría y estado, y ver el detalle de cada recurso, sin iniciar sesión.
 - **Estudiante, docente o administrativo:** iniciar sesión, ver su política de servicio, sus préstamos activos y cambiar su contraseña.
-- **Gestor de inventario:** registrar y editar recursos, cambiar su estado, registrar usuarios con sus perfiles, activar o desactivar cuentas, y registrar entregas y devoluciones.
+- **Gestor de inventario:** registrar y editar recursos, cambiar su estado y registrar entregas y devoluciones. Puede consultar únicamente los prestatarios habilitados necesarios para una entrega.
+- **Administrador del sistema:** gestionar usuarios, perfiles y accesos, además de realizar las operaciones de inventario y préstamos.
 
 Detalle de endpoints, reglas y límites en [docs/sprint_02.md](docs/sprint_02.md); el MVP original se describe en [docs/mvp_01.md](docs/mvp_01.md).

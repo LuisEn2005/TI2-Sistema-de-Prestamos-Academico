@@ -4,10 +4,10 @@ import Base from '../../layouts/Base.astro';
 
 <Base titulo="Inventario">
   <div class="encabezado-pagina"><h1>Inventario</h1>
-    <p>Registre recursos, corrija sus datos y cambie su estado. Prestado y reservado los fijan los flujos de préstamo y reserva.</p></div>
+    <p>Registre recursos, corrija sus datos y cambie su estado. El flujo de préstamos controla el estado Prestado; las reservas se incorporarán en el Sprint 4.</p></div>
 
   <div class="barra">
-    <div><label for="q">Buscar</label><input id="q" type="search" /></div>
+    <div><label for="q">Buscar</label><input id="q" type="search" maxlength="120" /></div>
     <div><label for="tipo">Tipo</label><select id="tipo"></select></div>
     <div><label for="estado">Estado</label><select id="estado"></select></div>
     <button id="nuevo" type="button">Nuevo recurso</button>

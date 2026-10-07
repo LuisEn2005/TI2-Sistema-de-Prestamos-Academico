@@ -37,7 +37,7 @@ function abrirDetalle(item: ItemDTO) {
   $('#detalle-contenido').replaceChildren(
     el('h2', {}, item.nombre),
     el('dl', {}, ...filas.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])),
-    el('div', { class: 'pie' }, el('a', { href: '/login?siguiente=/prestamos' }, 'Iniciar sesión para solicitarlo'), cerrar),
+    el('div', { class: 'pie' }, el('a', { href: '/login?siguiente=/prestamos' }, 'Consultar mis préstamos'), cerrar),
   );
   dialogo.showModal();
 }
