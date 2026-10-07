@@ -23,12 +23,6 @@ _ITEMS_DEMO = [
                         editorial="Prentice Hall")),
     dict(tipo="EQUIPO", codigo="EQ-META", nombre="Meta Quest", categoria="Realidad virtual",
          atributos=dict(numeroSerie="MQ-0001", marcaModelo="Meta Quest 3")),
-    dict(tipo="EQUIPO", codigo="EQ-LAP01", nombre="Laptop de laboratorio 01",
-         categoria="Cómputo", atributos=dict(numeroSerie="LP-1001", marcaModelo="Lenovo ThinkPad")),
-    dict(tipo="MATERIAL", codigo="MAT-ARD01", nombre="Kit Arduino Uno", categoria="Electrónica",
-         atributos=dict(tipoMaterial="Kit de prototipado", unidadMedida="kit")),
-    dict(tipo="MOBILIARIO", codigo="MOB-PIZ01", nombre="Pizarra móvil", categoria="Aulas",
-         atributos=dict(tipoMobiliario="Pizarra", ubicacionHabitual="Laboratorio 2")),
 ]
 
 

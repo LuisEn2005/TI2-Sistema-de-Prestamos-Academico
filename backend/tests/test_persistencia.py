@@ -77,7 +77,7 @@ class MigracionTest(unittest.TestCase):
             c1.post("/api/prestamos", headers=h, json={"usuario_id": 2, "item_id": 1})
             c2 = create_app(url, secret_key="k").test_client()
             self.assertEqual(c2.get("/api/items/1").json["estado"], "PRESTADO")
-            self.assertEqual(c2.get("/api/items").json["total"], 6)
+            self.assertEqual(c2.get("/api/items").json["total"], 3)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
             self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0002")
 

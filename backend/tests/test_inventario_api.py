@@ -11,7 +11,7 @@ class CatalogoPublicoTest(ApiBase):
     def test_catalogo_se_consulta_sin_autenticacion(self):
         r = self.cliente.get("/api/items")
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json["total"], 6)
+        self.assertEqual(r.json["total"], 3)
         self.assertEqual({"id", "codigo", "nombre", "categoria", "tipo", "estado", "disponible",
                           "atributos"}, set(r.json["items"][0]))
 
@@ -19,7 +19,7 @@ class CatalogoPublicoTest(ApiBase):
         buscar = lambda q: [i["codigo"] for i in self.cliente.get(f"/api/items?q={q}").json["items"]]  # noqa: E731
         self.assertEqual(buscar("clean"), ["LIB-CLEAN"])
         self.assertEqual(buscar("robert martin"), ["LIB-CLEAN"])
-        self.assertEqual(buscar("thinkpad"), ["EQ-LAP01"])
+        self.assertEqual(buscar("quest 3"), ["EQ-META"])
         self.assertEqual(buscar("inexistente"), [])
 
     def test_busqueda_trata_comodines_como_texto(self):
@@ -28,19 +28,19 @@ class CatalogoPublicoTest(ApiBase):
 
     def test_filtros_por_tipo_categoria_y_estado(self):
         self.assertEqual(self.cliente.get("/api/items?tipo=libro").json["total"], 2)
-        self.assertEqual(self.cliente.get("/api/items?tipo=EQUIPO&categoria=cómputo").json["total"], 1)
-        self.assertEqual(self.cliente.get("/api/items?estado=DISPONIBLE").json["total"], 6)
+        self.assertEqual(self.cliente.get("/api/items?tipo=EQUIPO&categoria=realidad virtual").json["total"], 1)
+        self.assertEqual(self.cliente.get("/api/items?estado=DISPONIBLE").json["total"], 3)
         self.assertEqual(self.cliente.get("/api/items?estado=PRESTADO").json["total"], 0)
         self.assertEqual(self.cliente.get("/api/items?tipo=DRON").status_code, 400)
         self.assertEqual(self.cliente.get("/api/items?estado=ROTO").status_code, 400)
 
     def test_paginacion(self):
-        p1 = self.cliente.get("/api/items?limite=4&pagina=1").json
-        p2 = self.cliente.get("/api/items?limite=4&pagina=2").json
-        self.assertEqual((len(p1["items"]), len(p2["items"]), p1["total"]), (4, 2, 6))
+        p1 = self.cliente.get("/api/items?limite=2&pagina=1").json
+        p2 = self.cliente.get("/api/items?limite=2&pagina=2").json
+        self.assertEqual((len(p1["items"]), len(p2["items"]), p1["total"]), (2, 1, 3))
         self.assertFalse({i["id"] for i in p1["items"]} & {i["id"] for i in p2["items"]})
         self.assertEqual(self.cliente.get("/api/items?limite=abc").status_code, 400)
-        self.assertEqual(len(self.cliente.get("/api/items?limite=100000").json["items"]), 6)
+        self.assertEqual(len(self.cliente.get("/api/items?limite=100000").json["items"]), 3)
 
     def test_detalle_tipos_y_categorias(self):
         self.assertEqual(self.cliente.get("/api/items/999").status_code, 404)
@@ -49,7 +49,7 @@ class CatalogoPublicoTest(ApiBase):
         tipos = self.cliente.get("/api/items/tipos").json
         libro = next(t for t in tipos if t["tipo"] == "LIBRO")
         self.assertIn("isbn", [c["clave"] for c in libro["campos"]])
-        self.assertIn("Cómputo", self.cliente.get("/api/items/categorias").json)
+        self.assertIn("Realidad virtual", self.cliente.get("/api/items/categorias").json)
 
 
 class AdministracionInventarioTest(ApiBase):
@@ -67,6 +67,21 @@ class AdministracionInventarioTest(ApiBase):
         self.assertEqual(r.status_code, 201, r.json)
         self.assertEqual(r.json["estado"], "DISPONIBLE")
         self.assertEqual(self.cliente.get("/api/items?q=evans").json["total"], 1)
+
+    def test_registrar_material_y_mobiliario_sin_datos_demo_adicionales(self):
+        h = self.ingresar()
+        ejemplos = (
+            {"tipo": "MATERIAL", "codigo": "MAT-001", "nombre": "Cable HDMI",
+             "categoria": "Accesorios", "atributos": {
+                 "tipoMaterial": "Cable", "unidadMedida": "unidad"}},
+            {"tipo": "MOBILIARIO", "codigo": "MOB-001", "nombre": "Silla de laboratorio",
+             "categoria": "Aulas", "atributos": {
+                 "tipoMobiliario": "Silla", "ubicacionHabitual": "Laboratorio 1"}},
+        )
+        for ejemplo in ejemplos:
+            respuesta = self.cliente.post("/api/items", headers=h, json=ejemplo)
+            self.assertEqual(respuesta.status_code, 201, respuesta.json)
+            self.assertEqual(respuesta.json["atributos"], ejemplo["atributos"])
 
     def test_validaciones_de_registro(self):
         h = self.ingresar()
@@ -114,7 +129,7 @@ class AdministracionInventarioTest(ApiBase):
 
     def test_cambios_de_estado_manuales(self):
         h = self.ingresar()
-        iid = self.item_id("EQ-LAP01")
+        iid = self.item_id("EQ-META")
         cambiar = lambda e: self.cliente.post(f"/api/items/{iid}/estado", headers=h, json={"estado": e})  # noqa: E731
         self.assertEqual(cambiar("EN_MANTENIMIENTO").json["estado"], "EN_MANTENIMIENTO")
         self.assertEqual(cambiar("EN_MANTENIMIENTO").status_code, 409)
