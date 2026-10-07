@@ -59,7 +59,7 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None):
     preparar_datos(
         fabrica_sesiones,
         datos_demo=_bandera(
-            datos_demo if datos_demo is not None else os.environ.get("DATOS_DEMO"), True),
+            datos_demo if datos_demo is not None else os.environ.get("DATOS_DEMO"), False),
         admin_correo=os.environ.get("ADMIN_CORREO"),
         admin_password=os.environ.get("ADMIN_PASSWORD"),
     )

@@ -60,21 +60,32 @@ Se requiere Python 3.10 o superior y Node.js compatible con la versión de Astro
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e .
-.venv/bin/python -m flask --app prestamos_academicos.web run --debug
+DATOS_DEMO=1 .venv/bin/python -m flask --app prestamos_academicos.web run --debug
 ```
 
-La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación **aplica las migraciones de Alembic** (crea el esquema o actualiza una base del Sprint 1), garantiza las políticas de servicio base y, si `DATOS_DEMO` está activo, carga usuarios y recursos de demostración. En desarrollo se crea `backend/instance/prestamos.sqlite`.
+La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación **aplica las migraciones de Alembic** (crea el esquema o actualiza una base del Sprint 1) y garantiza las políticas de servicio base. El comando anterior activa los datos ficticios para pruebas. Con la base SQLite predeterminada se usa `backend/instance/prestamos.sqlite`.
 
 | Variable | Uso |
 | --- | --- |
 | `DATABASE_URL` | Base de datos, por ejemplo `postgresql+psycopg://usuario:clave@localhost:5432/prestamos`. Si falta, se usa SQLite local. |
 | `SECRET_KEY` | Clave que firma los tokens de sesión. **Obligatoria en producción**; sin ella se genera una temporal y las sesiones se pierden al reiniciar. |
-| `DATOS_DEMO` | `1` (por defecto) carga datos de demostración; use `0` en producción. |
-| `ADMIN_CORREO`, `ADMIN_PASSWORD` | Crean el primer gestor si el sistema no tiene ninguno. Con `DATOS_DEMO=0` son la forma de obtener acceso inicial. |
+| `DATOS_DEMO` | `0` por defecto: sin usuarios ni recursos ficticios. Use `1` únicamente para pruebas. |
+| `ADMIN_CORREO`, `ADMIN_PASSWORD` | En una base limpia son obligatorios juntos para crear el primer gestor. Después pueden omitirse; el gestor ya existe en la base. |
 
 **Cuentas de demostración** (contraseña `demo1234`; solo con `DATOS_DEMO=1`): `admin@escuela.edu` (gestor), `luis.ramos@escuela.edu` (docente y gestor) y `jesus.perez@escuela.edu` (estudiante). **Cámbielas o desactive la demostración fuera del desarrollo.**
 
-El catálogo inicial de una base nueva contiene únicamente *Introduction to Algorithms (CLRS)*, *Clean Code: A Handbook of Agile Software Craftsmanship* y *Meta Quest*. Los datos ya existentes en una base previa se conservan al migrar.
+Con `DATOS_DEMO=1`, el catálogo inicial contiene *Introduction to Algorithms (CLRS)*, *Clean Code: A Handbook of Agile Software Craftsmanship* y *Meta Quest*.
+
+**Instalación limpia para uso real:** configure una **base nueva** distinta de la usada para pruebas y arranque con `DATOS_DEMO=0`, `SECRET_KEY`, `ADMIN_CORREO` y `ADMIN_PASSWORD`. Por ejemplo, desde `backend/`:
+
+```bash
+DATABASE_URL='sqlite:////ruta/absoluta/prestamos-reales.sqlite' \
+SECRET_KEY='clave-aleatoria-larga' DATOS_DEMO=0 \
+ADMIN_CORREO='gestor@escuela.edu' ADMIN_PASSWORD='clave-inicial-segura' \
+.venv/bin/python -m flask --app prestamos_academicos.web run
+```
+
+El primer acceso se hace con ese gestor; desde **Usuarios** e **Inventario** podrá registrar sus propios datos. Las políticas base y el gestor inicial son los únicos registros necesarios. Cambiar `DATOS_DEMO` a `0` sobre una base que ya recibió datos de prueba **no los borra**: para la entrega final use una base nueva y conserve la de pruebas por separado.
 
 Para ejecutar las migraciones manualmente: `DATABASE_URL=... alembic upgrade head` desde `backend/`.
 

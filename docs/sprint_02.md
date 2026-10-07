@@ -77,7 +77,7 @@ El comando `npm run build` ejecuta primero `astro check` y luego genera las seis
 - **Token firmado en lugar de sesión de servidor**: simple y sin CSRF, pero no se puede revocar antes de su vencimiento salvo desactivando la cuenta. No hay cierre de sesión en el servidor.
 - **El limitador de intentos es por proceso**; con varios procesos de Flask debe sustituirse por uno compartido.
 - **Las políticas no se editan todavía** (RF18, Sprint 5) y **sus límites aún no se aplican** al préstamo.
-- **Datos de demostración**: están activos por defecto para facilitar el desarrollo; en producción use `DATOS_DEMO=0`, `SECRET_KEY` y `ADMIN_CORREO`/`ADMIN_PASSWORD`.
+- **Datos de demostración**: solo se cargan con `DATOS_DEMO=1`. Una base nueva inicia sin usuarios ni recursos ficticios; requiere `ADMIN_CORREO` y `ADMIN_PASSWORD` para crear el primer gestor. Cambiar la variable sobre una base existente no borra registros previos.
 - Los documentos de análisis usan «recurso» e «ítem» como sinónimos; la API usa `item`.
 
 ## Avance del proyecto

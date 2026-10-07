@@ -1,9 +1,11 @@
 """Migraciones y persistencia entre reinicios."""
 
+import os
 import sqlite3
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from prestamos_academicos.web import create_app
 
@@ -36,7 +38,7 @@ class MigracionTest(unittest.TestCase):
         with TemporaryDirectory() as d:
             ruta = Path(d) / "mvp.sqlite"
             crear_base_del_sprint_1(ruta)
-            app = create_app(f"sqlite:///{ruta}", secret_key="k")
+            app = create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k")
             c = app.test_client()
 
             token = c.post("/api/auth/login", json={
@@ -65,17 +67,17 @@ class MigracionTest(unittest.TestCase):
             self.assertEqual(d.status_code, 200, d.json)
 
             # Segunda ejecución: las migraciones no se repiten ni duplican datos.
-            c2 = create_app(f"sqlite:///{ruta}", secret_key="k").test_client()
+            c2 = create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k").test_client()
             self.assertEqual(len(c2.get("/api/usuarios", headers=h).json), len(usuarios))
 
     def test_base_nueva_se_crea_con_alembic_y_conserva_datos_al_reiniciar(self):
         with TemporaryDirectory() as d:
             url = f"sqlite:///{Path(d) / 'nueva.sqlite'}"
-            c1 = create_app(url, secret_key="k").test_client()
+            c1 = create_app(url, datos_demo=True, secret_key="k").test_client()
             h = {"Authorization": "Bearer " + c1.post("/api/auth/login", json={
                 "correo": "admin@escuela.edu", "password": CLAVE}).json["token"]}
             c1.post("/api/prestamos", headers=h, json={"usuario_id": 2, "item_id": 1})
-            c2 = create_app(url, secret_key="k").test_client()
+            c2 = create_app(url, datos_demo=True, secret_key="k").test_client()
             self.assertEqual(c2.get("/api/items/1").json["estado"], "PRESTADO")
             self.assertEqual(c2.get("/api/items").json["total"], 3)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
@@ -84,7 +86,7 @@ class MigracionTest(unittest.TestCase):
     def test_claves_foraneas_activas(self):
         with TemporaryDirectory() as d:
             ruta = Path(d) / "fk.sqlite"
-            create_app(f"sqlite:///{ruta}", secret_key="k")
+            create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k")
             from prestamos_academicos.infraestructura.persistencia.conexion import crear_fabrica_sesiones
             motor, _ = crear_fabrica_sesiones(f"sqlite:///{ruta}")
             with motor.connect() as con:
@@ -104,6 +106,51 @@ class SinDatosDemoTest(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(c.post("/api/auth/login", json={
             "correo": "admin@escuela.edu", "password": CLAVE}).status_code, 401)
+
+    def test_instalacion_limpia_permite_crear_usuarios_y_recursos(self):
+        with TemporaryDirectory() as d:
+            url = f"sqlite:///{Path(d) / 'limpia.sqlite'}"
+            with patch.dict(os.environ, {
+                "ADMIN_CORREO": "gestor@escuela.edu",
+                "ADMIN_PASSWORD": "clave-inicial-segura",
+            }):
+                os.environ.pop("DATOS_DEMO", None)
+                cliente = create_app(url, secret_key="k").test_client()
+            self.assertEqual(cliente.get("/api/items").json["total"], 0)
+            acceso = cliente.post("/api/auth/login", json={
+                "correo": "gestor@escuela.edu", "password": "clave-inicial-segura"})
+            self.assertEqual(acceso.status_code, 200)
+            cabeceras = {"Authorization": f"Bearer {acceso.json['token']}"}
+            usuarios = cliente.get("/api/usuarios", headers=cabeceras).json
+            self.assertEqual([u["correo"] for u in usuarios], ["gestor@escuela.edu"])
+
+            nuevo_usuario = cliente.post("/api/usuarios", headers=cabeceras, json={
+                "nombre": "Usuario de prueba", "correo": "prueba@escuela.edu",
+                "perfiles": {"ESTUDIANTE": {"codigo_estudiante": "EST-PRUEBA"}},
+            })
+            self.assertEqual(nuevo_usuario.status_code, 201, nuevo_usuario.json)
+            nuevo_item = cliente.post("/api/items", headers=cabeceras, json={
+                "tipo": "LIBRO", "codigo": "LIB-PRUEBA", "nombre": "Libro de prueba",
+                "categoria": "Pruebas", "atributos": {
+                    "isbn": "978-0000000001", "autor": "Autor ficticio",
+                    "editorial": "Editorial ficticia"},
+            })
+            self.assertEqual(nuevo_item.status_code, 201, nuevo_item.json)
+
+            with patch.dict(os.environ, {"DATOS_DEMO": "0"}):
+                os.environ.pop("ADMIN_CORREO", None)
+                os.environ.pop("ADMIN_PASSWORD", None)
+                reiniciado = create_app(url, secret_key="k").test_client()
+            self.assertEqual(reiniciado.get("/api/items").json["total"], 1)
+            self.assertEqual(reiniciado.get("/api/items").json["items"][0]["codigo"],
+                             "LIB-PRUEBA")
+
+    def test_base_vacia_sin_gestor_rechaza_arranque_sin_credenciales(self):
+        with patch.dict(os.environ, {"DATOS_DEMO": "0"}):
+            os.environ.pop("ADMIN_CORREO", None)
+            os.environ.pop("ADMIN_PASSWORD", None)
+            with self.assertRaisesRegex(RuntimeError, "ADMIN_CORREO y ADMIN_PASSWORD"):
+                create_app("sqlite+pysqlite:///:memory:", secret_key="k")
 
 
 if __name__ == "__main__":
