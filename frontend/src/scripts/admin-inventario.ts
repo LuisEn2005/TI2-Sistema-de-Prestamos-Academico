@@ -87,40 +87,48 @@ async function cargar() {
 
 const usuario = await exigirSesion('REGISTRAR_ITEM_INVENTARIO');
 if (usuario) {
-  tipos = await api.get<TipoDTO[]>('/api/items/tipos');
-  opciones(campoTipo, tipos.map((t) => [t.tipo, t.etiqueta]));
-  opciones($('#tipo'), tipos.map((t) => [t.tipo, t.etiqueta]), 'Todos');
-  opciones($('#estado'), Object.entries(ETIQUETA_ESTADO), 'Cualquiera');
+  try {
+    tipos = await api.get<TipoDTO[]>('/api/items/tipos');
+    if (tipos.length === 0) throw new Error('No hay tipos de recursos configurados.');
+  } catch (error) {
+    avisar(mensajeDe(error), true);
+    $<HTMLButtonElement>('#nuevo').disabled = true;
+  }
+  if (tipos.length > 0) {
+    opciones(campoTipo, tipos.map((t) => [t.tipo, t.etiqueta]));
+    opciones($('#tipo'), tipos.map((t) => [t.tipo, t.etiqueta]), 'Todos');
+    opciones($('#estado'), Object.entries(ETIQUETA_ESTADO), 'Cualquiera');
 
-  const reiniciar = () => { pagina = 1; cargar(); };
-  $('#q').addEventListener('input', retardo(reiniciar));
-  $('#tipo').addEventListener('change', reiniciar);
-  $('#estado').addEventListener('change', reiniciar);
-  $('#anterior').addEventListener('click', () => { pagina -= 1; cargar(); });
-  $('#siguiente').addEventListener('click', () => { pagina += 1; cargar(); });
-  $('#nuevo').addEventListener('click', () => abrirFormulario(null));
-  $('#cancelar').addEventListener('click', () => dialogo.close());
-  campoTipo.addEventListener('change', () => dibujarAtributos(campoTipo.value));
+    const reiniciar = () => { pagina = 1; cargar(); };
+    $('#q').addEventListener('input', retardo(reiniciar));
+    $('#tipo').addEventListener('change', reiniciar);
+    $('#estado').addEventListener('change', reiniciar);
+    $('#anterior').addEventListener('click', () => { pagina -= 1; cargar(); });
+    $('#siguiente').addEventListener('click', () => { pagina += 1; cargar(); });
+    $('#nuevo').addEventListener('click', () => abrirFormulario(null));
+    $('#cancelar').addEventListener('click', () => dialogo.close());
+    campoTipo.addEventListener('change', () => dibujarAtributos(campoTipo.value));
 
-  $('#formulario').addEventListener('submit', async (evento) => {
-    evento.preventDefault();
-    const atributos: Record<string, string> = {};
-    document.querySelectorAll<HTMLInputElement>('#f-atributos input').forEach((i) => {
-      atributos[i.dataset.clave!] = i.value;
+    $('#formulario').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const atributos: Record<string, string> = {};
+      document.querySelectorAll<HTMLInputElement>('#f-atributos input').forEach((i) => {
+        atributos[i.dataset.clave!] = i.value;
+      });
+      const cuerpo = {
+        codigo: $<HTMLInputElement>('#f-codigo').value, nombre: $<HTMLInputElement>('#f-nombre').value,
+        categoria: $<HTMLInputElement>('#f-categoria').value, atributos,
+      };
+      try {
+        if (editando) await api.patch(`/api/items/${editando.id}`, cuerpo);
+        else await api.post('/api/items', { ...cuerpo, tipo: campoTipo.value });
+        dialogo.close();
+        avisar(editando ? 'Recurso actualizado.' : 'Recurso registrado.');
+        await cargar();
+      } catch (error) {
+        $('#f-error').textContent = mensajeDe(error);
+      }
     });
-    const cuerpo = {
-      codigo: $<HTMLInputElement>('#f-codigo').value, nombre: $<HTMLInputElement>('#f-nombre').value,
-      categoria: $<HTMLInputElement>('#f-categoria').value, atributos,
-    };
-    try {
-      if (editando) await api.patch(`/api/items/${editando.id}`, cuerpo);
-      else await api.post('/api/items', { ...cuerpo, tipo: campoTipo.value });
-      dialogo.close();
-      avisar(editando ? 'Recurso actualizado.' : 'Recurso registrado.');
-      await cargar();
-    } catch (error) {
-      $('#f-error').textContent = mensajeDe(error);
-    }
-  });
-  cargar();
+    cargar();
+  }
 }
