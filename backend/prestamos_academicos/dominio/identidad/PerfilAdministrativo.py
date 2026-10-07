@@ -12,5 +12,5 @@ from ..shared_kernel import PoliticaServicioId
 class PerfilAdministrativo:
     codigoEmpleado: Optional[str] = None
     cargoAdministrativo: Optional[str] = None
+    vinculacionVigente: bool = True
     politicaServicioId: Optional[PoliticaServicioId] = None
-

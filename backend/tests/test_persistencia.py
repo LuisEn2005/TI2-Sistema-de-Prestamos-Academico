@@ -51,6 +51,7 @@ class MigracionTest(unittest.TestCase):
             self.assertIn("Luis Ramos", nombres)
             heredado = next(u for u in usuarios if u["nombre"] == "Jesus Perez")
             self.assertEqual(heredado["roles"], ["ESTUDIANTE"])
+            self.assertIsNotNone(heredado["perfiles"]["ESTUDIANTE"]["politica_servicio_id"])
             self.assertTrue(heredado["correo"].endswith("@sin-correo.local"))
             self.assertEqual(
                 c.post("/api/auth/login", json={"correo": heredado["correo"],
@@ -81,7 +82,7 @@ class MigracionTest(unittest.TestCase):
             self.assertEqual(c2.get("/api/items/1").json["estado"], "PRESTADO")
             self.assertEqual(c2.get("/api/items").json["total"], 3)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0002")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0003")
 
     def test_claves_foraneas_activas(self):
         with TemporaryDirectory() as d:

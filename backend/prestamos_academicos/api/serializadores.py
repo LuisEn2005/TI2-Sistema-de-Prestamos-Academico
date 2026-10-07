@@ -22,11 +22,13 @@ def usuario_a_json(usuario, permisos=None):
         p = usuario.perfilDocente
         perfiles["DOCENTE"] = {
             "codigo_empleado": p.codigoEmpleado, "tipo_contrato": p.tipoContrato,
+            "vinculacion_vigente": p.vinculacionVigente,
             "politica_servicio_id": _pol(p)}
     if usuario.perfilAdministrativo:
         p = usuario.perfilAdministrativo
         perfiles["ADMINISTRATIVO"] = {
             "codigo_empleado": p.codigoEmpleado, "cargo_administrativo": p.cargoAdministrativo,
+            "vinculacion_vigente": p.vinculacionVigente,
             "politica_servicio_id": _pol(p)}
     if usuario.perfilGestorInventario:
         p = usuario.perfilGestorInventario

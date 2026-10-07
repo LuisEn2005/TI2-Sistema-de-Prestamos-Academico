@@ -54,8 +54,8 @@ class PerfilEstudianteDB(Base):
     )
     codigo_estudiante: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     matricula_vigente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    politica_servicio_id: Mapped[int | None] = mapped_column(
-        ForeignKey("politicas_servicio.id")
+    politica_servicio_id: Mapped[int] = mapped_column(
+        ForeignKey("politicas_servicio.id"), nullable=False
     )
 
 
@@ -67,8 +67,9 @@ class PerfilDocenteDB(Base):
     )
     codigo_empleado: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     tipo_contrato: Mapped[str] = mapped_column(String(60), nullable=False)
-    politica_servicio_id: Mapped[int | None] = mapped_column(
-        ForeignKey("politicas_servicio.id")
+    vinculacion_vigente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    politica_servicio_id: Mapped[int] = mapped_column(
+        ForeignKey("politicas_servicio.id"), nullable=False
     )
 
 
@@ -80,8 +81,9 @@ class PerfilAdministrativoDB(Base):
     )
     codigo_empleado: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     cargo_administrativo: Mapped[str] = mapped_column(String(80), nullable=False)
-    politica_servicio_id: Mapped[int | None] = mapped_column(
-        ForeignKey("politicas_servicio.id")
+    vinculacion_vigente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    politica_servicio_id: Mapped[int] = mapped_column(
+        ForeignKey("politicas_servicio.id"), nullable=False
     )
 
 

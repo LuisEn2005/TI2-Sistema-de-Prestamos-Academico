@@ -48,14 +48,19 @@ class Usuario:
         return any(self.tieneRol(r) for r in (RolUsuario.ESTUDIANTE, *_ROLES_PRESTATARIOS))
 
     def tieneVinculacionVigente(self) -> bool:
-        """Personal de la escuela, o estudiante con matrícula vigente (RF02)."""
-        if any(self.tieneRol(r) for r in _ROLES_PRESTATARIOS):
-            return True
-        return bool(
+        """Tiene al menos una afiliación académica vigente (RF02)."""
+        vinculaciones = (
             self.tieneRol(RolUsuario.ESTUDIANTE)
             and self.perfilEstudiante is not None
-            and self.perfilEstudiante.matriculaVigente
+            and self.perfilEstudiante.matriculaVigente,
+            self.tieneRol(RolUsuario.DOCENTE)
+            and self.perfilDocente is not None
+            and self.perfilDocente.vinculacionVigente,
+            self.tieneRol(RolUsuario.ADMINISTRATIVO)
+            and self.perfilAdministrativo is not None
+            and self.perfilAdministrativo.vinculacionVigente,
         )
+        return any(vinculaciones)
 
     def estaHabilitado(self) -> bool:
         """RF02 (parcial en Sprint 2): activo, vinculado y sin sanción activa."""
@@ -72,7 +77,7 @@ class Usuario:
         if not self.esPrestatario():
             return "El usuario no tiene un rol que permita recibir préstamos."
         if not self.tieneVinculacionVigente():
-            return "La matrícula del estudiante no está vigente."
+            return "El usuario no tiene matrícula o vinculación vigente."
         if self.tieneSancionActiva():
             return "El usuario tiene una sanción activa."
         return None

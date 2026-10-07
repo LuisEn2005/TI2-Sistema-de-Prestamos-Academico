@@ -99,18 +99,26 @@ class IdentidadApplicationService:
                     defecto=previo.matriculaVigente if previo else True),
                 politicaServicioId=politica)
         elif rol == RolUsuario.DOCENTE:
+            previo = usuario.perfilDocente
             usuario.perfilDocente = PerfilDocente(
                 codigoEmpleado=v.texto(datos, "codigo_empleado", maximo=30,
                                        etiqueta="código de empleado"),
                 tipoContrato=v.texto(datos, "tipo_contrato", maximo=60,
                                      etiqueta="tipo de contrato"),
+                vinculacionVigente=v.booleano(
+                    datos, "vinculacion_vigente",
+                    defecto=previo.vinculacionVigente if previo else True),
                 politicaServicioId=politica)
         elif rol == RolUsuario.ADMINISTRATIVO:
+            previo = usuario.perfilAdministrativo
             usuario.perfilAdministrativo = PerfilAdministrativo(
                 codigoEmpleado=v.texto(datos, "codigo_empleado", maximo=30,
                                        etiqueta="código de empleado"),
                 cargoAdministrativo=v.texto(datos, "cargo_administrativo", maximo=80,
                                             etiqueta="cargo"),
+                vinculacionVigente=v.booleano(
+                    datos, "vinculacion_vigente",
+                    defecto=previo.vinculacionVigente if previo else True),
                 politicaServicioId=politica)
         else:
             previo = usuario.perfilGestorInventario
@@ -236,6 +244,7 @@ class IdentidadApplicationService:
         mapa = {
             "codigoEstudiante": "codigo_estudiante", "matriculaVigente": "matricula_vigente",
             "codigoEmpleado": "codigo_empleado", "tipoContrato": "tipo_contrato",
+            "vinculacionVigente": "vinculacion_vigente",
             "cargoAdministrativo": "cargo_administrativo", "areaResponsable": "area_responsable",
         }
         return {mapa[k]: val for k, val in vars(perfil).items()

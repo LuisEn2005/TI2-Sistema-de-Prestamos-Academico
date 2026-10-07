@@ -137,6 +137,35 @@ class GestionUsuariosTest(ApiBase):
         habilitados = self.cliente.get("/api/usuarios?habilitado=true", headers=h).json
         self.assertNotIn(ESTUDIANTE, [u["correo"] for u in habilitados])
 
+    def test_vinculacion_del_personal_controla_su_habilitacion(self):
+        h = self.ingresar()
+        datos = dict(self.NUEVO, correo="docente@escuela.edu", perfiles={
+            "DOCENTE": {"codigo_empleado": "DOC-88", "tipo_contrato": "Contratado",
+                        "vinculacion_vigente": False}})
+        creado = self.cliente.post("/api/usuarios", headers=h, json=datos)
+        self.assertEqual(creado.status_code, 201, creado.json)
+        self.assertFalse(creado.json["habilitado"])
+        self.assertFalse(creado.json["perfiles"]["DOCENTE"]["vinculacion_vigente"])
+        self.assertIn("vinculación", creado.json["motivo_no_habilitado"])
+
+        actualizado = self.cliente.patch(
+            f"/api/usuarios/{creado.json['id']}", headers=h,
+            json={"perfiles": {"DOCENTE": {"vinculacion_vigente": True}}})
+        self.assertEqual(actualizado.status_code, 200, actualizado.json)
+        self.assertTrue(actualizado.json["habilitado"])
+        self.assertTrue(actualizado.json["perfiles"]["DOCENTE"]["vinculacion_vigente"])
+
+    def test_un_segundo_perfil_vigente_mantiene_habilitado_al_usuario(self):
+        h = self.ingresar()
+        datos = dict(self.NUEVO, correo="doble@escuela.edu", perfiles={
+            "DOCENTE": {"codigo_empleado": "DOC-89", "tipo_contrato": "Contratado",
+                        "vinculacion_vigente": False},
+            "ADMINISTRATIVO": {"codigo_empleado": "ADM-89", "cargo_administrativo": "Apoyo",
+                               "vinculacion_vigente": True}})
+        creado = self.cliente.post("/api/usuarios", headers=h, json=datos)
+        self.assertEqual(creado.status_code, 201, creado.json)
+        self.assertTrue(creado.json["habilitado"])
+
     def test_agregar_y_quitar_perfil(self):
         h = self.ingresar()
         uid = self.usuario_id(ESTUDIANTE, h)

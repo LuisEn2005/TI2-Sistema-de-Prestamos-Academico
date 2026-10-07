@@ -51,11 +51,16 @@ def usuario_a_dominio(fila: UsuarioDB, perfiles: dict) -> Usuario:
         tieneSancionActivaCache=fila.tiene_sancion_activa_cache,
         activo=fila.activo,
         perfilEstudiante=e and PerfilEstudiante(
-            e.codigo_estudiante, e.matricula_vigente, _pid(e.politica_servicio_id)),
+            codigoEstudiante=e.codigo_estudiante, matriculaVigente=e.matricula_vigente,
+            politicaServicioId=_pid(e.politica_servicio_id)),
         perfilDocente=d and PerfilDocente(
-            d.codigo_empleado, d.tipo_contrato, _pid(d.politica_servicio_id)),
+            codigoEmpleado=d.codigo_empleado, tipoContrato=d.tipo_contrato,
+            vinculacionVigente=d.vinculacion_vigente,
+            politicaServicioId=_pid(d.politica_servicio_id)),
         perfilAdministrativo=a and PerfilAdministrativo(
-            a.codigo_empleado, a.cargo_administrativo, _pid(a.politica_servicio_id)),
+            codigoEmpleado=a.codigo_empleado, cargoAdministrativo=a.cargo_administrativo,
+            vinculacionVigente=a.vinculacion_vigente,
+            politicaServicioId=_pid(a.politica_servicio_id)),
         perfilGestorInventario=g and PerfilGestorInventario(
             g.codigo_empleado, g.area_responsable, g.fecha_asignacion),
     )

@@ -12,10 +12,12 @@ const CAMPOS: Record<Rol, CampoPerfil[]> = {
   DOCENTE: [
     { clave: 'codigo_empleado', etiqueta: 'Código de empleado' },
     { clave: 'tipo_contrato', etiqueta: 'Tipo de contrato' },
+    { clave: 'vinculacion_vigente', etiqueta: 'Vinculación vigente', tipo: 'checkbox' },
   ],
   ADMINISTRATIVO: [
     { clave: 'codigo_empleado', etiqueta: 'Código de empleado' },
     { clave: 'cargo_administrativo', etiqueta: 'Cargo' },
+    { clave: 'vinculacion_vigente', etiqueta: 'Vinculación vigente', tipo: 'checkbox' },
   ],
   GESTOR_INVENTARIO: [
     { clave: 'codigo_empleado', etiqueta: 'Código de empleado' },
