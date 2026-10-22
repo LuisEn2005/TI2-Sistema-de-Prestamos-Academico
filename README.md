@@ -75,7 +75,9 @@ La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación
 
 **Cuentas de demostración** (contraseña `demo1234`; solo con `DATOS_DEMO=1`): `admin@escuela.edu` (administrador), `luis.ramos@escuela.edu` (docente y gestor de inventario) y `jesus.perez@escuela.edu` (estudiante). **Cámbielas o desactive la demostración fuera del desarrollo.**
 
-Con `DATOS_DEMO=1`, el catálogo inicial contiene *Introduction to Algorithms (CLRS)*, *Clean Code: A Handbook of Agile Software Craftsmanship* y *Meta Quest*.
+Al activar `DATOS_DEMO=1` sobre una base migrada desde el MVP, el arranque repara estas cuentas de demostración de forma idempotente: conserva sus identificadores e historial, y garantiza el correo, la contraseña y los perfiles indicados arriba.
+
+Con `DATOS_DEMO=1`, el catálogo incorpora de forma idempotente 26 recursos representativos de la Escuela de Ciencia de la Computación: ocho libros de algoritmos, ingeniería de software, sistemas, redes, bases de datos e inteligencia artificial; nueve equipos de cómputo, sistemas embebidos, redes y audiovisuales; seis materiales de conectividad, electrónica y energía; y tres muebles para laboratorios y aulas. Si la base ya contiene recursos, solo agrega los códigos faltantes y conserva sus datos y estados actuales.
 
 **Instalación limpia para uso real:** configure una **base nueva** distinta de la usada para pruebas y arranque con `DATOS_DEMO=0`, `SECRET_KEY`, `ADMIN_CORREO` y `ADMIN_PASSWORD`. Por ejemplo, desde `backend/`:
 

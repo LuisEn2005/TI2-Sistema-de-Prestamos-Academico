@@ -11,9 +11,14 @@ class CatalogoPublicoTest(ApiBase):
     def test_catalogo_se_consulta_sin_autenticacion(self):
         r = self.cliente.get("/api/items")
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json["total"], 3)
+        self.assertEqual(r.json["total"], 26)
         self.assertEqual({"id", "codigo", "nombre", "categoria", "tipo", "estado", "disponible",
                           "atributos"}, set(r.json["items"][0]))
+
+    def test_catalogo_demo_excluye_los_recursos_descartados(self):
+        codigos = {i["codigo"] for i in self.cliente.get("/api/items?limite=50").json["items"]}
+        self.assertTrue({"LIB-DDIA", "EQ-RPI-001", "MAT-HDMI-001", "MOB-RACK-001"} <= codigos)
+        self.assertTrue({"EQ-LAP-001", "EQ-MIC-001", "EQ-SSD-001", "MOB-MESA-001"}.isdisjoint(codigos))
 
     def test_busqueda_por_texto_incluye_atributos(self):
         buscar = lambda q: [i["codigo"] for i in self.cliente.get(f"/api/items?q={q}").json["items"]]  # noqa: E731
@@ -27,9 +32,9 @@ class CatalogoPublicoTest(ApiBase):
         self.assertEqual(self.cliente.get("/api/items?q=_").json["total"], 0)
 
     def test_filtros_por_tipo_categoria_y_estado(self):
-        self.assertEqual(self.cliente.get("/api/items?tipo=libro").json["total"], 2)
+        self.assertEqual(self.cliente.get("/api/items?tipo=libro").json["total"], 8)
         self.assertEqual(self.cliente.get("/api/items?tipo=EQUIPO&categoria=realidad virtual").json["total"], 1)
-        self.assertEqual(self.cliente.get("/api/items?estado=DISPONIBLE").json["total"], 3)
+        self.assertEqual(self.cliente.get("/api/items?estado=DISPONIBLE").json["total"], 26)
         self.assertEqual(self.cliente.get("/api/items?estado=PRESTADO").json["total"], 0)
         self.assertEqual(self.cliente.get("/api/items?tipo=DRON").status_code, 400)
         self.assertEqual(self.cliente.get("/api/items?estado=ROTO").status_code, 400)
@@ -37,7 +42,7 @@ class CatalogoPublicoTest(ApiBase):
     def test_paginacion(self):
         p1 = self.cliente.get("/api/items?limite=2&pagina=1").json
         p2 = self.cliente.get("/api/items?limite=2&pagina=2").json
-        self.assertEqual((len(p1["items"]), len(p2["items"]), p1["total"]), (2, 1, 3))
+        self.assertEqual((len(p1["items"]), len(p2["items"]), p1["total"]), (2, 2, 26))
         self.assertFalse({i["id"] for i in p1["items"]} & {i["id"] for i in p2["items"]})
         self.assertEqual(self.cliente.get("/api/items?limite=abc").status_code, 400)
         self.assertEqual(self.cliente.get("/api/items?limite=100000").status_code, 400)

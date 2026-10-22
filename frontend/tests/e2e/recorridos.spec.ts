@@ -53,6 +53,7 @@ test('el administrador registra usuario, recurso, entrega y devolución', async 
   await page.getByLabel('Autor').fill('Autora E2E');
   await page.getByLabel('Editorial').fill('Editorial E2E');
   await page.getByRole('button', { name: 'Guardar recurso' }).click();
+  await page.getByLabel('Buscar').fill('LIB-E2E');
   await expect(page.getByRole('cell', { name: 'LIB-E2E' })).toBeVisible();
 
   await page.goto('/prestamos');

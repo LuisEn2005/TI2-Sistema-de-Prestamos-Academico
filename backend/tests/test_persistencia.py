@@ -49,15 +49,17 @@ class MigracionTest(unittest.TestCase):
             nombres = {u["nombre"] for u in usuarios}
             self.assertIn("Jesus Perez", nombres)
             self.assertIn("Luis Ramos", nombres)
-            heredado = next(u for u in usuarios if u["nombre"] == "Jesus Perez")
-            self.assertEqual(heredado["roles"], ["ESTUDIANTE"])
-            self.assertIsNotNone(heredado["perfiles"]["ESTUDIANTE"]["politica_servicio_id"])
-            self.assertTrue(heredado["correo"].endswith("@sin-correo.local"))
-            self.assertEqual(
-                c.post("/api/auth/login", json={"correo": heredado["correo"],
-                                                "password": CLAVE}).status_code, 401)
+            jesus = next(u for u in usuarios if u["nombre"] == "Jesus Perez")
+            luis = next(u for u in usuarios if u["nombre"] == "Luis Ramos")
+            self.assertEqual(jesus["roles"], ["ESTUDIANTE"])
+            self.assertIsNotNone(jesus["perfiles"]["ESTUDIANTE"]["politica_servicio_id"])
+            self.assertEqual(luis["roles"], ["DOCENTE", "GESTOR_INVENTARIO"])
+            for correo in ("jesus.perez@escuela.edu", "luis.ramos@escuela.edu"):
+                acceso = c.post("/api/auth/login", json={"correo": correo, "password": CLAVE})
+                self.assertEqual(acceso.status_code, 200, acceso.json)
 
-            items = {i["codigo"]: i for i in c.get("/api/items").json["items"]}
+            items = {i["codigo"]: i for i in c.get("/api/items?limite=50").json["items"]}
+            self.assertEqual(len(items), 26)
             self.assertEqual(items["LIB-CLRS"]["estado"], "PRESTADO")
             self.assertEqual(items["LIB-CLRS"]["tipo"], "LIBRO")
             self.assertEqual(items["EQ-META"]["estado"], "DISPONIBLE")
@@ -76,6 +78,7 @@ class MigracionTest(unittest.TestCase):
             # Segunda ejecución: las migraciones no se repiten ni duplican datos.
             c2 = create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k").test_client()
             self.assertEqual(len(c2.get("/api/usuarios", headers=h).json), len(usuarios))
+            self.assertEqual(c2.get("/api/items").json["total"], 26)
 
     def test_base_nueva_se_crea_con_alembic_y_conserva_datos_al_reiniciar(self):
         with TemporaryDirectory() as d:
@@ -92,7 +95,7 @@ class MigracionTest(unittest.TestCase):
             reabierto = c2.get("/api/prestamos", headers=h).json["prestamos"]
             self.assertEqual([(p["modalidad"], len(p["items"])) for p in reabierto],
                              [("Externa (a domicilio)", 1)])
-            self.assertEqual(c2.get("/api/items").json["total"], 3)
+            self.assertEqual(c2.get("/api/items").json["total"], 26)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
             self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0007")
 
