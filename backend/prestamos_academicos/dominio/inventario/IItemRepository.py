@@ -15,6 +15,10 @@ class IItemRepository(ABC):
     def find_by_id(self, item_id: int) -> Optional[Item]: ...
 
     @abstractmethod
+    def find_by_ids(self, item_ids) -> dict:
+        """Ítems por id en una sola consulta: {id: Item}. Los ids inexistentes no aparecen."""
+
+    @abstractmethod
     def find_by_codigo(self, codigo: str) -> Optional[Item]: ...
 
     @abstractmethod

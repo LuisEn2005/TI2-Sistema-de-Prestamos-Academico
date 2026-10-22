@@ -7,19 +7,59 @@ import Base from '../layouts/Base.astro';
 
   <section id="nuevo" hidden>
     <h2>Registrar entrega</h2>
-    <div class="barra">
-      <div><label for="buscar-usuario">Buscar usuario</label><input id="buscar-usuario" type="search" maxlength="120" placeholder="Nombre o correo" /></div>
-      <div><label for="buscar-item">Buscar recurso</label><input id="buscar-item" type="search" maxlength="120" placeholder="Código o nombre" /></div>
-    </div>
-    <form id="formulario" class="barra">
-      <div><label for="usuario">Usuario habilitado</label><select id="usuario" required></select></div>
-      <div><label for="item">Recurso disponible</label><select id="item" required></select></div>
-      <button id="prestar" type="submit">Registrar entrega</button>
+    <form id="formulario">
+      <div class="barra">
+        <div><label for="buscar-usuario">Buscar usuario</label><input id="buscar-usuario" type="search" maxlength="120" placeholder="Nombre o correo" /></div>
+        <div><label for="usuario">Usuario habilitado</label><select id="usuario" required></select></div>
+        <div id="zona-rol" hidden><label for="rol">Prestar como</label><select id="rol"></select></div>
+        <div><label for="modalidad">Modalidad</label><select id="modalidad" required></select></div>
+      </div>
+      <p id="resumen-condiciones" class="resumen-condiciones tenue pequeno" aria-live="polite"></p>
+
+      <fieldset>
+        <legend>Recursos a entregar</legend>
+        <div class="barra">
+          <div><label for="buscar-item">Buscar recurso</label><input id="buscar-item" type="search" maxlength="120" placeholder="Código o nombre" /></div>
+          <div><label for="item">Recurso disponible</label><select id="item"></select></div>
+          <button id="agregar" type="button" class="secundario">Agregar</button>
+        </div>
+        <p class="tenue pequeno">Se muestran hasta 50 coincidencias por búsqueda. Puede agregar varios recursos a la misma entrega.</p>
+        <ul id="seleccion" class="seleccion indice" aria-label="Recursos seleccionados"></ul>
+      </fieldset>
+      <p style="margin-top:1rem"><button id="prestar" type="submit">Registrar entrega</button></p>
     </form>
-    <p class="tenue pequeno">Se muestran hasta 50 coincidencias por búsqueda.</p>
   </section>
 
-  <h2 id="titulo-lista">Préstamos activos</h2>
+  <h2 id="titulo-lista" style="margin-top:2rem">Préstamos</h2>
+  <div class="barra">
+    <div>
+      <label for="filtro-estado">Mostrar</label>
+      <select id="filtro-estado">
+        <option value="activo">Activos</option>
+        <option value="vencido">Vencidos</option>
+        <option value="devuelto">Devueltos</option>
+        <option value="">Todos</option>
+      </select>
+    </div>
+  </div>
   <ul id="lista" class="indice"></ul>
+  <div class="paginacion">
+    <button id="anterior" type="button" class="secundario">Anterior</button>
+    <span id="pagina" class="tenue pequeno"></span>
+    <button id="siguiente" type="button" class="secundario">Siguiente</button>
+  </div>
+
+  <dialog id="dialogo-devolucion">
+    <form id="formulario-devolucion" method="dialog">
+      <h2>Registrar devolución</h2>
+      <p id="devolucion-resumen" class="tenue"></p>
+      <div id="devolucion-items"></div>
+      <p id="devolucion-error" class="mensaje error" role="alert"></p>
+      <div class="pie">
+        <button type="button" class="secundario" id="devolucion-cancelar">Cancelar</button>
+        <button type="submit" id="devolucion-confirmar">Confirmar devolución</button>
+      </div>
+    </form>
+  </dialog>
   <script>import '../scripts/prestamos.ts';</script>
 </Base>

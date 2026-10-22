@@ -4,7 +4,7 @@ Sistema para administrar recursos de la Escuela de Computación: catálogo, rese
 
 ## Estado actual
 
-Los **Sprints 1 y 2 están terminados**. El Sprint 1 entregó el MVP de préstamo y devolución. El [Sprint 2](docs/sprint_02.md) lo convirtió en un sistema con **identidad e inventario administrables**: inicio de sesión, roles y permisos, registro de usuarios con perfiles y políticas de servicio, catálogo público con búsqueda y filtros, y gestión de recursos por tipo y estado. El proyecto está en torno al **25–28 % del alcance total** (método de cálculo en [docs/sprint_02.md](docs/sprint_02.md#avance-del-proyecto)). Los Sprints 3–6 siguen siendo una **planificación**: reservas, sanciones, políticas editables, modalidades, renovaciones y auditoría **no están implementados**.
+Los **Sprints 1, 2 y 3 están terminados**. El Sprint 1 entregó el MVP de préstamo y devolución. El [Sprint 2](docs/sprint_02.md) lo convirtió en un sistema con **identidad e inventario administrables**: inicio de sesión, roles y permisos, registro de usuarios con perfiles y políticas de servicio, catálogo público con búsqueda y filtros, y gestión de recursos por tipo y estado. El [Sprint 3](docs/sprint_03.md) completó los **préstamos**: varios ítems por entrega, modalidades en sala y externa, fecha límite según la política del perfil, cupos por perfil y devolución con la condición de cada ítem. El proyecto está en torno al **41 % del alcance total** (método de cálculo en [docs/sprint_03.md](docs/sprint_03.md#avance-del-proyecto)). Los Sprints 4–6 siguen siendo una **planificación**: reservas, renovaciones, sanciones, políticas editables y auditoría **no están implementados**.
 
 ## Estructura del repositorio
 
@@ -43,7 +43,7 @@ La secuencia parte del [Sprint 1 implementado](docs/mvp_01.md) y termina con la 
 | --- | --- | --- | --- |
 | **1 · MVP — terminado** | Catálogo, usuarios de prueba, préstamo y devolución básicos. RF01, RF04–RF06, RF10–RF11 y RF13 **parciales**. | API JSON, tres tablas SQLAlchemy, datos de demostración y control de disponibilidad. | Una página para consultar, prestar y devolver. |
 | **2 · Identidad e inventario — terminado** | Usuarios, roles, vinculación, políticas por perfil e inventario administrable. Cierre de RF01, RF03, RF04 y RF06; avance de RF02 y RF05. | Autenticación, permisos, modelos completos, migraciones y PostgreSQL; catálogo filtrable. | Gestión de usuarios y recursos, filtros y vistas por rol. |
-| **3 · Préstamos completos — planificado** | Modalidades, varios ítems, plazos, devolución con condición y límites por perfil. Cierre de RF10–RF11; avance de RF13. | Reglas y transacciones de préstamos; cálculo de fecha límite. | Flujo de entrega, devolución y consulta de préstamos. |
+| **3 · Préstamos completos — terminado** | Modalidades, varios ítems, plazos, devolución con condición y límites por perfil. Cierre de RF10–RF11; avance de RF13. | Reglas y transacciones de préstamos; cálculo de fecha límite. | Flujo de entrega, devolución y consulta de préstamos. |
 | **4 · Reservas y renovaciones — planificado** | Reservar, cancelar, expirar, convertir reserva en préstamo y renovar. Cierre de RF05, RF08–RF09; avance de RF07 y RF12. | Estados, expiración y reglas de disponibilidad y prioridad. | Reserva, seguimiento y renovación. |
 | **5 · Sanciones y configuración — planificado** | Sanciones automáticas y manuales, cierre, bloqueo y políticas administrables. Cierre de RF02, RF07, RF12–RF16 y RF18. | Reglas de sanción, elegibilidad y configuración persistente. | Gestión de sanciones y panel de políticas. |
 | **6 · Auditoría y entrega integral — planificado** | Historial y validación de todos los flujos. Cierre de RF17 y verificación conjunta de RF01–RF18 y RNF01–RNF06. | Auditoría, pruebas integradas, migraciones y despliegue con PostgreSQL. | Historial consultable y revisión de todos los recorridos por rol. |
@@ -70,6 +70,7 @@ La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación
 | `DATABASE_URL` | Base de datos, por ejemplo `postgresql+psycopg://usuario:clave@localhost:5432/prestamos`. Si falta, se usa SQLite local. |
 | `SECRET_KEY` | Clave que firma los tokens de sesión. **Obligatoria en producción**; sin ella se genera una temporal y las sesiones se pierden al reiniciar. |
 | `DATOS_DEMO` | `0` por defecto: sin usuarios ni recursos ficticios. Use `1` únicamente para pruebas. |
+| `ZONA_HORARIA` | Zona en la que se calculan las fechas límite y los atrasos. Por defecto `America/Lima`. |
 | `ADMIN_CORREO`, `ADMIN_PASSWORD` | En una base limpia son obligatorios juntos para crear el primer administrador. Después pueden omitirse; la cuenta ya existe en la base. |
 
 **Cuentas de demostración** (contraseña `demo1234`; solo con `DATOS_DEMO=1`): `admin@escuela.edu` (administrador), `luis.ramos@escuela.edu` (docente y gestor de inventario) y `jesus.perez@escuela.edu` (estudiante). **Cámbielas o desactive la demostración fuera del desarrollo.**
@@ -114,7 +115,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y cuatro recorridos Playwright. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
+La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y cinco recorridos Playwright. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
 
 ## Documentación de referencia
 
@@ -123,13 +124,14 @@ La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) eje
 - [Distribución de los contextos del dominio](docs/estructura_dominio.md)
 - [Implementación y alcance del primer MVP](docs/mvp_01.md)
 - [Sprint 2: identidad e inventario, API y avance](docs/sprint_02.md)
+- [Sprint 3: préstamos completos, reglas, API y avance](docs/sprint_03.md)
 - [Plan y cierre de requisitos por sprint](docs/plan_sprints.md)
 
 ## Recorridos disponibles
 
 - **Visitante:** consultar el catálogo con búsqueda, filtros por tipo, categoría y estado, y ver el detalle de cada recurso, sin iniciar sesión.
-- **Estudiante, docente o administrativo:** iniciar sesión, ver su política de servicio, sus préstamos activos y cambiar su contraseña.
-- **Gestor de inventario:** registrar y editar recursos, cambiar su estado y registrar entregas y devoluciones. Puede consultar únicamente los prestatarios habilitados necesarios para una entrega.
+- **Estudiante, docente o administrativo:** iniciar sesión, ver su política de servicio, consultar sus préstamos con su fecha límite y cambiar su contraseña.
+- **Gestor de inventario:** registrar y editar recursos, cambiar su estado, entregar varios recursos a la vez bajo una modalidad (con plazo y cupo a la vista) y registrar devoluciones indicando la condición de cada ítem. Puede consultar únicamente los prestatarios habilitados necesarios para una entrega.
 - **Administrador del sistema:** gestionar usuarios, perfiles y accesos, además de realizar las operaciones de inventario y préstamos.
 
-Detalle de endpoints, reglas y límites en [docs/sprint_02.md](docs/sprint_02.md); el MVP original se describe en [docs/mvp_01.md](docs/mvp_01.md).
+Detalle de endpoints, reglas y límites en [docs/sprint_02.md](docs/sprint_02.md) y [docs/sprint_03.md](docs/sprint_03.md); el MVP original se describe en [docs/mvp_01.md](docs/mvp_01.md).

@@ -14,6 +14,7 @@ from .aplicacion.errores import ErrorAplicacion
 from .aplicacion.identidad_service import IdentidadApplicationService
 from .aplicacion.inventario_service import InventarioApplicationService
 from .aplicacion.prestamo_service import PrestamoApplicationService
+from .aplicacion.reloj import Reloj
 from .dominio.errores import ErrorDominio
 from .infraestructura.persistencia.conexion import crear_fabrica_sesiones
 from .infraestructura.persistencia.datos_demo import preparar_datos
@@ -29,7 +30,7 @@ def _bandera(valor, defecto):
     return str(valor).strip().lower() not in ("0", "false", "no", "")
 
 
-def create_app(database_url=None, *, datos_demo=None, secret_key=None):
+def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=None):
     app = Flask(__name__)
 
     clave = secret_key or os.environ.get("SECRET_KEY")
@@ -50,7 +51,7 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None):
     app.extensions["servicios"] = SimpleNamespace(
         identidad=identidad,
         inventario=InventarioApplicationService(fabrica_uow),
-        prestamos=PrestamoApplicationService(fabrica_uow, identidad),
+        prestamos=PrestamoApplicationService(fabrica_uow, identidad, reloj or Reloj()),
         configuracion=ConfiguracionApplicationService(fabrica_uow),
         tokens=EmisorTokens(clave),
         limitador=LimitadorIntentos(),

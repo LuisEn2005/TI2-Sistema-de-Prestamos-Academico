@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, Text,
+    UniqueConstraint, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -174,16 +175,72 @@ class ItemDB(Base):
     )
 
 
+class ModalidadDB(Base):
+    """Forma de préstamo (en sala o externa) con su propio plazo en días (RF10)."""
+
+    __tablename__ = "modalidades"
+    __table_args__ = (
+        CheckConstraint("length(trim(nombre)) > 0", name="ck_modalidad_nombre_no_vacio"),
+        CheckConstraint("dias_plazo_default > 0", name="ck_modalidad_dias_positivo"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    dias_plazo_default: Mapped[int] = mapped_column(Integer, nullable=False)
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
 class PrestamoDB(Base):
+    """Cabecera del préstamo. La modalidad se guarda como copia (snapshot): cambiar la
+    configuración después no altera los préstamos ya registrados. Los campos de
+    modalidad, rol y fecha límite son NULL solo en préstamos anteriores al Sprint 3."""
+
     __tablename__ = "prestamos"
-    __table_args__ = (CheckConstraint(
-        "fecha_devolucion IS NULL OR fecha_devolucion >= fecha_prestamo",
-        name="ck_prestamo_fechas_ordenadas"),)
+    __table_args__ = (
+        CheckConstraint(
+            "fecha_devolucion IS NULL OR fecha_devolucion >= fecha_prestamo",
+            name="ck_prestamo_fechas_ordenadas"),
+        CheckConstraint(
+            "modalidad_dias_plazo IS NULL OR modalidad_dias_plazo > 0",
+            name="ck_prestamo_plazo_positivo"),
+        CheckConstraint(
+            "rol_solicitante IS NULL OR rol_solicitante IN "
+            "('ESTUDIANTE','DOCENTE','ADMINISTRATIVO')", name="ck_prestamo_rol_valido"),
+        Index("ix_prestamos_usuario", "usuario_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
-    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
+    rol_solicitante: Mapped[str | None] = mapped_column(String(30))
+    modalidad_id: Mapped[int | None] = mapped_column(ForeignKey("modalidades.id"))
+    modalidad_nombre: Mapped[str | None] = mapped_column(String(60))
+    modalidad_dias_plazo: Mapped[int | None] = mapped_column(Integer)
     fecha_prestamo: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_ahora
     )
+    fecha_devolucion_esperada: Mapped[date | None] = mapped_column(Date)
     fecha_devolucion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DetallePrestamoDB(Base):
+    """Un ítem dentro de un préstamo. `activo` es verdadero mientras el ítem no vuelve:
+    un índice único parcial impide que un ítem esté en dos préstamos activos (RN3)."""
+
+    __tablename__ = "detalles_prestamo"
+    __table_args__ = (
+        UniqueConstraint("prestamo_id", "item_id", name="uq_detalle_prestamo_item"),
+        CheckConstraint(
+            "condicion IS NULL OR condicion IN ('BUEN_ESTADO','DANADO','PERDIDO')",
+            name="ck_detalle_condicion_valida"),
+        Index("ix_detalles_prestamo", "prestamo_id"),
+        Index("ux_detalles_item_activo", "item_id", unique=True,
+              sqlite_where=text("activo"), postgresql_where=text("activo")),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    prestamo_id: Mapped[int] = mapped_column(
+        ForeignKey("prestamos.id", ondelete="CASCADE"), nullable=False)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    condicion: Mapped[str | None] = mapped_column(String(20))
+    observacion: Mapped[str | None] = mapped_column(String(300))

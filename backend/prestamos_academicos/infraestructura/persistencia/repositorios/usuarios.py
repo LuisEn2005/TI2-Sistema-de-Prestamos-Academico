@@ -75,6 +75,17 @@ class SqlAlchemyUsuarioRepository(IUsuarioRepository):
             consulta = consulta.where(UsuarioDB.id.in_(select(tabla.usuario_id)))
         return self._a_dominio(list(self.sesion.scalars(consulta)))
 
+    def nombres_de(self, usuario_ids):
+        ids = list(set(usuario_ids))
+        if not ids:
+            return {}
+        return dict(self.sesion.execute(
+            select(UsuarioDB.id, UsuarioDB.nombre).where(UsuarioDB.id.in_(ids))).all())
+
+    def bloquear(self, usuario_id):
+        # SELECT ... FOR UPDATE en PostgreSQL; SQLite ya serializa las escrituras.
+        self.sesion.execute(select(UsuarioDB.id).where(UsuarioDB.id == usuario_id).with_for_update())
+
     def contar_administradores_activos(self):
         return self.sesion.scalar(
             select(func.count()).select_from(PerfilAdministradorSistemaDB)

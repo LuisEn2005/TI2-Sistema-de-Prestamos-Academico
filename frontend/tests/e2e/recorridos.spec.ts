@@ -62,12 +62,46 @@ test('el administrador registra usuario, recurso, entrega y devolución', async 
   await page.getByLabel('Recurso disponible').selectOption({
     label: 'Libro de navegador (LIB-E2E)',
   });
+  await page.getByRole('button', { name: 'Agregar' }).click();
+  await expect(page.getByRole('list', { name: 'Recursos seleccionados' })).toContainText('LIB-E2E');
   await page.getByRole('button', { name: 'Registrar entrega' }).click();
-  const prestamo = page.getByRole('listitem').filter({ hasText: 'Libro de navegador' });
+  const prestamo = page.locator('#lista > li.prestamo').filter({ hasText: 'Libro de navegador' });
   await expect(prestamo).toContainText('María Prueba');
+  await expect(prestamo).toContainText('límite');
   await prestamo.getByRole('button', { name: 'Registrar devolución' }).click();
+  await page.getByRole('button', { name: 'Confirmar devolución' }).click();
   await expect(prestamo).toHaveCount(0);
   await expect(page.getByText('No hay préstamos activos.')).toBeVisible();
+});
+
+test('el gestor entrega varios recursos y devuelve cada uno con su condición', async ({ page }) => {
+  await ingresar(page, 'luis.ramos@escuela.edu');
+  await page.goto('/prestamos');
+  await page.getByLabel('Usuario habilitado').selectOption({
+    label: 'Jesus Perez (jesus.perez@escuela.edu)',
+  });
+  await page.getByLabel('Modalidad').selectOption({ index: 1 }); // externa
+  await expect(page.getByText('plazo de 7 días')).toBeVisible();   // el menor entre 15 y 7
+
+  for (const etiqueta of ['Meta Quest (EQ-META)', 'Introduction to Algorithms (CLRS) (LIB-CLRS)']) {
+    await page.getByLabel('Recurso disponible').selectOption({ label: etiqueta });
+    await page.getByRole('button', { name: 'Agregar' }).click();
+  }
+  await page.getByRole('button', { name: 'Registrar entrega' }).click();
+  await expect(page.locator('#mensaje')).toContainText('Entrega registrada. Fecha límite:');
+
+  const prestamo = page.locator('#lista > li.prestamo').filter({ hasText: 'Meta Quest' });
+  await expect(prestamo).toContainText('Introduction to Algorithms');
+  await prestamo.getByRole('button', { name: 'Registrar devolución' }).click();
+  await page.getByLabel('Condición de EQ-META').selectOption('DANADO');
+  await page.getByLabel('Observación de EQ-META').fill('Lente rayado');
+  await page.getByRole('button', { name: 'Confirmar devolución' }).click();
+  await expect(page.locator('#mensaje')).toContainText('En mantenimiento: EQ-META');
+
+  await page.getByLabel('Mostrar').selectOption('devuelto');
+  const devuelto = page.locator('#lista > li.prestamo').filter({ hasText: 'Lente rayado' });
+  await expect(devuelto).toContainText('Dañado');
+  await expect(devuelto).toContainText('Buen estado');
 });
 
 test('el gestor opera inventario y no accede a la administración de usuarios', async ({ page }) => {

@@ -22,10 +22,27 @@ export type UsuarioDTO = {
   perfiles: Partial<Record<Rol, PerfilDTO>>; tiene_sancion_activa: boolean;
   habilitado: boolean; motivo_no_habilitado: string | null; permisos?: string[];
 };
+export type CondicionDevolucion = 'BUEN_ESTADO' | 'DANADO' | 'PERDIDO';
+export type RolPrestatario = 'ESTUDIANTE' | 'DOCENTE' | 'ADMINISTRATIVO';
+export type ItemPrestamoDTO = {
+  item_id: number; codigo: string; nombre: string; tipo: string;
+  condicion: CondicionDevolucion | null; observacion: string | null;
+};
 export type PrestamoDTO = {
-  id: number; usuario_id: number; usuario: string; item_id: number; item: string;
-  codigo: string; fecha_prestamo: string; fecha_devolucion: string | null;
-  estado: 'activo' | 'devuelto';
+  id: number; usuario_id: number; usuario: string;
+  rol_solicitante: RolPrestatario | null;       // null en préstamos anteriores al Sprint 3
+  modalidad: string | null; dias_plazo: number | null;
+  items: ItemPrestamoDTO[];
+  fecha_prestamo: string; fecha_limite: string | null; fecha_devolucion: string | null;
+  estado: 'activo' | 'devuelto'; vencido: boolean; dias_atraso: number;
+};
+export type PaginaPrestamosDTO = { prestamos: PrestamoDTO[]; total: number; pagina: number; limite: number };
+export type ModalidadDTO = { id: number; nombre: string; dias_plazo_default: number; activo: boolean };
+export type CondicionesPrestamoDTO = {
+  usuario_id: number; rol_solicitante: RolPrestatario | null; roles_posibles: RolPrestatario[];
+  modalidad?: string; dias_plazo?: number; fecha_limite?: string;
+  max_items_simultaneos?: number; items_en_prestamo?: number; cupo_restante?: number;
+  tipos_permitidos?: string[];
 };
 export type PoliticaDTO = {
   id: number; rol: Rol; max_items_simultaneos: number; dias_prestamo_default: number;
@@ -40,4 +57,7 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
   ESTUDIANTE: 'Estudiante', DOCENTE: 'Docente', ADMINISTRATIVO: 'Administrativo',
   GESTOR_INVENTARIO: 'Gestor de inventario',
   ADMINISTRADOR_SISTEMA: 'Administrador del sistema',
+};
+export const ETIQUETA_CONDICION: Record<CondicionDevolucion, string> = {
+  BUEN_ESTADO: 'Buen estado', DANADO: 'Dañado', PERDIDO: 'Perdido',
 };

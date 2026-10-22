@@ -1,6 +1,6 @@
 """Casos de uso del contexto Configuración (Sprint 2: consulta y valores base)."""
 
-from ..dominio.configuracion import PoliticaServicio
+from ..dominio.configuracion import Modalidad, PoliticaServicio
 from ..dominio.shared_kernel import RolUsuario
 
 # Políticas iniciales por perfil (RF03). El gestor no presta para sí mismo.
@@ -10,6 +10,12 @@ POLITICAS_BASE = {
     RolUsuario.ADMINISTRATIVO: dict(max=5, dias=15, gracia=3,
                                     tipos="LIBRO,EQUIPO,MATERIAL,MOBILIARIO"),
 }
+
+# Modalidades iniciales (RF10). El plazo de la modalidad es un tope: el plazo efectivo es el
+# menor entre este y los días de la política del perfil (RN2). Pasan a ser editables en el Sprint 5.
+MODALIDAD_IN_SITU = "In situ (en sala)"
+MODALIDAD_EXTERNA = "Externa (a domicilio)"
+MODALIDADES_BASE = ((MODALIDAD_IN_SITU, 1), (MODALIDAD_EXTERNA, 15))
 
 
 class ConfiguracionApplicationService:
@@ -25,6 +31,17 @@ class ConfiguracionApplicationService:
                         diasPrestamoDefault=p["dias"], diasGraciaReserva=p["gracia"],
                         tiposRecursoPermitidos=p["tipos"]))
             uow.commit()
+
+    def asegurar_modalidades_base(self):
+        with self._uow() as uow:
+            for nombre, dias in MODALIDADES_BASE:
+                if uow.modalidades.find_by_nombre(nombre) is None:
+                    uow.modalidades.save(Modalidad(nombre=nombre, diasPlazoDefault=dias, activo=True))
+            uow.commit()
+
+    def listar_modalidades(self):
+        with self._uow() as uow:
+            return uow.modalidades.listar()
 
     def listar_politicas(self):
         with self._uow() as uow:

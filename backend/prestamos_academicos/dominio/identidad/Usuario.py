@@ -88,3 +88,27 @@ class Usuario:
         if self.tieneSancionActiva():
             return "El usuario tiene una sanción activa."
         return None
+
+    # -- préstamos: el usuario presta con uno de sus perfiles prestatarios (RF03) ----------
+    def _perfilPrestatario(self, rol: RolUsuario):
+        return {
+            RolUsuario.ESTUDIANTE: self.perfilEstudiante,
+            RolUsuario.DOCENTE: self.perfilDocente,
+            RolUsuario.ADMINISTRATIVO: self.perfilAdministrativo,
+        }.get(RolUsuario(rol))
+
+    def rolesPrestatarios(self) -> List[RolUsuario]:
+        return [r for r in (RolUsuario.ESTUDIANTE, *_ROLES_PRESTATARIOS)
+                if self.tieneRol(r) and self._perfilPrestatario(r) is not None]
+
+    def vinculacionVigentePara(self, rol: RolUsuario) -> bool:
+        perfil = self._perfilPrestatario(rol)
+        if perfil is None:
+            return False
+        if RolUsuario(rol) == RolUsuario.ESTUDIANTE:
+            return bool(perfil.matriculaVigente)
+        return bool(perfil.vinculacionVigente)
+
+    def politicaIdPara(self, rol: RolUsuario):
+        perfil = self._perfilPrestatario(rol)
+        return perfil.politicaServicioId if perfil is not None else None

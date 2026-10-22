@@ -7,6 +7,7 @@ class IUnitOfWork(ABC):
     usuarios = None
     items = None
     politicas = None
+    modalidades = None
     prestamos = None
 
     @abstractmethod

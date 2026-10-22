@@ -24,3 +24,11 @@ class IUsuarioRepository(ABC):
 
     @abstractmethod
     def contar_administradores_activos(self) -> int: ...
+
+    @abstractmethod
+    def nombres_de(self, usuario_ids) -> dict:
+        """Nombres por id en una sola consulta: {id: nombre}."""
+
+    @abstractmethod
+    def bloquear(self, usuario_id: int) -> None:
+        """Serializa las operaciones concurrentes sobre un usuario (bloqueo de fila)."""

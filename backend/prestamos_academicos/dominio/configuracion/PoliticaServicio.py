@@ -17,3 +17,13 @@ class PoliticaServicio:
     diasGraciaReserva: Optional[int] = None
     tiposRecursoPermitidos: Optional[str] = None
 
+
+    def tiposPermitidos(self) -> List[str]:
+        return [t.strip().upper() for t in (self.tiposRecursoPermitidos or "").split(",") if t.strip()]
+
+    def permiteTipo(self, tipo: str) -> bool:
+        return (tipo or "").upper() in self.tiposPermitidos()
+
+    def cupoRestante(self, itemsEnPrestamo: int) -> int:
+        """Ítems que aún puede recibir un usuario con `itemsEnPrestamo` ítems activos (RF13)."""
+        return max(0, (self.maxItemsSimultaneos or 0) - itemsEnPrestamo)

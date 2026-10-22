@@ -85,6 +85,11 @@ def tipo_a_json(tipo):
     }
 
 
+def modalidad_a_json(m):
+    return {"id": m.id.valor, "nombre": m.nombre,
+            "dias_plazo_default": m.diasPlazoDefault, "activo": m.activo}
+
+
 def politica_a_json(p):
     return {
         "id": p.id.valor,

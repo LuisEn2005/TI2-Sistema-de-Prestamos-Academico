@@ -2,7 +2,7 @@
 
 ## Alcance y estado
 
-Este plan parte de los [requisitos originales RF01–RF18 y RNF01–RNF06](analisis_requisitos_modelo_dominio.md). **Sprints 1 y 2 están implementados** ([MVP](mvp_01.md) y [Sprint 2](sprint_02.md)). **Sprints 3–6 están planificados**: describen entregas esperadas, no funcionalidades existentes. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
+Este plan parte de los [requisitos originales RF01–RF18 y RNF01–RNF06](analisis_requisitos_modelo_dominio.md). **Sprints 1, 2 y 3 están implementados** ([MVP](mvp_01.md), [Sprint 2](sprint_02.md) y [Sprint 3](sprint_03.md)). **Sprints 4–6 están planificados**: describen entregas esperadas, no funcionalidades existentes. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
 
 Cada sprint debe entregar una funcionalidad visible en Astro, una API y reglas en Flask, persistencia cuando corresponda y comprobaciones de su recorrido principal. La cobertura parcial de un requisito en un sprint no equivale a su cierre; la tabla de trazabilidad indica dónde quedará completo.
 
@@ -28,7 +28,7 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Demostración:** un encargado registra un recurso y un usuario habilitado; un visitante encuentra el recurso mediante el catálogo sin autenticarse.
 - **Resultado:** implementado; ver [Sprint 2](sprint_02.md) para el alcance real, los endpoints y lo que quedó pendiente.
 
-## Sprint 3 — Préstamos completos · Planificado
+## Sprint 3 — Préstamos completos · Terminado
 
 **Objetivo.** Extender el préstamo básico a las reglas del modelo de dominio.
 
@@ -36,6 +36,7 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Frontend:** flujo de entrega con selección de modalidad e ítems, consulta de fechas y préstamos activos, formulario de devolución con condición de cada recurso.
 - **Cierre:** RF10 y RF11 completos; RF13 cubre cupos y disponibilidad, y queda pendiente el bloqueo por sanción hasta Sprint 5.
 - **Demostración:** un encargado entrega varios recursos, ve el plazo calculado y registra su devolución con el estado individual de cada ítem.
+- **Resultado:** implementado; reglas, API, cambios incompatibles y decisiones por validar en el [documento del Sprint 3](sprint_03.md).
 
 ## Sprint 4 — Reservas y renovaciones · Planificado
 

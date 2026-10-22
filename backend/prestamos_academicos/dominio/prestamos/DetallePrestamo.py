@@ -1,10 +1,10 @@
 """
 <<entity>> DetallePrestamo
-Generado a partir del bounded context: prestamos
+Un ítem incluido en el préstamo y la condición en que volvió.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import Optional
 from ..shared_kernel import ItemId
 from .CondicionDevolucion import CondicionDevolucion
 
@@ -14,4 +14,4 @@ class DetallePrestamo:
     id: Optional[int] = None
     itemId: Optional[ItemId] = None
     condicion: Optional[CondicionDevolucion] = None
-
+    observacion: Optional[str] = None

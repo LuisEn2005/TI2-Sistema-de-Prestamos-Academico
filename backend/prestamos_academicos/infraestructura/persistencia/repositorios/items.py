@@ -25,6 +25,13 @@ class SqlAlchemyItemRepository(IItemRepository):
         fila = self.sesion.get(ItemDB, item_id)
         return fila and mapeador.item_a_dominio(fila)
 
+    def find_by_ids(self, item_ids):
+        ids = list(set(item_ids))
+        if not ids:
+            return {}
+        filas = self.sesion.scalars(select(ItemDB).where(ItemDB.id.in_(ids)))
+        return {f.id: mapeador.item_a_dominio(f) for f in filas}
+
     def find_by_codigo(self, codigo):
         fila = self.sesion.scalar(
             select(ItemDB).where(func.lower(ItemDB.codigo) == codigo.strip().lower()))

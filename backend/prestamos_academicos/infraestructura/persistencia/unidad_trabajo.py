@@ -2,7 +2,7 @@
 
 from ...aplicacion.unidad_trabajo import IUnitOfWork
 from .repositorios import (
-    SqlAlchemyItemRepository, SqlAlchemyPoliticaRepository,
+    SqlAlchemyItemRepository, SqlAlchemyModalidadRepository, SqlAlchemyPoliticaRepository,
     SqlAlchemyPrestamoRepository, SqlAlchemyUsuarioRepository,
 )
 
@@ -17,6 +17,7 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
         self.usuarios = SqlAlchemyUsuarioRepository(self.sesion)
         self.items = SqlAlchemyItemRepository(self.sesion)
         self.politicas = SqlAlchemyPoliticaRepository(self.sesion)
+        self.modalidades = SqlAlchemyModalidadRepository(self.sesion)
         self.prestamos = SqlAlchemyPrestamoRepository(self.sesion)
 
     def commit(self):

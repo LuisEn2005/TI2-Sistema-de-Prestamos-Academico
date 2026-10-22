@@ -53,17 +53,34 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         self.assertEqual(item.status_code, 201, item.json)
         self.assertEqual(item.json["codigo"], "LIB-CI")
 
+        modalidades = cliente.get("/api/modalidades", headers=cabeceras).json
+        externa = next(m for m in modalidades if m["nombre"].startswith("Externa"))
+        segundo = cliente.post("/api/items", headers=cabeceras, json={
+            "tipo": "LIBRO", "codigo": "lib-ci-2", "nombre": "Libro CI 2",
+            "categoria": "Pruebas", "atributos": {"isbn": "978-0000000004", "autor": "Autor CI"}})
         prestamo = cliente.post("/api/prestamos", headers=cabeceras, json={
-            "usuario_id": usuario.json["id"], "item_id": item.json["id"]})
+            "usuario_id": usuario.json["id"], "modalidad_id": externa["id"],
+            "item_ids": [item.json["id"], segundo.json["id"]]})
         self.assertEqual(prestamo.status_code, 201, prestamo.json)
+        self.assertEqual(len(prestamo.json["items"]), 2)
+        self.assertIsNotNone(prestamo.json["fecha_limite"])
+        repetido = cliente.post("/api/prestamos", headers=cabeceras, json={
+            "usuario_id": usuario.json["id"], "modalidad_id": externa["id"],
+            "item_ids": [item.json["id"]]})
+        self.assertEqual(repetido.status_code, 409)
         devolucion = cliente.post(
-            f"/api/prestamos/{prestamo.json['id']}/devolucion", headers=cabeceras)
+            f"/api/prestamos/{prestamo.json['id']}/devolucion", headers=cabeceras, json={
+                "condiciones": [
+                    {"item_id": item.json["id"], "condicion": "BUEN_ESTADO"},
+                    {"item_id": segundo.json["id"], "condicion": "DANADO"}]})
         self.assertEqual(devolucion.status_code, 200, devolucion.json)
+        self.assertEqual(cliente.get(f"/api/items/{segundo.json['id']}").json["estado"],
+                         "EN_MANTENIMIENTO")
         self.assertEqual(cliente.get(f"/api/items/{item.json['id']}").json["estado"],
                          "DISPONIBLE")
 
         motor = create_engine(URL)
         with motor.connect() as conexion:
             self.assertEqual(conexion.execute(text(
-                "SELECT version_num FROM alembic_version")).scalar_one(), "0006")
+                "SELECT version_num FROM alembic_version")).scalar_one(), "0007")
         motor.dispose()

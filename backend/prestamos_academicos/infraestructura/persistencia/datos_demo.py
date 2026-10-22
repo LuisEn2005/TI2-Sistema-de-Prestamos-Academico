@@ -31,7 +31,9 @@ def preparar_datos(fabrica_sesiones, *, datos_demo, admin_correo=None, admin_pas
     def uow():
         return SqlAlchemyUnitOfWork(fabrica_sesiones)
 
-    ConfiguracionApplicationService(uow).asegurar_politicas_base()
+    configuracion = ConfiguracionApplicationService(uow)
+    configuracion.asegurar_politicas_base()
+    configuracion.asegurar_modalidades_base()
     identidad = IdentidadApplicationService(uow)
 
     if datos_demo:

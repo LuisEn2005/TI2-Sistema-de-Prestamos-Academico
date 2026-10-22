@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from ...dominio.configuracion import PoliticaServicio
+from ...dominio.configuracion import Modalidad, PoliticaServicio
 from ...dominio.identidad import (
     PerfilAdministradorSistema, PerfilAdministrativo, PerfilDocente, PerfilEstudiante,
     PerfilGestorInventario, Usuario,
 )
 from ...dominio.inventario import EstadoItem
 from ...dominio.inventario.TiposItem import obtener_tipo
-from ...dominio.prestamos import DetallePrestamo, EstadoPrestamo, Prestamo
+from ...dominio.prestamos import (
+    CondicionDevolucion, DetallePrestamo, EstadoPrestamo, ModalidadSnapshot, Prestamo,
+)
 from ...dominio.shared_kernel import (
-    ItemId, PoliticaServicioId, PrestamoId, RolUsuario, UsuarioId,
+    ItemId, ModalidadId, PoliticaServicioId, PrestamoId, RolUsuario, UsuarioId,
 )
 from .modelos import (
-    ItemDB, PerfilAdministrativoDB, PerfilDocenteDB, PerfilEstudianteDB,
+    DetallePrestamoDB, ItemDB, ModalidadDB, PerfilAdministrativoDB, PerfilDocenteDB, PerfilEstudianteDB,
     PerfilAdministradorSistemaDB, PerfilGestorInventarioDB, PoliticaServicioDB,
     PrestamoDB, UsuarioDB,
 )
@@ -106,13 +108,32 @@ def item_a_orm(item, fila: ItemDB | None = None) -> ItemDB:
     return fila
 
 
+# ---- Modalidades --------------------------------------------------------
+def modalidad_a_dominio(fila: ModalidadDB) -> Modalidad:
+    return Modalidad(id=ModalidadId(fila.id), nombre=fila.nombre,
+                     diasPlazoDefault=fila.dias_plazo_default, activo=fila.activo)
+
+
 # ---- Préstamos ----------------------------------------------------------
-def prestamo_a_dominio(fila: PrestamoDB) -> Prestamo:
+def prestamo_a_dominio(fila: PrestamoDB, detalles: list[DetallePrestamoDB]) -> Prestamo:
+    modalidad = None
+    if fila.modalidad_dias_plazo is not None:
+        modalidad = ModalidadSnapshot(
+            modalidadOrigenId=None if fila.modalidad_id is None else ModalidadId(fila.modalidad_id),
+            nombre=fila.modalidad_nombre, diasPlazo=fila.modalidad_dias_plazo)
     return Prestamo(
         id=PrestamoId(fila.id),
         usuarioId=UsuarioId(fila.usuario_id),
+        rolSolicitante=RolUsuario(fila.rol_solicitante) if fila.rol_solicitante else None,
+        modalidad=modalidad,
         fechaEntrega=fila.fecha_prestamo,
+        fechaDevolucionEsperada=fila.fecha_devolucion_esperada,
         fechaDevolucionReal=fila.fecha_devolucion,
         estado=EstadoPrestamo.DEVUELTO if fila.fecha_devolucion else EstadoPrestamo.ACTIVO,
-        detalles=[DetallePrestamo(itemId=ItemId(fila.item_id))],
+        detalles=[
+            DetallePrestamo(
+                id=d.id, itemId=ItemId(d.item_id), observacion=d.observacion,
+                condicion=CondicionDevolucion(d.condicion) if d.condicion else None)
+            for d in sorted(detalles, key=lambda d: d.id)
+        ],
     )

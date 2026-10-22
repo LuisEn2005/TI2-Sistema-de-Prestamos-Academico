@@ -64,6 +64,7 @@ button.pequeno { padding: .3rem .65rem; font-size: .85rem; }
 .indice .marcador { align-self: stretch; background: var(--linea); border-radius: 2px; }
 .indice .marcador.ok { background: var(--ok); }
 .indice .marcador.aviso { background: #d9a441; }
+.indice .marcador.malo { background: var(--error); }
 .indice h3 { margin: 0; font-size: 1.05rem; }
 .indice h3 button { background: none; border: 0; padding: 0; color: var(--tinta); font: inherit; font-family: var(--serif); font-weight: 600; text-align: left; }
 .indice h3 button:hover { color: var(--acento); text-decoration: underline; }
@@ -109,3 +110,14 @@ dd { margin: 0; }
   .indice .estado { grid-column: 2; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Préstamos: ítems de un préstamo, selección de entrega y devolución por ítem */
+.items-prestamo { list-style: none; margin: .35rem 0 0; padding: 0; font-size: .875rem; }
+.items-prestamo li { padding: .1rem 0; }
+.seleccion { margin-top: .75rem; }
+.seleccion li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .45rem 0; border-top: 1px solid var(--linea); }
+.devolucion-item { padding: .75rem 0; border-top: 1px solid var(--linea); }
+.devolucion-item:first-child { border-top: 0; }
+.devolucion-item .dos-columnas { align-items: end; }
+.resumen-condiciones { min-height: 1.5rem; }
+.resumen-condiciones.error { color: var(--error); }

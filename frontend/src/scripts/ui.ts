@@ -42,6 +42,13 @@ export function fechaLegible(iso: string | null) {
   return new Date(iso).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+/** Fecha sin hora (AAAA-MM-DD) tal como se calculó en la escuela, sin desplazarla por zona horaria. */
+export function soloFecha(iso: string | null) {
+  if (!iso) return '';
+  const [anio, mes, dia] = iso.split('-').map(Number);
+  return new Date(anio, mes - 1, dia).toLocaleDateString('es-PE', { dateStyle: 'medium' });
+}
+
 export function retardo<A extends unknown[]>(funcion: (...a: A) => void, ms = 250) {
   let temporizador: number | undefined;
   return (...args: A) => {
