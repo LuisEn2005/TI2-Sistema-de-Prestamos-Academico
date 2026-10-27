@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 
-from ....dominio.configuracion import IModalidadRepository
+from ....configuracion_servicio import IModalidadRepository
 from .. import mapeador
 from ..modelos import ModalidadDB
 

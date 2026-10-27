@@ -9,12 +9,12 @@ permitidos se aplican por perfil (RF03, RF13); la devolución registra la condic
 from dataclasses import dataclass
 from typing import Optional
 
-from ..dominio.configuracion import Modalidad, PoliticaServicio
-from ..dominio.errores import ErrorDominio
-from ..dominio.identidad import Permiso, Usuario
-from ..dominio.inventario import EstadoItem
-from ..dominio.prestamos import CondicionDevolucion, EstadoPrestamo, Prestamo
-from ..dominio.shared_kernel import ItemId, RolUsuario, UsuarioId
+from ..configuracion_servicio import Modalidad, PoliticaServicio
+from ..compartido import ErrorDominio
+from ..identidad import Permiso, Usuario
+from ..inventario import EstadoItem
+from ..prestamos import CondicionDevolucion, EstadoPrestamo, Prestamo
+from ..compartido import ItemId, RolUsuario, UsuarioId
 from . import validacion as v
 from .errores import Conflicto, ErrorAplicacion, NoEncontrado, SinPermiso
 from .reloj import Reloj

@@ -2,7 +2,7 @@
 
 from flask import Blueprint, jsonify
 
-from ..dominio.identidad import Permiso
+from ..identidad import Permiso
 from .autenticacion import requiere_permiso, servicios
 from .peticion import (
     cuerpo_json, entero_consulta, id_ruta, parametros_permitidos, texto_consulta,

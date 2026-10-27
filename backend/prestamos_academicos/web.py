@@ -15,7 +15,7 @@ from .aplicacion.identidad_service import IdentidadApplicationService
 from .aplicacion.inventario_service import InventarioApplicationService
 from .aplicacion.prestamo_service import PrestamoApplicationService
 from .aplicacion.reloj import Reloj
-from .dominio.errores import ErrorDominio
+from .compartido import ErrorDominio
 from .infraestructura.persistencia.conexion import crear_fabrica_sesiones
 from .infraestructura.persistencia.datos_demo import preparar_datos
 from .infraestructura.persistencia.migraciones import aplicar_migraciones

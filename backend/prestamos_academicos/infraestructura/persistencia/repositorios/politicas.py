@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from ....dominio.configuracion import IPoliticaRepository
+from ....configuracion_servicio import IPoliticaRepository
 from .. import mapeador
 from ..modelos import PoliticaServicioDB
 

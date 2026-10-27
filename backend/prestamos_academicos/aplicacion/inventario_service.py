@@ -2,10 +2,10 @@
 
 from sqlalchemy.exc import IntegrityError
 
-from ..dominio.errores import ErrorDominio
-from ..dominio.inventario import EstadoItem
-from ..dominio.inventario.EstadoItem import ESTADOS_DE_FLUJO
-from ..dominio.inventario.TiposItem import listar_tipos, obtener_tipo
+from ..compartido import ErrorDominio
+from ..inventario import EstadoItem
+from ..inventario import ESTADOS_DE_FLUJO
+from ..inventario import listar_tipos, obtener_tipo
 from . import validacion as v
 from .errores import Conflicto, ErrorAplicacion, NoEncontrado
 

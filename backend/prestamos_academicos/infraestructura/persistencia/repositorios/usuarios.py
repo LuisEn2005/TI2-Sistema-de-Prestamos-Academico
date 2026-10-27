@@ -1,7 +1,7 @@
 from sqlalchemy import func, or_, select
 
-from ....dominio.identidad import IUsuarioRepository
-from ....dominio.shared_kernel import RolUsuario
+from ....identidad import IUsuarioRepository
+from ....compartido import RolUsuario
 from .. import mapeador
 from ..modelos import (
     PerfilAdministradorSistemaDB, PerfilAdministrativoDB, PerfilDocenteDB,
