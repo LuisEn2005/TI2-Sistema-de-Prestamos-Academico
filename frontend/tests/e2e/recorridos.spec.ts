@@ -31,43 +31,59 @@ test('el login descarta destinos externos escritos con barras invertidas', async
   await expect(page).toHaveURL('http://127.0.0.1:44321/');
 });
 
-test('el administrador registra usuario, recurso, entrega y devolución', async ({ page }) => {
+test('el administrador registra usuario, recurso, entrega y devolución', async ({ page }, testInfo) => {
+  // Cada reintento usa datos distintos porque Playwright conserva el mismo servidor
+  // y la misma base durante todo el job.
+  const marca = `${testInfo.repeatEachIndex}-${testInfo.retry}`;
+  const nombreUsuario = `María Prueba ${marca}`;
+  const correoUsuario = `maria.prueba.${marca}@escuela.edu`;
+  const codigoItem = `LIB-E2E-${marca}`;
+  const nombreItem = `Libro de navegador ${marca}`;
+
   await ingresar(page);
 
   await page.goto('/admin/usuarios');
   await page.getByRole('button', { name: 'Nuevo usuario' }).click();
-  await page.getByLabel('Nombre completo').fill('María Prueba');
-  await page.getByLabel('Correo').fill('maria.prueba@escuela.edu');
+  await page.getByLabel('Nombre completo').fill(nombreUsuario);
+  await page.getByLabel('Correo').fill(correoUsuario);
   await page.getByLabel(/Estudiante$/).check();
-  await page.getByLabel('Código de estudiante').fill('EST-E2E-001');
+  await page.getByLabel('Código de estudiante').fill(`EST-E2E-${marca}`);
   await page.getByRole('button', { name: 'Guardar usuario' }).click();
-  await expect(page.getByRole('cell', { name: /María Prueba/ })).toBeVisible();
+  await expect(page.locator('#mensaje')).toContainText('Usuario registrado.');
+  await expect(page.getByRole('cell', { name: new RegExp(nombreUsuario) })).toBeVisible();
 
   await page.goto('/admin/inventario');
   await page.getByRole('button', { name: 'Nuevo recurso' }).click();
   await page.getByLabel('Tipo de recurso').selectOption('LIBRO');
-  await page.getByLabel('Código').fill('lib-e2e');
+  await page.getByLabel('Código').fill(codigoItem.toLowerCase());
   await page.getByLabel('Categoría').fill('Pruebas');
-  await page.getByLabel('Nombre', { exact: true }).fill('Libro de navegador');
+  await page.getByLabel('Nombre', { exact: true }).fill(nombreItem);
   await page.getByLabel('ISBN').fill('978-0000000003');
   await page.getByLabel('Autor').fill('Autora E2E');
   await page.getByLabel('Editorial').fill('Editorial E2E');
   await page.getByRole('button', { name: 'Guardar recurso' }).click();
-  await page.getByLabel('Buscar').fill('LIB-E2E');
-  await expect(page.getByRole('cell', { name: 'LIB-E2E' })).toBeVisible();
+  await expect(page.locator('#mensaje')).toContainText('Recurso registrado.');
+  const respuestaBusqueda = page.waitForResponse((respuesta) => {
+    const url = new URL(respuesta.url());
+    return url.pathname === '/api/items' && url.searchParams.get('q') === codigoItem
+      && respuesta.ok();
+  });
+  await page.getByLabel('Buscar').fill(codigoItem);
+  await respuestaBusqueda;
+  await expect(page.getByRole('cell', { name: codigoItem })).toBeVisible();
 
   await page.goto('/prestamos');
   await page.getByLabel('Usuario habilitado').selectOption({
-    label: 'María Prueba (maria.prueba@escuela.edu)',
+    label: `${nombreUsuario} (${correoUsuario})`,
   });
   await page.getByLabel('Recurso disponible').selectOption({
-    label: 'Libro de navegador (LIB-E2E)',
+    label: `${nombreItem} (${codigoItem})`,
   });
   await page.getByRole('button', { name: 'Agregar' }).click();
-  await expect(page.getByRole('list', { name: 'Recursos seleccionados' })).toContainText('LIB-E2E');
+  await expect(page.getByRole('list', { name: 'Recursos seleccionados' })).toContainText(codigoItem);
   await page.getByRole('button', { name: 'Registrar entrega' }).click();
-  const prestamo = page.locator('#lista > li.prestamo').filter({ hasText: 'Libro de navegador' });
-  await expect(prestamo).toContainText('María Prueba');
+  const prestamo = page.locator('#lista > li.prestamo').filter({ hasText: nombreItem });
+  await expect(prestamo).toContainText(nombreUsuario);
   await expect(prestamo).toContainText('límite');
   await prestamo.getByRole('button', { name: 'Registrar devolución' }).click();
   await page.getByRole('button', { name: 'Confirmar devolución' }).click();
