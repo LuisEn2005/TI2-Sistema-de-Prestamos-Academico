@@ -8,6 +8,7 @@ const MANUALES: Estado[] = ['DISPONIBLE', 'EN_MANTENIMIENTO', 'EXTRAVIADO', 'DAD
 let pagina = 1;
 let tipos: TipoDTO[] = [];
 let editando: ItemDTO | null = null;
+let ultimaCarga = 0;
 
 const dialogo = $<HTMLDialogElement>('#dialogo');
 const campoTipo = $<HTMLSelectElement>('#f-tipo');
@@ -66,11 +67,14 @@ function filaDe(item: ItemDTO) {
 }
 
 async function cargar() {
+  const carga = ++ultimaCarga;
   try {
     const datos = await api.get<PaginaItemsDTO>('/api/items', {
       q: $<HTMLInputElement>('#q').value.trim(), tipo: $<HTMLSelectElement>('#tipo').value,
       estado: $<HTMLSelectElement>('#estado').value, pagina, limite: LIMITE,
     });
+    // Una respuesta anterior no debe reemplazar resultados de filtros más recientes.
+    if (carga !== ultimaCarga) return;
     const cuerpo = $('#filas');
     cuerpo.replaceChildren(...datos.items.map(filaDe));
     if (datos.items.length === 0) {
@@ -81,6 +85,7 @@ async function cargar() {
     $<HTMLButtonElement>('#anterior').disabled = datos.pagina <= 1;
     $<HTMLButtonElement>('#siguiente').disabled = datos.pagina >= paginas;
   } catch (error) {
+    if (carga !== ultimaCarga) return;
     avisar(mensajeDe(error), true);
   }
 }
