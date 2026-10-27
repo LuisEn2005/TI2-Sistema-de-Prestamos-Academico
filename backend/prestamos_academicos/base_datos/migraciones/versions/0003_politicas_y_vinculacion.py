@@ -26,20 +26,33 @@ def upgrade():
 
     # Alembic se ejecuta antes que la carga de configuración. La migración debe
     # poder reparar por sí sola una base heredada que todavía no tiene políticas.
+    insertar_politica = sa.text("""
+        INSERT INTO politicas_servicio (
+            rol_aplicable, max_items_simultaneos, dias_prestamo_default,
+            dias_gracia_reserva, tipos_recurso_permitidos
+        )
+        SELECT :rol_nuevo, :maximos, :dias, :gracia, :tipos
+        WHERE NOT EXISTS (
+            SELECT 1 FROM politicas_servicio
+            WHERE rol_aplicable = :rol_existente
+        )
+    """).bindparams(
+        sa.bindparam("rol_nuevo", type_=sa.String(30)),
+        sa.bindparam("rol_existente", type_=sa.String(30)),
+        sa.bindparam("maximos", type_=sa.Integer()),
+        sa.bindparam("dias", type_=sa.Integer()),
+        sa.bindparam("gracia", type_=sa.Integer()),
+        sa.bindparam("tipos", type_=sa.String(200)),
+    )
     for rol, maximos, dias, gracia, tipos in POLITICAS:
-        bind.execute(sa.text("""
-            INSERT INTO politicas_servicio (
-                rol_aplicable, max_items_simultaneos, dias_prestamo_default,
-                dias_gracia_reserva, tipos_recurso_permitidos
-            )
-            SELECT CAST(:rol AS VARCHAR(30)), CAST(:maximos AS INTEGER),
-                   CAST(:dias AS INTEGER), CAST(:gracia AS INTEGER),
-                   CAST(:tipos AS VARCHAR(200))
-            WHERE NOT EXISTS (
-                SELECT 1 FROM politicas_servicio WHERE rol_aplicable = :rol
-            )
-        """), {"rol": rol, "maximos": maximos, "dias": dias,
-               "gracia": gracia, "tipos": tipos})
+        bind.execute(insertar_politica, {
+            "rol_nuevo": rol,
+            "rol_existente": rol,
+            "maximos": maximos,
+            "dias": dias,
+            "gracia": gracia,
+            "tipos": tipos,
+        })
 
     for tabla, rol in (
         ("perfiles_estudiante", "ESTUDIANTE"),
