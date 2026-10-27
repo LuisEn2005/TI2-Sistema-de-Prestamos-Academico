@@ -1,6 +1,6 @@
-import { api } from './api';
-import { ETIQUETA_ESTADO, type Estado, type ItemDTO, type PaginaItemsDTO, type TipoDTO } from './contratos';
-import { $, avisar, el, mensajeDe, opciones, retardo } from './ui';
+import { api } from '../compartido/api';
+import { ETIQUETA_ESTADO, type Estado, type ItemDTO, type PaginaItemsDTO, type TipoDTO } from '../compartido/contratos';
+import { $, avisar, el, mensajeDe, opciones, retardo } from '../compartido/ui';
 
 const LIMITE = 10;
 let pagina = 1;

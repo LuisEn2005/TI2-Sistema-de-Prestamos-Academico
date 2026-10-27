@@ -1,5 +1,5 @@
-import { iniciarSesion } from './sesion';
-import { $, avisar, mensajeDe } from './ui';
+import { iniciarSesion } from '../compartido/sesion';
+import { $, avisar, mensajeDe } from '../compartido/ui';
 
 function destino() {
   const siguiente = new URLSearchParams(window.location.search).get('siguiente') ?? '/';

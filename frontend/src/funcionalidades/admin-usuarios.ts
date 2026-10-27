@@ -1,7 +1,7 @@
-import { api } from './api';
-import { ETIQUETA_ROL, type PerfilDTO, type Rol, type UsuarioDTO } from './contratos';
-import { exigirSesion } from './sesion';
-import { $, avisar, el, mensajeDe, opciones, retardo } from './ui';
+import { api } from '../compartido/api';
+import { ETIQUETA_ROL, type PerfilDTO, type Rol, type UsuarioDTO } from '../compartido/contratos';
+import { exigirSesion } from '../compartido/sesion';
+import { $, avisar, el, mensajeDe, opciones, retardo } from '../compartido/ui';
 
 type CampoPerfil = { clave: string; etiqueta: string; tipo?: 'checkbox' | 'date' };
 const CAMPOS: Record<Rol, CampoPerfil[]> = {
