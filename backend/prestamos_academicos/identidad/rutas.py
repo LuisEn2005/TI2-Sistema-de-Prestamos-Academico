@@ -2,18 +2,87 @@
 
 from flask import Blueprint, g, jsonify, request
 
-from ..identidad import Permiso
-from ..aplicacion import validacion as v
-from ..aplicacion.errores import NoAutenticado
-from .autenticacion import (
+from .dominio import Permiso
+from ..compartido import validacion as v
+from ..compartido import NoAutenticado
+from ..compartido.autenticacion import (
     requiere_autenticacion, requiere_permiso, servicios,
 )
-from .peticion import (
+from ..compartido.http import (
     booleano_consulta, cuerpo_json, id_ruta, parametros_permitidos, texto_consulta,
 )
-from .serializadores import prestatario_a_json, usuario_a_json
 
 bp = Blueprint("identidad", __name__, url_prefix="/api")
+
+
+def _fecha(valor):
+    return valor.isoformat() if valor else None
+
+
+def _politica_id(perfil):
+    return perfil.politicaServicioId.valor if perfil and perfil.politicaServicioId else None
+
+
+def usuario_a_json(usuario, permisos=None):
+    perfiles = {}
+    if usuario.perfilEstudiante:
+        p = usuario.perfilEstudiante
+        perfiles["ESTUDIANTE"] = {
+            "codigo_estudiante": p.codigoEstudiante,
+            "matricula_vigente": p.matriculaVigente,
+            "politica_servicio_id": _politica_id(p),
+        }
+    if usuario.perfilDocente:
+        p = usuario.perfilDocente
+        perfiles["DOCENTE"] = {
+            "codigo_empleado": p.codigoEmpleado,
+            "tipo_contrato": p.tipoContrato,
+            "vinculacion_vigente": p.vinculacionVigente,
+            "politica_servicio_id": _politica_id(p),
+        }
+    if usuario.perfilAdministrativo:
+        p = usuario.perfilAdministrativo
+        perfiles["ADMINISTRATIVO"] = {
+            "codigo_empleado": p.codigoEmpleado,
+            "cargo_administrativo": p.cargoAdministrativo,
+            "vinculacion_vigente": p.vinculacionVigente,
+            "politica_servicio_id": _politica_id(p),
+        }
+    if usuario.perfilGestorInventario:
+        p = usuario.perfilGestorInventario
+        perfiles["GESTOR_INVENTARIO"] = {
+            "codigo_empleado": p.codigoEmpleado,
+            "area_responsable": p.areaResponsable,
+            "fecha_asignacion": _fecha(p.fechaAsignacion),
+        }
+    if usuario.perfilAdministradorSistema:
+        p = usuario.perfilAdministradorSistema
+        perfiles["ADMINISTRADOR_SISTEMA"] = {
+            "codigo_empleado": p.codigoEmpleado,
+            "fecha_asignacion": _fecha(p.fechaAsignacion),
+        }
+    datos = {
+        "id": usuario.id.valor,
+        "nombre": usuario.nombre,
+        "correo": usuario.correoElectronico,
+        "activo": usuario.activo,
+        "roles": [rol.value for rol in usuario.roles],
+        "perfiles": perfiles,
+        "tiene_sancion_activa": usuario.tieneSancionActiva(),
+        "habilitado": usuario.estaHabilitado(),
+        "motivo_no_habilitado": usuario.motivoNoHabilitado(),
+    }
+    if permisos is not None:
+        datos["permisos"] = sorted(Permiso(permiso).value for permiso in permisos)
+    return datos
+
+
+def prestatario_a_json(usuario):
+    return {
+        "id": usuario.id.valor,
+        "nombre": usuario.nombre,
+        "correo": usuario.correoElectronico,
+    }
 
 
 def _usuario_json(usuario):

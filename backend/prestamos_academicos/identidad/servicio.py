@@ -5,13 +5,13 @@ from datetime import date
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from ..identidad import (
+from .dominio import (
     PerfilAdministradorSistema, PerfilAdministrativo, PerfilDocente, PerfilEstudiante,
     PerfilGestorInventario, Permiso, ServicioAutorizacionRol, Usuario,
 )
 from ..compartido import PoliticaServicioId, RolUsuario
-from . import validacion as v
-from .errores import Conflicto, ErrorAplicacion, NoAutenticado, NoEncontrado, SinPermiso
+from ..compartido import validacion as v
+from ..compartido import Conflicto, ErrorAplicacion, NoAutenticado, NoEncontrado, SinPermiso
 
 MIN_PASSWORD = 8
 _HASH_FICTICIO = generate_password_hash("sin-usuario")

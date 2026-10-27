@@ -103,7 +103,7 @@ class MigracionTest(unittest.TestCase):
         with TemporaryDirectory() as d:
             ruta = Path(d) / "fk.sqlite"
             create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k")
-            from prestamos_academicos.infraestructura.persistencia.conexion import crear_fabrica_sesiones
+            from prestamos_academicos.base_datos.conexion import crear_fabrica_sesiones
             motor, _ = crear_fabrica_sesiones(f"sqlite:///{ruta}")
             with motor.connect() as con:
                 self.assertEqual(con.exec_driver_sql("PRAGMA foreign_keys").scalar(), 1)
@@ -111,7 +111,7 @@ class MigracionTest(unittest.TestCase):
     def test_restricciones_rechazan_estado_y_codigo_no_canonicos(self):
         from sqlalchemy import text
         from sqlalchemy.exc import IntegrityError
-        from prestamos_academicos.infraestructura.persistencia.conexion import crear_fabrica_sesiones
+        from prestamos_academicos.base_datos.conexion import crear_fabrica_sesiones
 
         with TemporaryDirectory() as d:
             ruta = Path(d) / "integridad.sqlite"
@@ -129,7 +129,7 @@ class MigracionDelSprint2Test(unittest.TestCase):
     def _base_del_sprint_2(self, ruta):
         from alembic import command
         from sqlalchemy import create_engine, text
-        from prestamos_academicos.infraestructura.persistencia.migraciones import (
+        from prestamos_academicos.base_datos.aplicar_migraciones import (
             configuracion_alembic,
         )
         motor = create_engine(f"sqlite:///{ruta}")
@@ -156,7 +156,7 @@ class MigracionDelSprint2Test(unittest.TestCase):
 
     def test_los_prestamos_existentes_pasan_a_tener_un_detalle(self):
         from sqlalchemy import text
-        from prestamos_academicos.infraestructura.persistencia.conexion import crear_fabrica_sesiones
+        from prestamos_academicos.base_datos.conexion import crear_fabrica_sesiones
         with TemporaryDirectory() as d:
             ruta = Path(d) / "sprint2.sqlite"
             self._base_del_sprint_2(ruta)
@@ -186,7 +186,7 @@ class MigracionDelSprint2Test(unittest.TestCase):
     def test_la_base_impide_dos_prestamos_activos_del_mismo_item(self):
         from sqlalchemy import text
         from sqlalchemy.exc import IntegrityError
-        from prestamos_academicos.infraestructura.persistencia.conexion import crear_fabrica_sesiones
+        from prestamos_academicos.base_datos.conexion import crear_fabrica_sesiones
         with TemporaryDirectory() as d:
             ruta = Path(d) / "exclusividad.sqlite"
             create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k")

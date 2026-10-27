@@ -3,13 +3,43 @@
 from flask import Blueprint, jsonify
 
 from ..identidad import Permiso
-from .autenticacion import requiere_permiso, servicios
-from .peticion import (
+from ..compartido.autenticacion import requiere_permiso, servicios
+from ..compartido.http import (
     cuerpo_json, entero_consulta, id_ruta, parametros_permitidos, texto_consulta,
 )
-from .serializadores import item_a_json, tipo_a_json
 
 bp = Blueprint("inventario", __name__, url_prefix="/api")
+
+
+def item_a_json(item):
+    return {
+        "id": item.id.valor,
+        "codigo": item.codigo,
+        "nombre": item.nombre,
+        "categoria": item.categoria,
+        "tipo": item.TIPO,
+        "estado": item.estado.value,
+        "disponible": item.estaDisponible(),
+        "atributos": {
+            clave: valor for clave, valor in item.atributosEspecificos().items()
+            if valor is not None
+        },
+    }
+
+
+def tipo_a_json(tipo):
+    return {
+        "tipo": tipo.nombre,
+        "etiqueta": tipo.etiqueta,
+        "campos": [
+            {
+                "clave": campo.clave,
+                "etiqueta": campo.etiqueta,
+                "obligatorio": campo.obligatorio,
+            }
+            for campo in tipo.campos
+        ],
+    }
 
 
 @bp.get("/items")

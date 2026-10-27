@@ -3,11 +3,11 @@
 from flask import Blueprint, g, jsonify
 
 from ..identidad import Permiso
-from ..aplicacion import validacion as v
-from ..aplicacion.errores import ErrorAplicacion
-from ..aplicacion.prestamo_service import MAX_ITEMS_POR_PRESTAMO
-from .autenticacion import requiere_autenticacion, requiere_permiso, servicios
-from .peticion import (
+from ..compartido import ErrorAplicacion
+from ..compartido import validacion as v
+from .servicio import MAX_ITEMS_POR_PRESTAMO
+from ..compartido.autenticacion import requiere_autenticacion, requiere_permiso, servicios
+from ..compartido.http import (
     cuerpo_json, entero_consulta, id_positivo, id_ruta, parametros_permitidos, texto_consulta,
 )
 

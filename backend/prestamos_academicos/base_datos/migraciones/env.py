@@ -5,8 +5,8 @@ import os
 from alembic import context
 from sqlalchemy import create_engine
 
-from prestamos_academicos.infraestructura.persistencia import modelos  # noqa: F401
-from prestamos_academicos.infraestructura.persistencia.base import Base
+from prestamos_academicos.base_datos import modelos  # noqa: F401
+from prestamos_academicos.base_datos.base import Base
 
 config = context.config
 target_metadata = Base.metadata

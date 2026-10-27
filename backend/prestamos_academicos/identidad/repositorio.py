@@ -1,9 +1,9 @@
 from sqlalchemy import func, or_, select
 
-from ....identidad import IUsuarioRepository
-from ....compartido import RolUsuario
-from .. import mapeador
-from ..modelos import (
+from .dominio import IUsuarioRepository
+from ..compartido import RolUsuario
+from ..base_datos import mapeadores
+from ..base_datos.modelos import (
     PerfilAdministradorSistemaDB, PerfilAdministrativoDB, PerfilDocenteDB,
     PerfilEstudianteDB, PerfilGestorInventarioDB, UsuarioDB,
 )
@@ -45,7 +45,7 @@ class SqlAlchemyUsuarioRepository(IUsuarioRepository):
 
     def _a_dominio(self, filas):
         perfiles = self._perfiles_de([f.id for f in filas])
-        return [mapeador.usuario_a_dominio(f, perfiles[f.id]) for f in filas]
+        return [mapeadores.usuario_a_dominio(f, perfiles[f.id]) for f in filas]
 
     def find_by_id(self, usuario_id):
         fila = self.sesion.get(UsuarioDB, usuario_id)

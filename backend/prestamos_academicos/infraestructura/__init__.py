@@ -1,1 +1,0 @@
-"""Adaptadores externos del backend."""

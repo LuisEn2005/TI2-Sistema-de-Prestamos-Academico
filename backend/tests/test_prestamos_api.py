@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta, timezone
 
-from prestamos_academicos.infraestructura.persistencia.modelos import ModalidadDB
+from prestamos_academicos.base_datos.modelos import ModalidadDB
 
 from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, IN_SITU, ApiBase
 
