@@ -13,11 +13,11 @@ from ..configuracion_servicio import Modalidad, PoliticaServicio
 from ..compartido import ErrorDominio
 from ..identidad import Permiso, Usuario
 from ..inventario import EstadoItem
-from ..prestamos import CondicionDevolucion, EstadoPrestamo, Prestamo
+from .dominio import CondicionDevolucion, EstadoPrestamo, Prestamo
 from ..compartido import ItemId, RolUsuario, UsuarioId
-from . import validacion as v
-from .errores import Conflicto, ErrorAplicacion, NoEncontrado, SinPermiso
-from .reloj import Reloj
+from ..compartido import validacion as v
+from ..compartido import Conflicto, ErrorAplicacion, NoEncontrado, SinPermiso
+from ..compartido.reloj import Reloj
 
 MAX_ITEMS_POR_PRESTAMO = 50
 MAX_OBSERVACION = 300

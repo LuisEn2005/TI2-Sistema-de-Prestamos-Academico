@@ -1,8 +1,8 @@
 from sqlalchemy import func, select
 
-from ....prestamos import IPrestamoRepository
-from .. import mapeador
-from ..modelos import DetallePrestamoDB, PrestamoDB
+from .dominio import IPrestamoRepository
+from ..base_datos import mapeadores
+from ..base_datos.modelos import DetallePrestamoDB, PrestamoDB
 
 
 class SqlAlchemyPrestamoRepository(IPrestamoRepository):
@@ -17,7 +17,7 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
         for d in self.sesion.scalars(
                 select(DetallePrestamoDB).where(DetallePrestamoDB.prestamo_id.in_([f.id for f in filas]))):
             detalles.setdefault(d.prestamo_id, []).append(d)
-        return [mapeador.prestamo_a_dominio(f, detalles.get(f.id, [])) for f in filas]
+        return [mapeadores.prestamo_a_dominio(f, detalles.get(f.id, [])) for f in filas]
 
     def find_by_id(self, prestamo_id):
         fila = self.sesion.get(PrestamoDB, prestamo_id)

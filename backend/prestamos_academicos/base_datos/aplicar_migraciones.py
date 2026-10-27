@@ -5,7 +5,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 
-DIRECTORIO = Path(__file__).resolve().parents[1] / "migraciones"
+DIRECTORIO = Path(__file__).resolve().parent / "migraciones"
 
 
 def configuracion_alembic():

@@ -3,10 +3,10 @@
 from sqlalchemy import update
 from werkzeug.security import check_password_hash
 
-from ...aplicacion.configuracion_service import ConfiguracionApplicationService
-from ...aplicacion.identidad_service import IdentidadApplicationService
-from ...aplicacion.inventario_service import InventarioApplicationService
-from ...compartido import RolUsuario
+from ..configuracion_servicio.servicio import ConfiguracionApplicationService
+from ..identidad.servicio import IdentidadApplicationService
+from ..inventario.servicio import InventarioApplicationService
+from ..compartido import RolUsuario
 from .modelos import UsuarioDB
 from .unidad_trabajo import SqlAlchemyUnitOfWork
 

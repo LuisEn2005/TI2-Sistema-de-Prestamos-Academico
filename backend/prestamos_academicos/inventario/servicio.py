@@ -3,11 +3,9 @@
 from sqlalchemy.exc import IntegrityError
 
 from ..compartido import ErrorDominio
-from ..inventario import EstadoItem
-from ..inventario import ESTADOS_DE_FLUJO
-from ..inventario import listar_tipos, obtener_tipo
-from . import validacion as v
-from .errores import Conflicto, ErrorAplicacion, NoEncontrado
+from .dominio import EstadoItem, ESTADOS_DE_FLUJO, listar_tipos, obtener_tipo
+from ..compartido import validacion as v
+from ..compartido import Conflicto, ErrorAplicacion, NoEncontrado
 
 LIMITE_MAXIMO = 100
 

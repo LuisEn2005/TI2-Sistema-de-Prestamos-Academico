@@ -8,18 +8,17 @@ from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
 from .configuracion import cargar_configuracion
-from .api.autenticacion import EmisorTokens, LimitadorIntentos
-from .aplicacion.configuracion_service import ConfiguracionApplicationService
-from .aplicacion.errores import ErrorAplicacion
-from .aplicacion.identidad_service import IdentidadApplicationService
-from .aplicacion.inventario_service import InventarioApplicationService
-from .aplicacion.prestamo_service import PrestamoApplicationService
-from .aplicacion.reloj import Reloj
-from .compartido import ErrorDominio
-from .infraestructura.persistencia.conexion import crear_fabrica_sesiones
-from .infraestructura.persistencia.datos_demo import preparar_datos
-from .infraestructura.persistencia.migraciones import aplicar_migraciones
-from .infraestructura.persistencia.unidad_trabajo import SqlAlchemyUnitOfWork
+from .compartido import ErrorAplicacion, ErrorDominio
+from .compartido.autenticacion import EmisorTokens, LimitadorIntentos
+from .compartido.reloj import Reloj
+from .configuracion_servicio.servicio import ConfiguracionApplicationService
+from .identidad.servicio import IdentidadApplicationService
+from .inventario.servicio import InventarioApplicationService
+from .prestamos.servicio import PrestamoApplicationService
+from .base_datos.conexion import crear_fabrica_sesiones
+from .base_datos.datos_demo import preparar_datos
+from .base_datos.aplicar_migraciones import aplicar_migraciones
+from .base_datos.unidad_trabajo import SqlAlchemyUnitOfWork
 
 log = logging.getLogger(__name__)
 
@@ -62,9 +61,16 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
         admin_password=config.admin_password,
     )
 
-    from .api import configuracion, identidad as api_identidad, inventario, prestamos, salud
-    for modulo in (salud, api_identidad, inventario, prestamos, configuracion):
+    from .configuracion_servicio import rutas as rutas_configuracion
+    from .identidad import rutas as rutas_identidad
+    from .inventario import rutas as rutas_inventario
+    from .prestamos import rutas as rutas_prestamos
+    for modulo in (rutas_identidad, rutas_inventario, rutas_prestamos, rutas_configuracion):
         app.register_blueprint(modulo.bp)
+
+    @app.get("/api/salud")
+    def salud():
+        return {"estado": "ok"}
 
     @app.errorhandler(ErrorAplicacion)
     def error_aplicacion(error):

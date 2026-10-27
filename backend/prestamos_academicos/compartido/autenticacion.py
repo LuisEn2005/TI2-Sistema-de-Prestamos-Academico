@@ -6,7 +6,7 @@ from functools import wraps
 from flask import current_app, g, request
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
-from ..aplicacion.errores import ErrorAplicacion, NoAutenticado, SinPermiso
+from .errores import ErrorAplicacion, NoAutenticado, SinPermiso
 
 DURACION_TOKEN_SEGUNDOS = 8 * 3600
 

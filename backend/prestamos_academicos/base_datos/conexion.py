@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from ...configuracion import cargar_configuracion
+from ..configuracion import cargar_configuracion
 
 
 def _activar_claves_foraneas_sqlite(motor):

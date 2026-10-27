@@ -20,4 +20,4 @@ dependencies = [
 include = ["prestamos_academicos*"]
 
 [tool.setuptools.package-data]
-"prestamos_academicos.infraestructura.migraciones" = ["script.py.mako"]
+"prestamos_academicos.base_datos.migraciones" = ["script.py.mako"]

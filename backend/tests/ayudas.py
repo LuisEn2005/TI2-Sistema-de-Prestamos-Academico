@@ -3,7 +3,7 @@
 import unittest
 from datetime import datetime, timezone
 
-from prestamos_academicos.aplicacion.reloj import Reloj
+from prestamos_academicos.compartido.reloj import Reloj
 from prestamos_academicos.web import create_app
 
 CLAVE = "demo1234"

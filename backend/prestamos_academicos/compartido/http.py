@@ -2,7 +2,7 @@
 
 from flask import request
 
-from ..aplicacion.errores import ErrorAplicacion
+from .errores import ErrorAplicacion
 
 MAX_ID = 9_223_372_036_854_775_807
 
