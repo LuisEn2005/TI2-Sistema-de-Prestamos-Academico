@@ -4,7 +4,7 @@ Sistema para administrar recursos de la Escuela de Computación: catálogo, rese
 
 ## Estado actual
 
-Los **Sprints 1, 2 y 3 están terminados**. El Sprint 1 entregó el MVP de préstamo y devolución. El [Sprint 2](docs/sprint_02.md) lo convirtió en un sistema con **identidad e inventario administrables**: inicio de sesión, roles y permisos, registro de usuarios con perfiles y políticas de servicio, catálogo público con búsqueda y filtros, y gestión de recursos por tipo y estado. El [Sprint 3](docs/sprint_03.md) completó los **préstamos**: varios ítems por entrega, modalidades en sala y externa, fecha límite según la política del perfil, cupos por perfil y devolución con la condición de cada ítem. El proyecto está en torno al **41 % del alcance total** (método de cálculo en [docs/sprint_03.md](docs/sprint_03.md#avance-del-proyecto)). Los Sprints 4–6 siguen siendo una **planificación**: reservas, renovaciones, sanciones, políticas editables y auditoría **no están implementados**.
+Los **Sprints 1, 2 y 3 están terminados**. El Sprint 1 entregó el MVP de préstamo y devolución. El [Sprint 2](docs/sprints/sprint-02.md) lo convirtió en un sistema con **identidad e inventario administrables**: inicio de sesión, roles y permisos, registro de usuarios con perfiles y políticas de servicio, catálogo público con búsqueda y filtros, y gestión de recursos por tipo y estado. El [Sprint 3](docs/sprints/sprint-03.md) completó los **préstamos**: varios ítems por entrega, modalidades en sala y externa, fecha límite según la política del perfil, cupos por perfil y devolución con la condición de cada ítem. El proyecto está en torno al **41 % del alcance total** (método de cálculo en el documento del Sprint 3). Los Sprints 4–6 siguen siendo una **planificación**: reservas, renovaciones, sanciones, políticas editables y auditoría **no están implementados**.
 
 ## Estructura del repositorio
 
@@ -13,23 +13,24 @@ backend/
   pyproject.toml                    Dependencias y metadatos Python
   prestamos_academicos/
     web.py                          Factoría de la aplicación Flask
-    api/                            Blueprints Flask por contexto y autenticación
-    aplicacion/                     Servicios de aplicación e IUnitOfWork
-    dominio/                        Entidades y reglas por contexto
-      identidad/ inventario/ reservas/ prestamos/
-      sanciones/ configuracion/ auditoria/ shared_kernel/
-    infraestructura/
-      persistencia/                 Modelos ORM, repositorios, mapeador, unidad de trabajo
-      migraciones/                  Migraciones de esquema (Alembic)
+    configuracion.py                Variables de entorno y carga de .env
+    identidad/                      Dominio, servicio, repositorio y rutas de usuarios
+    inventario/                     Dominio, servicio, repositorio y rutas del catálogo
+    prestamos/                      Dominio, servicio, repositorio y rutas de préstamos
+    configuracion_servicio/         Políticas y modalidades
+    reservas/ sanciones/ auditoria/ Dominio planificado para Sprints 4–6
+    compartido/                     Autenticación, validación, errores y reloj
+    base_datos/                     SQLAlchemy, unidad de trabajo y migraciones
   alembic.ini                       Configuración de la CLI de migraciones
   tests/                            Pruebas del backend (dominio, API, migraciones)
 frontend/
   package.json                      Dependencia y scripts de Astro
   astro.config.mjs                  Proxy de /api para desarrollo
   src/pages/                        Catálogo, login, préstamos, cuenta y administración
-  src/scripts/                      ApiClient, sesión y lógica de cada página
+  src/compartido/                   Cliente API, sesión, contratos y utilidades
+  src/funcionalidades/              Lógica de identidad, catálogo y préstamos
   tests/e2e/                        Recorridos automatizados con Playwright
-docs/                                Análisis y modelo de dominio
+docs/                                Requisitos, arquitectura y evidencia por sprint
 README.md                            Guía y plan del proyecto
 ```
 
@@ -37,7 +38,7 @@ El frontend consume respuestas JSON de `/api`. En desarrollo, Astro redirige esa
 
 ## Plan de funcionalidades por sprint
 
-La secuencia parte del [Sprint 1 implementado](docs/mvp_01.md) y termina con la entrega integral del Sprint 6. **BE** indica backend Flask, dominio y SQLAlchemy; **FE** indica interfaz Astro. Los códigos RF remiten al [análisis de requisitos](docs/analisis_requisitos_modelo_dominio.md). El cierre de cada requisito y los criterios de aceptación figuran en el [plan detallado](docs/plan_sprints.md).
+La secuencia parte del [Sprint 1 implementado](docs/sprints/sprint-01.md) y termina con la entrega integral del Sprint 6. **BE** indica backend Flask, dominio y SQLAlchemy; **FE** indica interfaz Astro. Los códigos RF remiten a los [requisitos](docs/requisitos.md). El cierre de cada requisito y los criterios de aceptación figuran en el [plan detallado](docs/sprints/plan.md).
 
 | Sprint y estado | Módulos y alcance | Backend (BE) | Frontend (FE) |
 | --- | --- | --- | --- |
@@ -57,13 +58,14 @@ Se requiere Python 3.10 o superior y Node.js compatible con la versión de Astro
 **Backend** (en una terminal):
 
 ```bash
+cp .env.example .env
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e .
-DATOS_DEMO=1 .venv/bin/python -m flask --app prestamos_academicos.web run --debug
+.venv/bin/python -m flask --app prestamos_academicos.web run --debug
 ```
 
-La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación **aplica las migraciones de Alembic** (crea el esquema o actualiza una base del Sprint 1) y garantiza las políticas de servicio base. El comando anterior activa los datos ficticios para pruebas. Con la base SQLite predeterminada se usa `backend/instance/prestamos.sqlite`.
+Edite `.env` antes de iniciar. Para una demostración use `DATOS_DEMO=true`; para una instalación limpia use `DATOS_DEMO=false` y cambie las credenciales iniciales. La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación aplica las migraciones de Alembic y garantiza las políticas de servicio base. Con la base SQLite predeterminada se usa `backend/instance/prestamos.sqlite`.
 
 | Variable | Uso |
 | --- | --- |
@@ -72,6 +74,7 @@ La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación
 | `DATOS_DEMO` | `0` por defecto: sin usuarios ni recursos ficticios. Use `1` únicamente para pruebas. |
 | `ZONA_HORARIA` | Zona en la que se calculan las fechas límite y los atrasos. Por defecto `America/Lima`. |
 | `ADMIN_CORREO`, `ADMIN_PASSWORD` | En una base limpia son obligatorios juntos para crear el primer administrador. Después pueden omitirse; la cuenta ya existe en la base. |
+| `API_PROXY_TARGET` | Dirección de Flask usada por el proxy de Astro. Por defecto `http://127.0.0.1:5000`. |
 
 **Cuentas de demostración** (contraseña `demo1234`; solo con `DATOS_DEMO=1`): `admin@escuela.edu` (administrador), `luis.ramos@escuela.edu` (docente y gestor de inventario) y `jesus.perez@escuela.edu` (estudiante). **Cámbielas o desactive la demostración fuera del desarrollo.**
 
@@ -121,13 +124,12 @@ La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) eje
 
 ## Documentación de referencia
 
-- [Análisis de requisitos y modelo de dominio](docs/analisis_requisitos_modelo_dominio.md)
-- [Versión explicativa del análisis](docs/analisis_requisitos_modelo_dominio_humanizado.md)
-- [Distribución de los contextos del dominio](docs/estructura_dominio.md)
-- [Implementación y alcance del primer MVP](docs/mvp_01.md)
-- [Sprint 2: identidad e inventario, API y avance](docs/sprint_02.md)
-- [Sprint 3: préstamos completos, reglas, API y avance](docs/sprint_03.md)
-- [Plan y cierre de requisitos por sprint](docs/plan_sprints.md)
+- [Requisitos y modelo de dominio](docs/requisitos.md)
+- [Arquitectura, flujo y base de datos](docs/arquitectura.md)
+- [Implementación y alcance del primer MVP](docs/sprints/sprint-01.md)
+- [Sprint 2: identidad e inventario](docs/sprints/sprint-02.md)
+- [Sprint 3: préstamos completos](docs/sprints/sprint-03.md)
+- [Plan y cierre de requisitos por sprint](docs/sprints/plan.md)
 
 ## Recorridos disponibles
 
@@ -136,4 +138,4 @@ La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) eje
 - **Gestor de inventario:** registrar y editar recursos, cambiar su estado, entregar varios recursos a la vez bajo una modalidad (con plazo y cupo a la vista) y registrar devoluciones indicando la condición de cada ítem. Puede consultar únicamente los prestatarios habilitados necesarios para una entrega.
 - **Administrador del sistema:** gestionar usuarios, perfiles y accesos, además de realizar las operaciones de inventario y préstamos.
 
-Detalle de endpoints, reglas y límites en [docs/sprint_02.md](docs/sprint_02.md) y [docs/sprint_03.md](docs/sprint_03.md); el MVP original se describe en [docs/mvp_01.md](docs/mvp_01.md).
+Detalle de endpoints, reglas y límites en los documentos del [Sprint 2](docs/sprints/sprint-02.md) y [Sprint 3](docs/sprints/sprint-03.md); el [Sprint 1](docs/sprints/sprint-01.md) conserva la evidencia del MVP original.

@@ -1,6 +1,6 @@
 # Sprint 1 — Primer MVP: préstamo y devolución de recursos
 
-> **Nota:** este documento describe el MVP original. El [Sprint 2](sprint_02.md) sustituyó sus tablas y endpoints (por ejemplo `/api/recursos` → `/api/items`, `recurso_id` → `item_id`) y añadió autenticación; las rutas de préstamo ahora requieren sesión.
+> **Nota:** este documento describe el MVP original. El [Sprint 2](sprint-02.md) sustituyó sus tablas y endpoints (por ejemplo `/api/recursos` → `/api/items`, `recurso_id` → `item_id`) y añadió autenticación; las rutas de préstamo ahora requieren sesión.
 
 ## Objetivo y resultado
 
@@ -48,7 +48,7 @@ Estas operaciones se pueden completar desde una sola página. La interfaz actual
 
 ## Recorrido de demostración
 
-1. Iniciar el backend y el frontend con los comandos del [README principal](../README.md).
+1. Iniciar el backend y el frontend con los comandos del [README principal](../../README.md).
 2. Abrir `http://localhost:4321` y observar los tres recursos disponibles.
 3. Elegir un usuario y un recurso; registrar el préstamo. El recurso pasa a «Prestado» y aparece en la lista de préstamos activos.
 4. Pulsar «Devolver». El préstamo deja de aparecer como activo y el recurso vuelve a estar disponible.
@@ -62,4 +62,4 @@ Este prototipo **no incluye** autenticación, gestión de usuarios o inventario,
 
 ## Continuidad hacia el sistema completo
 
-El [plan de Sprints 2–6](plan_sprints.md) asigna los requisitos pendientes y sus criterios de cierre. El Sprint 2 reemplazará los datos precargados por gestión real de usuarios y recursos. El Sprint 6 entregará el sistema completo con RF01–RF18 verificados. Las tareas correspondientes se registrarán en Jira cuando se prepare la planificación del equipo; este documento describe únicamente el alcance implementado y comprobado del Sprint 1.
+El [plan de Sprints 2–6](plan.md) asigna los requisitos pendientes y sus criterios de cierre. El Sprint 2 reemplazó los datos precargados por gestión real de usuarios y recursos. El Sprint 6 entregará el sistema completo con RF01–RF18 verificados. Las tareas correspondientes se registrarán en Jira cuando se prepare la planificación del equipo; este documento describe únicamente el alcance implementado y comprobado del Sprint 1.
