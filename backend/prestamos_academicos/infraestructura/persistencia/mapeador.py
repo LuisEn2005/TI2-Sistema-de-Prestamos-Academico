@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from ...dominio.configuracion import Modalidad, PoliticaServicio
-from ...dominio.identidad import (
+from ...configuracion_servicio import Modalidad, PoliticaServicio
+from ...identidad import (
     PerfilAdministradorSistema, PerfilAdministrativo, PerfilDocente, PerfilEstudiante,
     PerfilGestorInventario, Usuario,
 )
-from ...dominio.inventario import EstadoItem
-from ...dominio.inventario.TiposItem import obtener_tipo
-from ...dominio.prestamos import (
+from ...inventario import EstadoItem
+from ...inventario import obtener_tipo
+from ...prestamos import (
     CondicionDevolucion, DetallePrestamo, EstadoPrestamo, ModalidadSnapshot, Prestamo,
 )
-from ...dominio.shared_kernel import (
+from ...compartido import (
     ItemId, ModalidadId, PoliticaServicioId, PrestamoId, RolUsuario, UsuarioId,
 )
 from .modelos import (

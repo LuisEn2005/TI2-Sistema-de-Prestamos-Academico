@@ -2,7 +2,7 @@
 
 from flask import Blueprint, g, jsonify, request
 
-from ..dominio.identidad import Permiso
+from ..identidad import Permiso
 from ..aplicacion import validacion as v
 from ..aplicacion.errores import NoAutenticado
 from .autenticacion import (

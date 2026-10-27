@@ -5,11 +5,11 @@ from datetime import date
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from ..dominio.identidad import (
+from ..identidad import (
     PerfilAdministradorSistema, PerfilAdministrativo, PerfilDocente, PerfilEstudiante,
     PerfilGestorInventario, Permiso, ServicioAutorizacionRol, Usuario,
 )
-from ..dominio.shared_kernel import PoliticaServicioId, RolUsuario
+from ..compartido import PoliticaServicioId, RolUsuario
 from . import validacion as v
 from .errores import Conflicto, ErrorAplicacion, NoAutenticado, NoEncontrado, SinPermiso
 

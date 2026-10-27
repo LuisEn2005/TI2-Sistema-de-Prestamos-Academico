@@ -2,7 +2,7 @@
 
 from flask import Blueprint, g, jsonify
 
-from ..dominio.identidad import Permiso
+from ..identidad import Permiso
 from ..aplicacion import validacion as v
 from ..aplicacion.errores import ErrorAplicacion
 from ..aplicacion.prestamo_service import MAX_ITEMS_POR_PRESTAMO

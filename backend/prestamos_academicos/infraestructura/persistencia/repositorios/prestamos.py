@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 
-from ....dominio.prestamos import IPrestamoRepository
+from ....prestamos import IPrestamoRepository
 from .. import mapeador
 from ..modelos import DetallePrestamoDB, PrestamoDB
 

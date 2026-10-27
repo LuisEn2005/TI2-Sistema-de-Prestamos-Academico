@@ -170,8 +170,8 @@ class AdministracionInventarioTest(ApiBase):
         from dataclasses import dataclass
         from typing import Optional
 
-        from prestamos_academicos.dominio.inventario import Item
-        from prestamos_academicos.dominio.inventario import TiposItem as t
+        from prestamos_academicos.inventario import Item
+        from prestamos_academicos.inventario import dominio as t
 
         @dataclass
         class Dron(Item):

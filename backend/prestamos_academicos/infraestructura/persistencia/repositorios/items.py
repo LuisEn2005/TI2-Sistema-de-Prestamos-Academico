@@ -1,6 +1,6 @@
 from sqlalchemy import func, select, update
 
-from ....dominio.inventario import EstadoItem, IItemRepository
+from ....inventario import EstadoItem, IItemRepository
 from .. import mapeador
 from ..modelos import ItemDB
 

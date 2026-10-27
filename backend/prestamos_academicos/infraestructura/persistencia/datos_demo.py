@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash
 from ...aplicacion.configuracion_service import ConfiguracionApplicationService
 from ...aplicacion.identidad_service import IdentidadApplicationService
 from ...aplicacion.inventario_service import InventarioApplicationService
-from ...dominio.shared_kernel import RolUsuario
+from ...compartido import RolUsuario
 from .modelos import UsuarioDB
 from .unidad_trabajo import SqlAlchemyUnitOfWork
 

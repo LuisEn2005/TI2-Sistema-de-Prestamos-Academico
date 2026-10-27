@@ -1,6 +1,6 @@
 """Conversión de objetos de dominio a JSON (contratos de la API)."""
 
-from ..dominio.identidad import Permiso
+from ..identidad import Permiso
 
 
 def _fecha(valor):

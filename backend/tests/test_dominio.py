@@ -3,19 +3,18 @@
 import unittest
 from datetime import date, datetime, timezone
 
-from prestamos_academicos.dominio.errores import ErrorDominio, TransicionInvalida
-from prestamos_academicos.dominio.identidad import (
+from prestamos_academicos.compartido import (
+    ErrorDominio, ItemId, ModalidadId, PoliticaServicioId, RolUsuario,
+    TransicionInvalida, UsuarioId,
+)
+from prestamos_academicos.identidad import (
     PerfilDocente, PerfilEstudiante, PerfilGestorInventario, Permiso, ServicioAutorizacionRol,
     Usuario,
 )
-from prestamos_academicos.dominio.inventario import EstadoItem, Libro
-from prestamos_academicos.dominio.inventario.TiposItem import listar_tipos, obtener_tipo
-from prestamos_academicos.dominio.configuracion import Modalidad, PoliticaServicio
-from prestamos_academicos.dominio.prestamos import (
+from prestamos_academicos.inventario import EstadoItem, Libro, listar_tipos, obtener_tipo
+from prestamos_academicos.configuracion_servicio import Modalidad, PoliticaServicio
+from prestamos_academicos.prestamos import (
     CondicionDevolucion, EstadoPrestamo, ModalidadSnapshot, Prestamo, PrestamoDevueltoTarde,
-)
-from prestamos_academicos.dominio.shared_kernel import (
-    ItemId, ModalidadId, PoliticaServicioId, RolUsuario, UsuarioId,
 )
 
 

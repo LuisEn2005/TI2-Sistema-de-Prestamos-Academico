@@ -1,7 +1,7 @@
 """Casos de uso del contexto Configuración (Sprint 2: consulta y valores base)."""
 
-from ..dominio.configuracion import Modalidad, PoliticaServicio
-from ..dominio.shared_kernel import RolUsuario
+from ..configuracion_servicio import Modalidad, PoliticaServicio
+from ..compartido import RolUsuario
 
 # Políticas iniciales por perfil (RF03). El gestor no presta para sí mismo.
 POLITICAS_BASE = {
