@@ -1,13 +1,13 @@
 """Factoría de la aplicación Flask."""
 
 import logging
-import os
 import secrets
 from types import SimpleNamespace
 
 from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
+from .configuracion import cargar_configuracion
 from .api.autenticacion import EmisorTokens, LimitadorIntentos
 from .aplicacion.configuracion_service import ConfiguracionApplicationService
 from .aplicacion.errores import ErrorAplicacion
@@ -24,23 +24,20 @@ from .infraestructura.persistencia.unidad_trabajo import SqlAlchemyUnitOfWork
 log = logging.getLogger(__name__)
 
 
-def _bandera(valor, defecto):
-    if valor is None:
-        return defecto
-    return str(valor).strip().lower() not in ("0", "false", "no", "")
-
-
 def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=None):
     app = Flask(__name__)
+    config = cargar_configuracion(
+        database_url=database_url, datos_demo=datos_demo, secret_key=secret_key,
+    )
 
-    clave = secret_key or os.environ.get("SECRET_KEY")
+    clave = config.secret_key
     if not clave:
         clave = secrets.token_hex(32)
         log.warning("SECRET_KEY no definida: se usa una clave temporal; las sesiones "
                     "se invalidarán al reiniciar.")
     app.config["SECRET_KEY"] = clave
 
-    motor, fabrica_sesiones = crear_fabrica_sesiones(database_url)
+    motor, fabrica_sesiones = crear_fabrica_sesiones(config.database_url)
     aplicar_migraciones(motor)
     app.extensions["fabrica_sesiones"] = fabrica_sesiones
 
@@ -51,7 +48,8 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
     app.extensions["servicios"] = SimpleNamespace(
         identidad=identidad,
         inventario=InventarioApplicationService(fabrica_uow),
-        prestamos=PrestamoApplicationService(fabrica_uow, identidad, reloj or Reloj()),
+        prestamos=PrestamoApplicationService(
+            fabrica_uow, identidad, reloj or Reloj(config.zona_horaria)),
         configuracion=ConfiguracionApplicationService(fabrica_uow),
         tokens=EmisorTokens(clave),
         limitador=LimitadorIntentos(),
@@ -59,10 +57,9 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
 
     preparar_datos(
         fabrica_sesiones,
-        datos_demo=_bandera(
-            datos_demo if datos_demo is not None else os.environ.get("DATOS_DEMO"), False),
-        admin_correo=os.environ.get("ADMIN_CORREO"),
-        admin_password=os.environ.get("ADMIN_PASSWORD"),
+        datos_demo=config.datos_demo,
+        admin_correo=config.admin_correo,
+        admin_password=config.admin_password,
     )
 
     from .api import configuracion, identidad as api_identidad, inventario, prestamos, salud

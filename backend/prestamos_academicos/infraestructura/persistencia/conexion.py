@@ -1,10 +1,11 @@
 """Motor y sesiones de SQLAlchemy."""
 
-import os
 from pathlib import Path
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+
+from ...configuracion import cargar_configuracion
 
 
 def _activar_claves_foraneas_sqlite(motor):
@@ -16,7 +17,7 @@ def _activar_claves_foraneas_sqlite(motor):
 
 
 def crear_fabrica_sesiones(database_url=None):
-    url = database_url or os.environ.get("DATABASE_URL")
+    url = cargar_configuracion(database_url=database_url).database_url
     if not url:
         ruta = Path(__file__).resolve().parents[3] / "instance" / "prestamos.sqlite"
         ruta.parent.mkdir(parents=True, exist_ok=True)
