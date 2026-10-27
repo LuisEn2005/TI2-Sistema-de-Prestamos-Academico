@@ -210,16 +210,14 @@ classDiagram
 
 ### 6.3 Notas sobre el modelo
 
-- **Item como jerarquía**: se recomienda **herencia de tabla única o joined-table inheritance en SQLAlchemy** (`polymorphic_identity`) para `Libro`, `Equipo`, `Material` — así el inventario es uno solo, pero cada tipo conserva sus atributos propios.
+- **Item como jerarquía**: el dominio conserva las clases `Libro`, `Equipo`, `Material` y `Mobiliario`; SQLAlchemy las persiste en una tabla común y guarda los atributos específicos como JSON. Así el inventario sigue siendo único y extensible sin alterar el esquema para cada tipo.
 - **DetallePrestamo** existe para soportar préstamos de múltiples ítems en una sola transacción sin duplicar lógica de fechas/estado en `Prestamo`.
 - **Sancion** se vincula opcionalmente a un `Prestamo` (para las automáticas por retraso) pero puede existir sin préstamo asociado (para pérdidas o daños reportados aparte).
 - **HistorialMovimiento** actúa como bitácora transversal: cualquier entidad relevante (préstamo, reserva, sanción, ítem) puede generar un evento, cubriendo RF17 y RNF03 sin necesidad de tablas de auditoría separadas por entidad.
-- **PoliticaServicio** desacopla las reglas de negocio (límites, plazos) del código, cumpliendo RF18: cambiar un límite es una actualización de datos, no de lógica.
+- **PoliticaServicio** desacopla límites y plazos del código. Su aplicación ya funciona; la interfaz para editarlos y cerrar RF18 está planificada para el Sprint 5.
 
 ---
 
-## 7. Próximos pasos sugeridos
+## 7. Estado de implementación
 
-1. Validar este análisis con el docente/equipo antes de pasar a diagramas de casos de uso detallados o diagrama entidad-relación físico.
-2. A partir de este modelo de dominio, derivar el esquema de tablas PostgreSQL y los modelos SQLAlchemy (`Base`, mixins de auditoría, `relationship()`).
-3. Definir los endpoints Flask (REST) que consumirá el frontend Astro, agrupados por recurso: `/usuarios`, `/items`, `/reservas`, `/prestamos`, `/sanciones`.
+Los Sprints 1–3 implementan identidad, inventario y préstamos completos. El esquema SQLAlchemy y las migraciones `0001`–`0007` funcionan con SQLite y PostgreSQL; Astro consume los endpoints Flask de usuarios, ítems, políticas, modalidades y préstamos. Reservas y renovaciones corresponden al Sprint 4, sanciones y políticas editables al Sprint 5, y auditoría y cierre integral al Sprint 6. El detalle de aceptación se mantiene en el [plan de sprints](sprints/plan.md).
