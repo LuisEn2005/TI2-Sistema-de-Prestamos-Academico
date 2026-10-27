@@ -1,11 +1,11 @@
-import { api } from './api';
+import { api } from '../compartido/api';
 import {
   ETIQUETA_CONDICION, ETIQUETA_ROL, type CondicionDevolucion, type CondicionesPrestamoDTO,
   type ItemDTO, type ModalidadDTO, type PaginaItemsDTO, type PaginaPrestamosDTO, type PrestamoDTO,
   type Rol, type RolPrestatario,
-} from './contratos';
-import { exigirSesion, tienePermiso } from './sesion';
-import { $, avisar, el, fechaLegible, mensajeDe, opciones, retardo, soloFecha } from './ui';
+} from '../compartido/contratos';
+import { exigirSesion, tienePermiso } from '../compartido/sesion';
+import { $, avisar, el, fechaLegible, mensajeDe, opciones, retardo, soloFecha } from '../compartido/ui';
 
 const LIMITE = 15;
 const usuario = await exigirSesion();

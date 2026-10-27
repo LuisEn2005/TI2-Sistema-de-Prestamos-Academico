@@ -1,7 +1,7 @@
-import { api } from './api';
-import { ETIQUETA_ESTADO, type Estado, type ItemDTO, type PaginaItemsDTO, type TipoDTO } from './contratos';
-import { exigirSesion } from './sesion';
-import { $, avisar, el, mensajeDe, opciones, retardo } from './ui';
+import { api } from '../compartido/api';
+import { ETIQUETA_ESTADO, type Estado, type ItemDTO, type PaginaItemsDTO, type TipoDTO } from '../compartido/contratos';
+import { exigirSesion } from '../compartido/sesion';
+import { $, avisar, el, mensajeDe, opciones, retardo } from '../compartido/ui';
 
 const LIMITE = 15;
 const MANUALES: Estado[] = ['DISPONIBLE', 'EN_MANTENIMIENTO', 'EXTRAVIADO', 'DADO_DE_BAJA'];

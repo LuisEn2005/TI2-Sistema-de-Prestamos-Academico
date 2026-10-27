@@ -1,7 +1,7 @@
-import { api } from './api';
-import { ETIQUETA_ROL, type PoliticaDTO } from './contratos';
-import { exigirSesion } from './sesion';
-import { $, avisar, el, mensajeDe } from './ui';
+import { api } from '../compartido/api';
+import { ETIQUETA_ROL, type PoliticaDTO } from '../compartido/contratos';
+import { exigirSesion } from '../compartido/sesion';
+import { $, avisar, el, mensajeDe } from '../compartido/ui';
 
 const usuario = await exigirSesion();
 if (usuario) {
