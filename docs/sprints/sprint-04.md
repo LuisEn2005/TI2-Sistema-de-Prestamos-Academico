@@ -75,7 +75,9 @@ La página **Reservas** permite buscar recursos, elegir la fecha y el perfil de 
 solicitud, revisar estados y cancelar reservas propias. Los gestores ven todas las
 solicitudes y disponen de las acciones de confirmación, cancelación y conversión.
 La página **Préstamos** incorpora la renovación y muestra el nuevo plazo o el motivo
-concreto por el que no puede aplicarse.
+concreto por el que no puede aplicarse. Al registrar una entrega, la modalidad se
+presenta como lugar de uso y muestra el plazo efectivo calculado para el usuario;
+no expone como si fuera aplicable el máximo interno de la modalidad.
 
 ## Calidad y automatización
 

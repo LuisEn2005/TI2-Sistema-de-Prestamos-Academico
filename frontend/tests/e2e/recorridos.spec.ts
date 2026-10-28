@@ -97,8 +97,11 @@ test('el gestor entrega varios recursos y devuelve cada uno con su condición', 
   await page.getByLabel('Usuario habilitado').selectOption({
     label: 'Jesus Perez (jesus.perez@escuela.edu)',
   });
-  await page.getByLabel('Modalidad').selectOption({ index: 1 }); // externa
-  await expect(page.getByText('plazo de 7 días')).toBeVisible();   // el menor entre 15 y 7
+  const modalidad = page.getByLabel('Modalidad / lugar de uso');
+  await modalidad.selectOption({ index: 1 }); // externa
+  await expect(modalidad.locator('option:checked')).toContainText('7 días para este usuario');
+  await expect(modalidad.locator('option:checked')).not.toContainText('15 días');
+  await expect(page.getByText('plazo de 7 días')).toBeVisible();
 
   for (const etiqueta of ['Meta Quest (EQ-META)', 'Introduction to Algorithms (CLRS) (LIB-CLRS)']) {
     await page.getByLabel('Recurso disponible').selectOption({ label: etiqueta });

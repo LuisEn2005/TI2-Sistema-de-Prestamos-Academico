@@ -14,6 +14,7 @@ const puedeRenovar = tienePermiso(usuario, 'RENOVAR_PRESTAMO');
 let pagina = 1;
 let seleccion: ItemDTO[] = [];
 let condicionesOk = false;
+let modalidades: ModalidadDTO[] = [];
 
 /** Descarta respuestas obsoletas: si el usuario cambia un campo antes de que llegue la
  *  respuesta anterior, solo la última petición puede actualizar la pantalla. */
@@ -190,9 +191,25 @@ function mostrarResumen(texto: string, error = false) {
   zona.classList.toggle('error', error);
 }
 
+function restaurarEtiquetasModalidad() {
+  for (const opcion of Array.from(selModalidad().options)) {
+    const modalidad = modalidades.find((m) => String(m.id) === opcion.value);
+    if (modalidad) opcion.textContent = modalidad.nombre;
+  }
+}
+
+function mostrarPlazoAplicado(dias: number) {
+  const opcion = selModalidad().selectedOptions[0];
+  const modalidad = modalidades.find((m) => String(m.id) === opcion?.value);
+  if (opcion && modalidad) {
+    opcion.textContent = `${modalidad.nombre} · ${plural(dias, 'día', 'días')} para este usuario`;
+  }
+}
+
 async function actualizarCondiciones() {
   const mio = pedidoCondiciones.nueva();
   condicionesOk = false;
+  restaurarEtiquetasModalidad();
   validarEntrega();
   if (!selUsuario().value || !selModalidad().value) { mostrarResumen(''); return; }
   try {
@@ -209,6 +226,7 @@ async function actualizarCondiciones() {
     if (c.rol_solicitante === null) { mostrarResumen('Elija con qué perfil presta el usuario.'); return; }
     if (roles.length > 1) selRol().value = c.rol_solicitante;
     condicionesOk = (c.cupo_restante ?? 0) > 0;
+    mostrarPlazoAplicado(c.dias_plazo ?? 0);
     mostrarResumen(
       `Prestará como ${ETIQUETA_ROL[c.rol_solicitante as Rol].toLowerCase()} · plazo de ${plural(c.dias_plazo ?? 0, 'día', 'días')}, ` +
       `vence el ${soloFecha(c.fecha_limite ?? null)} · cupo: ${c.cupo_restante} de ${c.max_items_simultaneos} ` +
@@ -248,8 +266,8 @@ async function cargarItems() {
 let itemsDisponibles: ItemDTO[] = [];
 
 async function cargarFormulario() {
-  const modalidades = (await api.get<ModalidadDTO[]>('/api/modalidades')).filter((m) => m.activo);
-  opciones(selModalidad(), modalidades.map((m) => [String(m.id), `${m.nombre} · hasta ${plural(m.dias_plazo_default, 'día', 'días')}`]));
+  modalidades = (await api.get<ModalidadDTO[]>('/api/modalidades')).filter((m) => m.activo);
+  opciones(selModalidad(), modalidades.map((m) => [String(m.id), m.nombre]));
   await Promise.all([cargarUsuarios(), cargarItems()]);
 }
 
