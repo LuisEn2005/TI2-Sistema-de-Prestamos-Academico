@@ -99,7 +99,7 @@ test('el gestor entrega varios recursos y devuelve cada uno con su condición', 
   });
   const modalidad = page.getByLabel('Modalidad / lugar de uso');
   await modalidad.selectOption({ index: 1 }); // externa
-  await expect(modalidad.locator('option:checked')).toContainText('7 días para este usuario');
+  await expect(modalidad.locator('option:checked')).toHaveText('Externa (a domicilio) · 7 días');
   await expect(modalidad.locator('option:checked')).not.toContainText('15 días');
   await expect(page.getByText('plazo de 7 días')).toBeVisible();
 

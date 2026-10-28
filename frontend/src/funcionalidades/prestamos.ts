@@ -202,7 +202,7 @@ function mostrarPlazoAplicado(dias: number) {
   const opcion = selModalidad().selectedOptions[0];
   const modalidad = modalidades.find((m) => String(m.id) === opcion?.value);
   if (opcion && modalidad) {
-    opcion.textContent = `${modalidad.nombre} · ${plural(dias, 'día', 'días')} para este usuario`;
+    opcion.textContent = `${modalidad.nombre} · ${plural(dias, 'día', 'días')}`;
   }
 }
 
