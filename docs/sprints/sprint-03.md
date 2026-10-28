@@ -20,7 +20,7 @@ El **Sprint 3 está terminado**. El préstamo básico del Sprint 2 (un ítem, si
 
 ## Reglas aplicadas
 
-- **Plazo (RN2).** Los días de préstamo son el **menor** entre los de la modalidad y los de la política del perfil con que se presta. La modalidad actúa como tope y la política personaliza el plazo. Desde la corrección incorporada al inicio del Sprint 4, las modalidades iniciales admiten hasta 15 días: un estudiante recibe 7 días y un docente 15, tanto in situ como en modalidad externa.
+- **Plazo (RN2).** Los días de préstamo son el **menor** entre los de la modalidad y los de la política del perfil con que se presta. La modalidad actúa como tope y la política personaliza el plazo. La regla final del Sprint 4 establece 1 día para cualquier préstamo in situ, hasta el final de la fecha de entrega; en modalidad externa son 7 días para estudiantes y 15 para docentes.
 - **Fecha límite.** Se cuenta en días calendario desde la **fecha local de la escuela** (`America/Lima` por defecto, configurable con `ZONA_HORARIA`), no desde UTC: un préstamo hecho a las 19:00 en Lima sigue siendo del mismo día. La devolución se considera a tiempo hasta el propio día límite.
 - **Perfil con que se presta.** Un usuario puede tener varios perfiles prestatarios (p. ej. estudiante y docente). El préstamo guarda el `rol_solicitante`; si el usuario tiene más de uno, el gestor debe indicar cuál. Se exige vinculación vigente **en ese perfil**, y su política es la que se aplica.
 - **Cupo (RF13).** Los ítems sin devolver del usuario, sumados a los de la entrega, no pueden superar `max_items_simultaneos` de la política del perfil elegido. Se cuenta sobre todos los préstamos activos del usuario y se serializan las entregas concurrentes del mismo usuario (bloqueo de fila en PostgreSQL).
@@ -34,7 +34,7 @@ El **Sprint 3 está terminado**. El préstamo básico del Sprint 2 (un ítem, si
 
 | Cambio | Detalle |
 | --- | --- |
-| `modalidades` | Nombre único, días de plazo y estado activo. Desde el Sprint 4 se crean «In situ (en sala)» y «Externa (a domicilio)» con un máximo de 15 días, sin duplicarse. |
+| `modalidades` | Nombre único, días de plazo y estado activo. La configuración final crea «In situ (en sala)» con 1 día y «Externa (a domicilio)» con un máximo de 15 días, sin duplicarse. |
 | `detalles_prestamo` | Un ítem por fila, con `activo`, `condicion` y `observacion`. Restricciones: ítem único por préstamo, condición válida e índice único parcial de ítems activos. |
 | `prestamos` | Se agregan `rol_solicitante`, la **copia de la modalidad** (`modalidad_id`, `modalidad_nombre`, `modalidad_dias_plazo`) y `fecha_devolucion_esperada`; se elimina `item_id`. Cambiar la configuración después no altera préstamos ya registrados. |
 
@@ -83,7 +83,7 @@ La página **Préstamos** se rehízo:
 
 ## Límites y decisiones por validar
 
-- Los plazos efectivos de 7 días para estudiantes y 15 para docentes, y la regla «el menor entre modalidad y política», son decisiones del proyecto. Las modalidades y políticas se podrán editar desde la interfaz en el Sprint 5.
+- Los plazos efectivos son 1 día in situ para todos los perfiles, 7 días externos para estudiantes y 15 externos para docentes; se aplica la regla «el menor entre modalidad y política». Las modalidades y políticas se podrán editar desde la interfaz en el Sprint 5.
 - La devolución es **completa** (todos los ítems a la vez); no hay devolución parcial.
 - Un ítem dañado pasa a `EN_MANTENIMIENTO` y uno perdido a `EXTRAVIADO` automáticamente; la **sanción** correspondiente se genera recién en el Sprint 5.
 - `EstadoPrestamo.VENCIDO` existe en el dominio, pero el estado vencido se calcula al consultar; no se guarda.

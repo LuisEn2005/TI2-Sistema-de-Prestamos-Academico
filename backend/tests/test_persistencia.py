@@ -97,7 +97,10 @@ class MigracionTest(unittest.TestCase):
                              [("Externa (a domicilio)", 1)])
             self.assertEqual(c2.get("/api/items").json["total"], 26)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0009")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0010")
+            self.assertEqual(con.execute(
+                "SELECT dias_plazo_default FROM modalidades WHERE nombre = 'In situ (en sala)'"
+            ).fetchone()[0], 1)
 
     def test_claves_foraneas_activas(self):
         with TemporaryDirectory() as d:

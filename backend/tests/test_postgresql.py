@@ -56,7 +56,9 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         self.assertEqual(item.json["codigo"], "LIB-CI")
 
         modalidades = cliente.get("/api/modalidades", headers=cabeceras).json
+        in_situ = next(m for m in modalidades if m["nombre"].startswith("In situ"))
         externa = next(m for m in modalidades if m["nombre"].startswith("Externa"))
+        self.assertEqual(in_situ["dias_plazo_default"], 1)
         segundo = cliente.post("/api/items", headers=cabeceras, json={
             "tipo": "LIBRO", "codigo": "lib-ci-2", "nombre": "Libro CI 2",
             "categoria": "Pruebas", "atributos": {"isbn": "978-0000000004", "autor": "Autor CI"}})
@@ -102,5 +104,5 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         motor = create_engine(URL)
         with motor.connect() as conexion:
             self.assertEqual(conexion.execute(text(
-                "SELECT version_num FROM alembic_version")).scalar_one(), "0009")
+                "SELECT version_num FROM alembic_version")).scalar_one(), "0010")
         motor.dispose()

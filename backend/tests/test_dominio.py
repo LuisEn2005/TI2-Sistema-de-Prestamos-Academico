@@ -122,7 +122,7 @@ class PrestamoTest(unittest.TestCase):
         self.assertEqual(self._prestamo(dias_modalidad=15, dias_politica=20).fechaDevolucionEsperada,
                          date(2026, 11, 3))
         self.assertEqual(self._prestamo(dias_modalidad=1, dias_politica=7).fechaDevolucionEsperada,
-                         date(2026, 10, 20))
+                         date(2026, 10, 19))
         self.assertEqual(ModalidadSnapshot(None, "x", 3).diasEfectivos(10), 3)
 
     def test_entregar_valida_items_y_plazos(self):

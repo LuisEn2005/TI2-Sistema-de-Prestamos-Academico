@@ -8,10 +8,11 @@ solicitud y que una reserva confirmada se convierta en préstamo. También permi
 renovar un préstamo cuando el usuario continúa habilitado y ningún tercero espera
 el recurso.
 
-Antes de ampliar el flujo se corrigió el cálculo del plazo. La modalidad conserva
-su máximo histórico y el préstamo guarda por separado el plazo realmente aplicado:
-**7 días para estudiantes y 15 para docentes**, tanto en la respuesta HTTP como en
-la base de datos.
+Antes de ampliar el flujo se corrigió el cálculo del plazo. El préstamo guarda por
+separado el plazo realmente aplicado: **1 día in situ para estudiantes y docentes,
+con vencimiento al final de la fecha de entrega; 7 días externos para estudiantes
+y 15 días externos para docentes**. El valor coincide en la interfaz, la API y la
+base de datos.
 
 ## Requisitos cubiertos
 
@@ -27,6 +28,8 @@ la base de datos.
 ## Reglas aplicadas
 
 - La fecha de reserva debe estar entre el día actual y los siguientes 365 días.
+- El préstamo in situ vence al final del mismo día para cualquier perfil. La
+  modalidad externa aplica 7 días al estudiante y 15 al docente.
 - El perfil elegido debe estar vigente y su política debe permitir el tipo de
   recurso y una reserva activa adicional.
 - Un ítem solo admite una reserva activa. La base de datos refuerza esta regla con
@@ -53,6 +56,7 @@ la base de datos.
 | --- | --- |
 | `0008_plazo_efectivo` | Agrega `dias_plazo_aplicado`, reconstruye su valor en préstamos existentes y ajusta el máximo inicial de la modalidad in situ a 15 días. |
 | `0009_reservas_renovaciones` | Crea `reservas`, sus restricciones e índice de exclusividad; agrega `reserva_id` y `numero_renovaciones` a `prestamos`. |
+| `0010_plazo_in_situ` | Fija la modalidad in situ en 1 día y hace que venza al final de la misma fecha de entrega. |
 
 Las reservas usan los estados `PENDIENTE`, `CONFIRMADA`, `EXPIRADA`, `CANCELADA`
 y `CONVERTIDA`. El préstamo conserva una referencia opcional a la reserva que lo

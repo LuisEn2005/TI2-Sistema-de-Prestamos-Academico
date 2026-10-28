@@ -60,7 +60,7 @@ class PermisosTest(PrestamosBase):
         self.assertEqual(self.cliente.get("/api/modalidades").status_code, 401)
         lista = self.cliente.get("/api/modalidades", headers=self.ingresar(ESTUDIANTE)).json
         self.assertEqual([(m["nombre"], m["dias_plazo_default"]) for m in lista],
-                         [(IN_SITU, 15), (EXTERNA, 15)])
+                         [(IN_SITU, 1), (EXTERNA, 15)])
 
 
 class EntregaTest(PrestamosBase):
@@ -85,7 +85,11 @@ class EntregaTest(PrestamosBase):
         h = self.ingresar()
         en_sala = self.entregar(h, ESTUDIANTE, ("LIB-CLRS",), IN_SITU).json
         self.assertEqual((en_sala["dias_plazo"], en_sala["fecha_limite"]),
-                         (7, "2026-10-26"))                           # estudiante: 7 días
+                         (1, "2026-10-19"))                           # hasta el final del día
+        docente_en_sala = self.entregar(
+            h, GESTOR_DOCENTE, ("LIB-CLEAN",), IN_SITU).json
+        self.assertEqual((docente_en_sala["dias_plazo"], docente_en_sala["fecha_limite"]),
+                         (1, "2026-10-19"))                           # igual para docentes
         docente = self.entregar(h, GESTOR_DOCENTE, ("EQ-META",), EXTERNA).json
         self.assertEqual((docente["dias_plazo"], docente["fecha_limite"]),
                          (15, "2026-11-03"))                          # docente: 15 días
@@ -95,7 +99,7 @@ class EntregaTest(PrestamosBase):
         # 20-oct 02:00 UTC = 19-oct 21:00 en Lima: el plazo cuenta desde el 19.
         self.reloj.instante = datetime(2026, 10, 20, 2, 0, tzinfo=timezone.utc)
         p = self.entregar(self.ingresar(), codigos=("LIB-CLRS",), modalidad=IN_SITU).json
-        self.assertEqual(p["fecha_limite"], "2026-10-26")
+        self.assertEqual((p["dias_plazo"], p["fecha_limite"]), (1, "2026-10-19"))
 
     def test_previsualizacion_coincide_con_la_entrega_y_muestra_el_cupo(self):
         h = self.ingresar()
@@ -322,19 +326,19 @@ class DevolucionTest(PrestamosBase):
 
     def test_el_atraso_se_mide_contra_la_fecha_limite(self):
         h = self.ingresar()
-        p = self.entregar(h, codigos=("LIB-CLRS",), modalidad=IN_SITU).json     # vence el 26-oct
-        self.reloj.instante += timedelta(days=7)                                # 26-oct: aún a tiempo
+        p = self.entregar(h, codigos=("LIB-CLRS",), modalidad=IN_SITU).json
         hoy = self.cliente.get(f"/api/prestamos/{p['id']}", headers=h).json
         self.assertEqual((hoy["vencido"], hoy["dias_atraso"]), (False, 0))
-        self.reloj.instante += timedelta(days=3)                                # 29-oct: 3 días tarde
+        self.reloj.instante += timedelta(days=1)                                # día siguiente
         tarde = self.cliente.get(f"/api/prestamos/{p['id']}", headers=h).json
-        self.assertEqual((tarde["vencido"], tarde["dias_atraso"], tarde["estado"]), (True, 3, "activo"))
+        self.assertEqual((tarde["vencido"], tarde["dias_atraso"], tarde["estado"]),
+                         (True, 1, "activo"))
         vencidos = self.cliente.get("/api/prestamos?estado=vencido", headers=h).json
         self.assertEqual([x["id"] for x in vencidos["prestamos"]], [p["id"]])
 
         devuelto = self.devolver(h, p).json
         self.assertEqual((devuelto["estado"], devuelto["vencido"], devuelto["dias_atraso"]),
-                         ("devuelto", False, 3))
+                         ("devuelto", False, 1))
         self.assertEqual(self.cliente.get("/api/prestamos?estado=vencido", headers=h).json["total"], 0)
 
     def test_devolver_a_tiempo_no_registra_atraso(self):

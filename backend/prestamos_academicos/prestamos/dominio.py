@@ -105,7 +105,10 @@ class Prestamo:
             raise ErrorDominio("El préstamo necesita una modalidad con plazo en días.")
         if diasPolitica < 1:
             raise ErrorDominio("La política del perfil debe permitir al menos un día de préstamo.")
-        return hoy + timedelta(days=self.modalidad.diasEfectivos(diasPolitica))
+        dias = self.modalidad.diasEfectivos(diasPolitica)
+        # Un plazo de un día vence al terminar la fecha de entrega. Para plazos
+        # mayores se conserva la convención institucional de sumar días calendario.
+        return hoy if dias == 1 else hoy + timedelta(days=dias)
 
     def diasAtraso(self, hoy: date) -> int:
         if self.fechaDevolucionEsperada is None:

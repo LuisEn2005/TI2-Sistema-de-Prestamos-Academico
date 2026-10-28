@@ -15,7 +15,7 @@ POLITICAS_BASE = {
 # menor entre este y los días de la política del perfil (RN2). Pasan a ser editables en el Sprint 5.
 MODALIDAD_IN_SITU = "In situ (en sala)"
 MODALIDAD_EXTERNA = "Externa (a domicilio)"
-MODALIDADES_BASE = ((MODALIDAD_IN_SITU, 15), (MODALIDAD_EXTERNA, 15))
+MODALIDADES_BASE = ((MODALIDAD_IN_SITU, 1), (MODALIDAD_EXTERNA, 15))
 
 
 class ConfiguracionApplicationService:

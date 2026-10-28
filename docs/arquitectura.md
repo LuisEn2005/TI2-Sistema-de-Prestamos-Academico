@@ -67,7 +67,7 @@ erDiagram
 ```
 
 Los modelos SQLAlchemy están centralizados en `base_datos/modelos.py`. Las
-migraciones `0001`–`0009` conservan la evolución desde el MVP y se aplican al
+migraciones `0001`–`0010` conservan la evolución desde el MVP y se aplican al
 iniciar Flask. Restricciones únicas parciales impiden que un mismo ítem aparezca
 en dos préstamos activos o en más de una reserva activa.
 
