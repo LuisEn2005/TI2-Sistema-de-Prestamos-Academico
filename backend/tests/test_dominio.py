@@ -12,6 +12,7 @@ from prestamos_academicos.identidad import (
     Usuario,
 )
 from prestamos_academicos.inventario import EstadoItem, Libro, listar_tipos, obtener_tipo
+from prestamos_academicos.reservas import EstadoReserva, Reserva
 from prestamos_academicos.configuracion_servicio import Modalidad, PoliticaServicio
 from prestamos_academicos.prestamos import (
     CondicionDevolucion, EstadoPrestamo, ModalidadSnapshot, Prestamo, PrestamoDevueltoTarde,
@@ -144,6 +145,17 @@ class PrestamoTest(unittest.TestCase):
         self.assertEqual((p.diasAtraso(date(2026, 10, 29)), p.estaVencido(date(2026, 10, 29))), (3, True))
         self.assertEqual(Prestamo().diasAtraso(self.HOY), 0)  # préstamo anterior: sin fecha límite
 
+    def test_renovacion_extiende_el_plazo_efectivo(self):
+        p = self._prestamo()
+        p.renovar(self.HOY)
+        self.assertEqual((p.fechaDevolucionEsperada, p.numeroRenovaciones),
+                         (date(2026, 11, 2), 1))
+        with self.assertRaisesRegex(ErrorDominio, "vencido"):
+            p.renovar(date(2026, 11, 3))
+        p.estado = EstadoPrestamo.DEVUELTO
+        with self.assertRaisesRegex(ErrorDominio, "activo"):
+            p.renovar(self.HOY)
+
     def test_devolucion_registra_condicion_por_item_y_eventos(self):
         p = self._prestamo()
         p.registrarDevolucion(
@@ -175,6 +187,35 @@ class PrestamoTest(unittest.TestCase):
         p.registrarDevolucion(buenas, hoy=self.HOY)
         with self.assertRaisesRegex(ErrorDominio, "ya fue devuelto"):
             p.registrarDevolucion(buenas, hoy=self.HOY)
+
+
+class ReservaTest(unittest.TestCase):
+    def test_ciclo_y_expiracion(self):
+        reserva = Reserva.solicitar(
+            usuario_id=UsuarioId(1), item_id=ItemId(2), rol=RolUsuario.ESTUDIANTE,
+            fecha_solicitud=datetime(2026, 10, 19, tzinfo=timezone.utc),
+            fecha_reserva=date(2026, 10, 20), dias_gracia=2, hoy=date(2026, 10, 19))
+        self.assertEqual((reserva.estado, reserva.fechaExpiracion),
+                         (EstadoReserva.PENDIENTE, date(2026, 10, 22)))
+        self.assertFalse(reserva.estaVencida(date(2026, 10, 22)))
+        self.assertTrue(reserva.estaVencida(date(2026, 10, 23)))
+        reserva.confirmar()
+        self.assertEqual(reserva.estado, EstadoReserva.CONFIRMADA)
+        reserva.convertir()
+        self.assertEqual(reserva.estado, EstadoReserva.CONVERTIDA)
+        with self.assertRaises(ErrorDominio):
+            reserva.cancelar()
+
+    def test_rechaza_fecha_pasada_y_transiciones_invalidas(self):
+        with self.assertRaises(ErrorDominio):
+            Reserva.solicitar(
+                usuario_id=UsuarioId(1), item_id=ItemId(2), rol=RolUsuario.ESTUDIANTE,
+                fecha_solicitud=datetime.now(timezone.utc), fecha_reserva=date(2026, 10, 18),
+                dias_gracia=2, hoy=date(2026, 10, 19))
+        reserva = Reserva(estado=EstadoReserva.PENDIENTE)
+        reserva.cancelar()
+        with self.assertRaises(ErrorDominio):
+            reserva.confirmar()
 
 
 class ReglasDePrestamoTest(unittest.TestCase):

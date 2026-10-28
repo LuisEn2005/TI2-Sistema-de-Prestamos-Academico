@@ -72,6 +72,7 @@ class Prestamo:
     rolSolicitante: Optional[RolUsuario] = None
     modalidad: Optional[ModalidadSnapshot] = None
     diasPlazoAplicado: Optional[int] = None
+    numeroRenovaciones: int = 0
     fechaEntrega: Optional[datetime] = None
     fechaDevolucionEsperada: Optional[date] = None
     fechaDevolucionReal: Optional[datetime] = None
@@ -144,9 +145,15 @@ class Prestamo:
                 diasAtraso=atraso,
             ))
 
-    def renovar(self):
-        """Planificado para el Sprint 4 (RF12)."""
-        raise NotImplementedError
+    def renovar(self, hoy: date) -> None:
+        if self.estado != EstadoPrestamo.ACTIVO:
+            raise ErrorDominio("Solo puede renovarse un préstamo activo.")
+        if self.estaVencido(hoy):
+            raise ErrorDominio("No puede renovarse un préstamo vencido.")
+        if not self.fechaDevolucionEsperada or not self.diasPlazoAplicado:
+            raise ErrorDominio("El préstamo anterior no tiene un plazo renovable.")
+        self.fechaDevolucionEsperada += timedelta(days=self.diasPlazoAplicado)
+        self.numeroRenovaciones += 1
 
 
 class IPrestamoRepository(ABC):

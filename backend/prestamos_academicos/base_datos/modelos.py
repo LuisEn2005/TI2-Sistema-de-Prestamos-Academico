@@ -190,6 +190,36 @@ class ModalidadDB(Base):
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
+class ReservaDB(Base):
+    __tablename__ = "reservas"
+    __table_args__ = (
+        CheckConstraint(
+            "rol_solicitante IN ('ESTUDIANTE','DOCENTE','ADMINISTRATIVO')",
+            name="ck_reserva_rol_valido"),
+        CheckConstraint(
+            "estado IN ('PENDIENTE','CONFIRMADA','EXPIRADA','CANCELADA','CONVERTIDA')",
+            name="ck_reserva_estado_valido"),
+        CheckConstraint(
+            "fecha_expiracion >= fecha_reserva", name="ck_reserva_fechas_ordenadas"),
+        Index("ix_reservas_usuario_estado", "usuario_id", "estado"),
+        Index("ix_reservas_item_estado", "item_id", "estado"),
+        Index(
+            "ux_reserva_item_activa", "item_id", unique=True,
+            sqlite_where=text("estado IN ('PENDIENTE','CONFIRMADA')"),
+            postgresql_where=text("estado IN ('PENDIENTE','CONFIRMADA')")),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
+    rol_solicitante: Mapped[str] = mapped_column(String(30), nullable=False)
+    fecha_solicitud: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_ahora)
+    fecha_reserva: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_expiracion: Mapped[date] = mapped_column(Date, nullable=False)
+    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDIENTE")
+
+
 class PrestamoDB(Base):
     """Cabecera del préstamo. La modalidad se guarda como copia (snapshot): cambiar la
     configuración después no altera los préstamos ya registrados. Los campos de
@@ -207,6 +237,8 @@ class PrestamoDB(Base):
             "dias_plazo_aplicado IS NULL OR dias_plazo_aplicado > 0",
             name="ck_prestamo_plazo_aplicado_positivo"),
         CheckConstraint(
+            "numero_renovaciones >= 0", name="ck_prestamo_renovaciones_no_negativas"),
+        CheckConstraint(
             "rol_solicitante IS NULL OR rol_solicitante IN "
             "('ESTUDIANTE','DOCENTE','ADMINISTRATIVO')", name="ck_prestamo_rol_valido"),
         Index("ix_prestamos_usuario", "usuario_id"),
@@ -214,11 +246,13 @@ class PrestamoDB(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    reserva_id: Mapped[int | None] = mapped_column(ForeignKey("reservas.id"), unique=True)
     rol_solicitante: Mapped[str | None] = mapped_column(String(30))
     modalidad_id: Mapped[int | None] = mapped_column(ForeignKey("modalidades.id"))
     modalidad_nombre: Mapped[str | None] = mapped_column(String(60))
     modalidad_dias_plazo: Mapped[int | None] = mapped_column(Integer)
     dias_plazo_aplicado: Mapped[int | None] = mapped_column(Integer)
+    numero_renovaciones: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fecha_prestamo: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_ahora
     )

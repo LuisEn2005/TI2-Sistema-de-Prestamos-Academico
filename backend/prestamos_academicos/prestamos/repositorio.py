@@ -58,11 +58,13 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
             m = prestamo.modalidad
             fila = PrestamoDB(
                 usuario_id=prestamo.usuarioId.valor,
+                reserva_id=prestamo.reservaId.valor if prestamo.reservaId else None,
                 rol_solicitante=prestamo.rolSolicitante.value if prestamo.rolSolicitante else None,
                 modalidad_id=m.modalidadOrigenId.valor if m and m.modalidadOrigenId else None,
                 modalidad_nombre=m.nombre if m else None,
                 modalidad_dias_plazo=m.diasPlazo if m else None,
                 dias_plazo_aplicado=prestamo.diasPlazoAplicado,
+                numero_renovaciones=prestamo.numeroRenovaciones,
                 fecha_devolucion_esperada=prestamo.fechaDevolucionEsperada)
             if prestamo.fechaEntrega is not None:
                 fila.fecha_prestamo = prestamo.fechaEntrega
@@ -80,5 +82,7 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
                 fila_detalle.observacion = d.observacion
                 fila_detalle.activo = d.condicion is None
         fila.fecha_devolucion = prestamo.fechaDevolucionReal
+        fila.fecha_devolucion_esperada = prestamo.fechaDevolucionEsperada
+        fila.numero_renovaciones = prestamo.numeroRenovaciones
         self.sesion.flush()
         return self.find_by_id(fila.id)

@@ -14,7 +14,7 @@ from ..compartido import ErrorDominio
 from ..identidad import Permiso, Usuario
 from ..inventario import EstadoItem
 from .dominio import CondicionDevolucion, EstadoPrestamo, Prestamo
-from ..compartido import ItemId, RolUsuario, UsuarioId
+from ..compartido import ItemId, ReservaId, RolUsuario, UsuarioId
 from ..compartido import validacion as v
 from ..compartido import Conflicto, ErrorAplicacion, NoEncontrado, SinPermiso
 from ..compartido.reloj import Reloj
@@ -156,11 +156,13 @@ class PrestamoApplicationService:
             atraso = p.diasAtraso(hoy)
         return {
             "id": p.id.valor,
+            "reserva_id": p.reservaId.valor if p.reservaId else None,
             "usuario_id": p.usuarioId.valor,
             "usuario": nombres.get(p.usuarioId.valor),
             "rol_solicitante": p.rolSolicitante.value if p.rolSolicitante else None,
             "modalidad": p.modalidad.nombre if p.modalidad else None,
             "dias_plazo": p.diasPlazoAplicado,
+            "numero_renovaciones": p.numeroRenovaciones,
             "items": [{
                 "item_id": d.itemId.valor,
                 "codigo": items[d.itemId.valor].codigo,
@@ -242,6 +244,82 @@ class PrestamoApplicationService:
                     hoy=self.reloj.hoy())
             except ErrorDominio as e:
                 raise ErrorAplicacion(str(e), 422)
+            guardado = uow.prestamos.save(prestamo)
+            vista = self._vistas(uow, [guardado])[0]
+            uow.commit()
+        return vista
+
+    # -- conversión de reserva (RF09) ----------------------------------------------------------
+    def registrar_desde_reserva(self, reserva_id, modalidad_id):
+        from ..reservas import EstadoReserva
+
+        with self._uow() as uow:
+            reserva = uow.reservas.find_by_id(reserva_id)
+            if reserva is None:
+                raise NoEncontrado("La reserva no existe.")
+            if reserva.estado != EstadoReserva.CONFIRMADA:
+                raise Conflicto("Solo una reserva confirmada puede convertirse en préstamo.")
+
+            usuario_id = reserva.usuarioId.valor
+            item_id = reserva.itemId.valor
+            ctx = self._resolver_contexto(
+                uow, usuario_id, modalidad_id, reserva.rolSolicitante.value)
+            uow.usuarios.bloquear(usuario_id)
+            items_en_prestamo = uow.prestamos.contar_items_activos(usuario_id)
+            if ctx.politica.cupoRestante(items_en_prestamo) < 1:
+                raise ErrorAplicacion(
+                    f"El usuario alcanzó el máximo de {ctx.politica.maxItemsSimultaneos} "
+                    "ítems simultáneos.", 422)
+            item = uow.items.find_by_id(item_id)
+            if item is None:
+                raise NoEncontrado("El recurso de la reserva no existe.")
+            if not ctx.politica.permiteTipo(item.TIPO):
+                raise ErrorAplicacion(
+                    f"La política del perfil {ctx.rol.value} ya no permite {item.codigo}.", 422)
+            if not uow.items.cambiar_estado_si(
+                    item_id, EstadoItem.RESERVADO, EstadoItem.PRESTADO):
+                raise Conflicto("El recurso de la reserva no figura como reservado.")
+
+            try:
+                prestamo = Prestamo.entregar(
+                    usuarioId=UsuarioId(usuario_id), rol=ctx.rol,
+                    modalidad=ctx.modalidad.snapshot(),
+                    diasPolitica=ctx.politica.diasPrestamoDefault,
+                    items=[ItemId(item_id)], ahora=self.reloj.ahora(), hoy=self.reloj.hoy())
+                prestamo.reservaId = ReservaId(reserva_id)
+                reserva.convertir()
+            except ErrorDominio as error:
+                raise ErrorAplicacion(str(error), 422)
+            guardado = uow.prestamos.save(prestamo)
+            uow.reservas.save(reserva)
+            vista = self._vistas(uow, [guardado])[0]
+            uow.commit()
+        return vista
+
+    # -- renovación (RF12) --------------------------------------------------------------------
+    def renovar(self, actor, prestamo_id):
+        with self._uow() as uow:
+            prestamo = uow.prestamos.find_by_id(prestamo_id)
+            if prestamo is None:
+                raise NoEncontrado("El préstamo no existe.")
+            if prestamo.usuarioId.valor != actor.id.valor and not self._ve_todo(actor):
+                raise SinPermiso("Solo el titular o un gestor puede renovar el préstamo.")
+            usuario = uow.usuarios.find_by_id(prestamo.usuarioId.valor)
+            motivo = usuario.motivoNoHabilitado()
+            if motivo:
+                raise ErrorAplicacion(motivo, 422)
+            reservados = []
+            for detalle in prestamo.detalles:
+                reserva = uow.reservas.find_activa_por_item(detalle.itemId.valor)
+                if reserva:
+                    reservados.append(detalle.itemId.valor)
+            if reservados:
+                raise Conflicto(
+                    "No puede renovarse: uno de los recursos tiene una reserva pendiente.")
+            try:
+                prestamo.renovar(self.reloj.hoy())
+            except ErrorDominio as error:
+                raise Conflicto(str(error))
             guardado = uow.prestamos.save(prestamo)
             vista = self._vistas(uow, [guardado])[0]
             uow.commit()

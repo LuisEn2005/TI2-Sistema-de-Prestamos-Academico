@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from datetime import timedelta
 from unittest.mock import patch
 
 from sqlalchemy import create_engine, text
@@ -42,6 +43,7 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
 
         usuario = cliente.post("/api/usuarios", headers=cabeceras, json={
             "nombre": "Estudiante CI", "correo": "estudiante-ci@escuela.edu",
+            "password": "clave-ci-estudiante",
             "perfiles": {"ESTUDIANTE": {"codigo_estudiante": "EST-CI-001"}},
         })
         self.assertEqual(usuario.status_code, 201, usuario.json)
@@ -79,8 +81,26 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         self.assertEqual(cliente.get(f"/api/items/{item.json['id']}").json["estado"],
                          "DISPONIBLE")
 
+        acceso_estudiante = cliente.post("/api/auth/login", json={
+            "correo": "estudiante-ci@escuela.edu", "password": "clave-ci-estudiante"})
+        token_estudiante = {"Authorization": f"Bearer {acceso_estudiante.json['token']}"}
+        fecha_reserva = (
+            app.extensions["servicios"].reservas.reloj.hoy() + timedelta(days=1)
+        ).isoformat()
+        reserva = cliente.post("/api/reservas", headers=token_estudiante, json={
+            "item_id": item.json["id"], "fecha_reserva": fecha_reserva})
+        self.assertEqual(reserva.status_code, 201, reserva.json)
+        confirmada = cliente.post(
+            f"/api/reservas/{reserva.json['id']}/confirmacion", headers=cabeceras, json={})
+        self.assertEqual(confirmada.status_code, 200, confirmada.json)
+        convertido = cliente.post(
+            f"/api/reservas/{reserva.json['id']}/prestamo", headers=cabeceras,
+            json={"modalidad_id": externa["id"]})
+        self.assertEqual(convertido.status_code, 201, convertido.json)
+        self.assertEqual(convertido.json["dias_plazo"], 7)
+
         motor = create_engine(URL)
         with motor.connect() as conexion:
             self.assertEqual(conexion.execute(text(
-                "SELECT version_num FROM alembic_version")).scalar_one(), "0007")
+                "SELECT version_num FROM alembic_version")).scalar_one(), "0009")
         motor.dispose()

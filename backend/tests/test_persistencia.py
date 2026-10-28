@@ -97,7 +97,7 @@ class MigracionTest(unittest.TestCase):
                              [("Externa (a domicilio)", 1)])
             self.assertEqual(c2.get("/api/items").json["total"], 26)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0007")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0009")
 
     def test_claves_foraneas_activas(self):
         with TemporaryDirectory() as d:
@@ -269,7 +269,8 @@ class SinDatosDemoTest(unittest.TestCase):
                              "LIB-PRUEBA")
 
     def test_base_vacia_sin_gestor_rechaza_arranque_sin_credenciales(self):
-        with patch.dict(os.environ, {"DATOS_DEMO": "0"}):
+        with patch.dict(os.environ, {"DATOS_DEMO": "0"}), patch(
+                "prestamos_academicos.configuracion.load_dotenv"):
             os.environ.pop("ADMIN_CORREO", None)
             os.environ.pop("ADMIN_PASSWORD", None)
             with self.assertRaisesRegex(RuntimeError, "ADMIN_CORREO y ADMIN_PASSWORD"):

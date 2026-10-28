@@ -12,13 +12,14 @@ from ..inventario import obtener_tipo
 from ..prestamos import (
     CondicionDevolucion, DetallePrestamo, EstadoPrestamo, ModalidadSnapshot, Prestamo,
 )
+from ..reservas import EstadoReserva, Reserva
 from ..compartido import (
-    ItemId, ModalidadId, PoliticaServicioId, PrestamoId, RolUsuario, UsuarioId,
+    ItemId, ModalidadId, PoliticaServicioId, PrestamoId, ReservaId, RolUsuario, UsuarioId,
 )
 from .modelos import (
     DetallePrestamoDB, ItemDB, ModalidadDB, PerfilAdministrativoDB, PerfilDocenteDB, PerfilEstudianteDB,
     PerfilAdministradorSistemaDB, PerfilGestorInventarioDB, PoliticaServicioDB,
-    PrestamoDB, UsuarioDB,
+    PrestamoDB, ReservaDB, UsuarioDB,
 )
 
 
@@ -114,6 +115,20 @@ def modalidad_a_dominio(fila: ModalidadDB) -> Modalidad:
                      diasPlazoDefault=fila.dias_plazo_default, activo=fila.activo)
 
 
+# ---- Reservas -----------------------------------------------------------
+def reserva_a_dominio(fila: ReservaDB) -> Reserva:
+    return Reserva(
+        id=ReservaId(fila.id),
+        usuarioId=UsuarioId(fila.usuario_id),
+        itemId=ItemId(fila.item_id),
+        rolSolicitante=RolUsuario(fila.rol_solicitante),
+        fechaSolicitud=fila.fecha_solicitud,
+        fechaReserva=fila.fecha_reserva,
+        fechaExpiracion=fila.fecha_expiracion,
+        estado=EstadoReserva(fila.estado),
+    )
+
+
 # ---- Préstamos ----------------------------------------------------------
 def prestamo_a_dominio(fila: PrestamoDB, detalles: list[DetallePrestamoDB]) -> Prestamo:
     modalidad = None
@@ -124,9 +139,11 @@ def prestamo_a_dominio(fila: PrestamoDB, detalles: list[DetallePrestamoDB]) -> P
     return Prestamo(
         id=PrestamoId(fila.id),
         usuarioId=UsuarioId(fila.usuario_id),
+        reservaId=ReservaId(fila.reserva_id) if fila.reserva_id else None,
         rolSolicitante=RolUsuario(fila.rol_solicitante) if fila.rol_solicitante else None,
         modalidad=modalidad,
         diasPlazoAplicado=fila.dias_plazo_aplicado,
+        numeroRenovaciones=fila.numero_renovaciones,
         fechaEntrega=fila.fecha_prestamo,
         fechaDevolucionEsperada=fila.fecha_devolucion_esperada,
         fechaDevolucionReal=fila.fecha_devolucion,

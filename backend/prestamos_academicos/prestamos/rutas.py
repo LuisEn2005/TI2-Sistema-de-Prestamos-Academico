@@ -83,3 +83,11 @@ def devolver(prestamo_id):
     datos = cuerpo_json()
     v.campos(datos, {"condiciones"})
     return jsonify(servicios().prestamos.devolver(id_ruta(prestamo_id), datos.get("condiciones")))
+
+
+@bp.post("/prestamos/<int:prestamo_id>/renovacion")
+@requiere_autenticacion
+def renovar(prestamo_id):
+    v.campos(cuerpo_json(), set())
+    servicios().reservas.expirar_vencidas()
+    return jsonify(servicios().prestamos.renovar(g.usuario, id_ruta(prestamo_id)))
