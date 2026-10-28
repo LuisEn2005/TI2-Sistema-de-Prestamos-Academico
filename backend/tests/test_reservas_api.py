@@ -24,8 +24,8 @@ class FlujoReservaTest(ReservasBase):
         creada = self.reservar(estudiante).json
         self.assertEqual((creada["estado"], creada["rol_solicitante"]),
                          ("PENDIENTE", "ESTUDIANTE"))
-        self.assertEqual((creada["fecha_reserva"], creada["fecha_expiracion"]),
-                         ("2026-10-20", "2026-10-22"))
+        self.assertEqual(creada["fecha_reserva"], "2026-10-20")
+        self.assertNotIn("fecha_expiracion", creada)
         self.assertEqual(self.estado_item("LIB-CLRS"), "RESERVADO")
 
         administrador = self.ingresar(ADMIN)
@@ -60,8 +60,10 @@ class FlujoReservaTest(ReservasBase):
     def test_expiracion_automatica_libera_el_recurso(self):
         estudiante = self.ingresar(ESTUDIANTE)
         reserva = self.reservar(estudiante, fecha="2026-10-19").json
-        self.assertEqual(reserva["fecha_expiracion"], "2026-10-21")
-        self.reloj.instante += timedelta(days=3)
+        self.assertEqual(reserva["estado"], "PENDIENTE")
+        self.assertEqual(self.cliente.get(
+            "/api/reservas", headers=estudiante).json["reservas"][0]["estado"], "PENDIENTE")
+        self.reloj.instante += timedelta(days=1)
         listado = self.cliente.get("/api/reservas", headers=estudiante)
         self.assertEqual(listado.status_code, 200, listado.json)
         self.assertEqual(listado.json["reservas"][0]["estado"], "EXPIRADA")

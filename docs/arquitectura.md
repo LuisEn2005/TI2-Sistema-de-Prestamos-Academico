@@ -70,10 +70,11 @@ erDiagram
 ```
 
 Los modelos SQLAlchemy están centralizados en `base_datos/modelos.py`. Las
-migraciones `0001`–`0011` conservan la evolución desde el MVP y se aplican al
+migraciones `0001`–`0012` conservan la evolución desde el MVP y se aplican al
 iniciar Flask. La migración `0011` normaliza políticas por rol y modalidad,
 convierte los tipos permitidos en una relación y elimina las copias descriptivas
-de `prestamos`. Restricciones únicas parciales impiden que un mismo ítem aparezca
+de `prestamos`. `0012` elimina los días de gracia: una reserva expira al terminar
+su fecha reservada y esa fecha no se duplica en otra columna. Restricciones únicas parciales impiden que un mismo ítem aparezca
 en dos préstamos activos o en más de una reserva activa. El diseño detallado se
 documenta en [Préstamos y políticas](base-de-datos-normalizada.md).
 

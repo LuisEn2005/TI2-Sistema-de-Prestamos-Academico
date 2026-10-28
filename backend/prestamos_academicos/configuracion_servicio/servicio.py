@@ -5,11 +5,11 @@ from ..compartido import RolUsuario
 
 # Políticas iniciales por perfil (RF03). El gestor no presta para sí mismo.
 POLITICAS_BASE = {
-    RolUsuario.ESTUDIANTE: dict(max=3, externa=7, gracia=2,
+    RolUsuario.ESTUDIANTE: dict(max=3, externa=7,
                                 tipos=["LIBRO", "EQUIPO", "MATERIAL"]),
-    RolUsuario.DOCENTE: dict(max=5, externa=15, gracia=3,
+    RolUsuario.DOCENTE: dict(max=5, externa=15,
                              tipos=["LIBRO", "EQUIPO", "MATERIAL", "MOBILIARIO"]),
-    RolUsuario.ADMINISTRATIVO: dict(max=5, externa=15, gracia=3,
+    RolUsuario.ADMINISTRATIVO: dict(max=5, externa=15,
                                     tipos=["LIBRO", "EQUIPO", "MATERIAL", "MOBILIARIO"]),
 }
 
@@ -35,7 +35,6 @@ class ConfiguracionApplicationService:
                             rolAplicable=rol, modalidadId=modalidad.id,
                             modalidadNombre=modalidad.nombre,
                             maxItemsSimultaneos=p["max"], diasPrestamo=dias,
-                            diasGraciaReserva=p["gracia"],
                             tiposRecursoPermitidos=p["tipos"]))
             uow.commit()
 

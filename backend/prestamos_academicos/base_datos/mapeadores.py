@@ -31,7 +31,6 @@ def politica_a_dominio(fila: PoliticaServicioDB) -> PoliticaServicio:
         modalidadId=ModalidadId(fila.modalidad_id),
         maxItemsSimultaneos=fila.max_items_simultaneos,
         diasPrestamo=fila.dias_prestamo,
-        diasGraciaReserva=fila.dias_gracia_reserva,
     )
 
 
@@ -112,7 +111,6 @@ def reserva_a_dominio(fila: ReservaDB) -> Reserva:
         rolSolicitante=RolUsuario(fila.rol_solicitante),
         fechaSolicitud=fila.fecha_solicitud,
         fechaReserva=fila.fecha_reserva,
-        fechaExpiracion=fila.fecha_expiracion,
         estado=EstadoReserva(fila.estado),
     )
 

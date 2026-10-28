@@ -28,7 +28,6 @@ class PoliticaServicioDB(Base):
             name="ck_politica_rol_valido"),
         CheckConstraint("max_items_simultaneos > 0", name="ck_politica_max_positivo"),
         CheckConstraint("dias_prestamo > 0", name="ck_politica_dias_positivo"),
-        CheckConstraint("dias_gracia_reserva >= 0", name="ck_politica_gracia_no_negativa"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -36,7 +35,6 @@ class PoliticaServicioDB(Base):
     modalidad_id: Mapped[int] = mapped_column(ForeignKey("modalidades.id"), nullable=False)
     max_items_simultaneos: Mapped[int] = mapped_column(Integer, nullable=False)
     dias_prestamo: Mapped[int] = mapped_column(Integer, nullable=False)
-    dias_gracia_reserva: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class TipoRecursoDB(Base):
@@ -206,8 +204,6 @@ class ReservaDB(Base):
         CheckConstraint(
             "estado IN ('PENDIENTE','CONFIRMADA','EXPIRADA','CANCELADA','CONVERTIDA')",
             name="ck_reserva_estado_valido"),
-        CheckConstraint(
-            "fecha_expiracion >= fecha_reserva", name="ck_reserva_fechas_ordenadas"),
         Index("ix_reservas_usuario_estado", "usuario_id", "estado"),
         Index("ix_reservas_item_estado", "item_id", "estado"),
         Index(
@@ -223,7 +219,6 @@ class ReservaDB(Base):
     fecha_solicitud: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_ahora)
     fecha_reserva: Mapped[date] = mapped_column(Date, nullable=False)
-    fecha_expiracion: Mapped[date] = mapped_column(Date, nullable=False)
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDIENTE")
 
 

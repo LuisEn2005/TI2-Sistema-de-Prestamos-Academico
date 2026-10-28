@@ -87,8 +87,8 @@ function filaDe(reserva: ReservaDTO) {
       el('h3', {}, reserva.item, ' ', el('span', { class: 'codigo' }, reserva.codigo)),
       el('div', { class: 'meta' },
         `${gestiona ? `${reserva.usuario} · ` : ''}${ETIQUETA_ROL[reserva.rol_solicitante]} · ` +
-        `solicitada ${fechaLegible(reserva.fecha_solicitud)} · para ${soloFecha(reserva.fecha_reserva)} · ` +
-        `vence ${soloFecha(reserva.fecha_expiracion)}`)),
+        `solicitada ${fechaLegible(reserva.fecha_solicitud)} · ` +
+        `vence al final del ${soloFecha(reserva.fecha_reserva)}`)),
     el('div', {}, el('div', { class: `estado ${clase}` }, ETIQUETA_RESERVA[reserva.estado]),
       accionesDe(reserva)));
 }

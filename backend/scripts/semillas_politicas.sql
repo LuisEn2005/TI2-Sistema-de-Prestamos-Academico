@@ -1,5 +1,5 @@
 -- Políticas iniciales del servicio de préstamos.
--- Compatible con SQLite y PostgreSQL sobre el esquema de la migración 0011.
+-- Compatible con SQLite y PostgreSQL sobre el esquema de la migración 0012.
 -- El script es idempotente: puede ejecutarse más de una vez.
 
 BEGIN;
@@ -30,10 +30,9 @@ WHERE NOT EXISTS (
 
 -- Estudiante: 1 día en sala y 7 días fuera; hasta 3 recursos.
 INSERT INTO politicas_servicio
-    (rol_aplicable, modalidad_id, max_items_simultaneos,
-     dias_prestamo, dias_gracia_reserva)
+    (rol_aplicable, modalidad_id, max_items_simultaneos, dias_prestamo)
 SELECT 'ESTUDIANTE', m.id, 3,
-       CASE WHEN m.nombre = 'In situ (en sala)' THEN 1 ELSE 7 END, 2
+       CASE WHEN m.nombre = 'In situ (en sala)' THEN 1 ELSE 7 END
 FROM modalidades AS m
 WHERE m.nombre IN ('In situ (en sala)', 'Externa (a domicilio)')
   AND NOT EXISTS (
@@ -44,10 +43,9 @@ WHERE m.nombre IN ('In situ (en sala)', 'Externa (a domicilio)')
 
 -- Docente y administrativo: 1 día en sala y 15 días fuera; hasta 5 recursos.
 INSERT INTO politicas_servicio
-    (rol_aplicable, modalidad_id, max_items_simultaneos,
-     dias_prestamo, dias_gracia_reserva)
+    (rol_aplicable, modalidad_id, max_items_simultaneos, dias_prestamo)
 SELECT roles.rol, m.id, 5,
-       CASE WHEN m.nombre = 'In situ (en sala)' THEN 1 ELSE 15 END, 3
+       CASE WHEN m.nombre = 'In situ (en sala)' THEN 1 ELSE 15 END
 FROM modalidades AS m
 CROSS JOIN (
     SELECT 'DOCENTE' AS rol

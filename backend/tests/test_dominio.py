@@ -187,11 +187,10 @@ class ReservaTest(unittest.TestCase):
         reserva = Reserva.solicitar(
             usuario_id=UsuarioId(1), item_id=ItemId(2), rol=RolUsuario.ESTUDIANTE,
             fecha_solicitud=datetime(2026, 10, 19, tzinfo=timezone.utc),
-            fecha_reserva=date(2026, 10, 20), dias_gracia=2, hoy=date(2026, 10, 19))
-        self.assertEqual((reserva.estado, reserva.fechaExpiracion),
-                         (EstadoReserva.PENDIENTE, date(2026, 10, 22)))
-        self.assertFalse(reserva.estaVencida(date(2026, 10, 22)))
-        self.assertTrue(reserva.estaVencida(date(2026, 10, 23)))
+            fecha_reserva=date(2026, 10, 20), hoy=date(2026, 10, 19))
+        self.assertEqual(reserva.estado, EstadoReserva.PENDIENTE)
+        self.assertFalse(reserva.estaVencida(date(2026, 10, 20)))
+        self.assertTrue(reserva.estaVencida(date(2026, 10, 21)))
         reserva.confirmar()
         self.assertEqual(reserva.estado, EstadoReserva.CONFIRMADA)
         reserva.convertir()
@@ -204,7 +203,7 @@ class ReservaTest(unittest.TestCase):
             Reserva.solicitar(
                 usuario_id=UsuarioId(1), item_id=ItemId(2), rol=RolUsuario.ESTUDIANTE,
                 fecha_solicitud=datetime.now(timezone.utc), fecha_reserva=date(2026, 10, 18),
-                dias_gracia=2, hoy=date(2026, 10, 19))
+                hoy=date(2026, 10, 19))
         reserva = Reserva(estado=EstadoReserva.PENDIENTE)
         reserva.cancelar()
         with self.assertRaises(ErrorDominio):

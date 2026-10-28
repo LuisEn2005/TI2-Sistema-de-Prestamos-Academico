@@ -47,13 +47,13 @@ export type CondicionesPrestamoDTO = {
 export type PoliticaDTO = {
   id: number; rol: Rol; modalidad_id: number; modalidad: string;
   max_items_simultaneos: number; dias_prestamo: number;
-  dias_gracia_reserva: number; tipos_recurso_permitidos: string[];
+  tipos_recurso_permitidos: string[];
 };
 export type EstadoReserva = 'PENDIENTE' | 'CONFIRMADA' | 'EXPIRADA' | 'CANCELADA' | 'CONVERTIDA';
 export type ReservaDTO = {
   id: number; usuario_id: number; usuario: string; item_id: number;
   codigo: string; item: string; rol_solicitante: RolPrestatario;
-  fecha_solicitud: string; fecha_reserva: string; fecha_expiracion: string;
+  fecha_solicitud: string; fecha_reserva: string;
   estado: EstadoReserva;
 };
 export type PaginaReservasDTO = {

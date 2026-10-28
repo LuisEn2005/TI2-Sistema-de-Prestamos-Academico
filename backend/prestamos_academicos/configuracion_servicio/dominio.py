@@ -27,7 +27,6 @@ class PoliticaServicio:
     modalidadNombre: Optional[str] = None
     maxItemsSimultaneos: Optional[int] = None
     diasPrestamo: Optional[int] = None
-    diasGraciaReserva: Optional[int] = None
     tiposRecursoPermitidos: List[str] = field(default_factory=list)
 
     def tiposPermitidos(self) -> List[str]:

@@ -23,7 +23,6 @@ def politica_a_json(politica):
         "modalidad": politica.modalidadNombre,
         "max_items_simultaneos": politica.maxItemsSimultaneos,
         "dias_prestamo": politica.diasPrestamo,
-        "dias_gracia_reserva": politica.diasGraciaReserva,
         "tipos_recurso_permitidos": politica.tiposPermitidos(),
     }
 

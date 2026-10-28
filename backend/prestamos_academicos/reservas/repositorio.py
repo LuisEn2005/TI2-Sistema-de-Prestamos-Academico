@@ -18,7 +18,6 @@ class SqlAlchemyReservaRepository(IReservaRepository):
         fila.rol_solicitante = reserva.rolSolicitante.value
         fila.fecha_solicitud = reserva.fechaSolicitud
         fila.fecha_reserva = reserva.fechaReserva
-        fila.fecha_expiracion = reserva.fechaExpiracion
         fila.estado = reserva.estado.value
         self.sesion.add(fila)
         self.sesion.flush()
@@ -46,7 +45,7 @@ class SqlAlchemyReservaRepository(IReservaRepository):
         filas = self.sesion.scalars(
             select(ReservaDB).where(
                 ReservaDB.estado.in_([e.value for e in ESTADOS_ACTIVOS]),
-                ReservaDB.fecha_expiracion < hoy,
+                ReservaDB.fecha_reserva < hoy,
             ).order_by(ReservaDB.id))
         return [mapeadores.reserva_a_dominio(f) for f in filas]
 

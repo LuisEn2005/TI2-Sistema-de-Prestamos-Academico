@@ -77,7 +77,6 @@ class ReservaApplicationService:
             "rol_solicitante": reserva.rolSolicitante.value,
             "fecha_solicitud": reserva.fechaSolicitud.isoformat(),
             "fecha_reserva": reserva.fechaReserva.isoformat(),
-            "fecha_expiracion": reserva.fechaExpiracion.isoformat(),
             "estado": reserva.estado.value,
         }
 
@@ -127,15 +126,13 @@ class ReservaApplicationService:
             # La modalidad se elige al convertir la reserva. Hasta entonces se
             # aplica el límite más restrictivo de las políticas compatibles.
             max_reservas = min(p.maxItemsSimultaneos for p in aplicables)
-            dias_gracia = min(p.diasGraciaReserva for p in aplicables)
             if uow.reservas.contar_activas_usuario(usuario.id.valor) >= max_reservas:
                 raise ErrorAplicacion(
                     f"Alcanzó el máximo de {max_reservas} reservas activas.", 422)
             try:
                 reserva = Reserva.solicitar(
                     usuario_id=UsuarioId(usuario.id.valor), item_id=ItemId(item_id), rol=rol,
-                    fecha_solicitud=self.reloj.ahora(), fecha_reserva=fecha_reserva,
-                    dias_gracia=dias_gracia, hoy=hoy)
+                    fecha_solicitud=self.reloj.ahora(), fecha_reserva=fecha_reserva, hoy=hoy)
             except ErrorDominio as error:
                 raise ErrorAplicacion(str(error), 422)
             if item.estado == EstadoItem.DISPONIBLE and not uow.items.cambiar_estado_si(

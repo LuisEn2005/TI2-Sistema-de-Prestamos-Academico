@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional, Tuple
 
@@ -30,25 +30,20 @@ class Reserva:
     rolSolicitante: Optional[RolUsuario] = None
     fechaSolicitud: Optional[datetime] = None
     fechaReserva: Optional[date] = None
-    fechaExpiracion: Optional[date] = None
     estado: EstadoReserva = EstadoReserva.PENDIENTE
     eventos: List[object] = field(default_factory=list, repr=False, compare=False)
 
     @classmethod
     def solicitar(cls, *, usuario_id: UsuarioId, item_id: ItemId, rol: RolUsuario,
-                  fecha_solicitud: datetime, fecha_reserva: date,
-                  dias_gracia: int, hoy: date) -> "Reserva":
+                  fecha_solicitud: datetime, fecha_reserva: date, hoy: date) -> "Reserva":
         if fecha_reserva < hoy:
             raise ErrorDominio("La fecha de reserva no puede estar en el pasado.")
-        if dias_gracia < 0:
-            raise ErrorDominio("Los días de gracia de la reserva no pueden ser negativos.")
         return cls(
             usuarioId=usuario_id,
             itemId=item_id,
             rolSolicitante=rol,
             fechaSolicitud=fecha_solicitud,
             fechaReserva=fecha_reserva,
-            fechaExpiracion=fecha_reserva + timedelta(days=dias_gracia),
             estado=EstadoReserva.PENDIENTE,
         )
 
@@ -77,7 +72,7 @@ class Reserva:
 
     def estaVencida(self, hoy: date) -> bool:
         return self.estado in ESTADOS_ACTIVOS and bool(
-            self.fechaExpiracion and hoy > self.fechaExpiracion)
+            self.fechaReserva and hoy > self.fechaReserva)
 
 
 @dataclass

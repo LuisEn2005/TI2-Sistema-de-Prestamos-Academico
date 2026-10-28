@@ -40,9 +40,9 @@ base de datos.
 - El gestor confirma la reserva. Si el recurso continúa prestado, la confirmación
   se rechaza hasta que se registre la devolución.
 - Cancelar o expirar una reserva libera el recurso cuando este estaba reservado.
-- Una reserva pendiente vence al superar su fecha más los días de gracia de la
-  política. La expiración se ejecuta al consultar u operar con reservas, sin un
-  proceso permanente en segundo plano.
+- Una reserva permanece activa durante la fecha reservada y expira al comenzar el
+  día siguiente. La expiración se ejecuta al consultar u operar con reservas, sin
+  un proceso permanente en segundo plano.
 - La conversión de una reserva confirmada en préstamo es atómica: vuelve a validar
   usuario, política, modalidad y recurso, registra la relación con la reserva y
   cambia el ítem a `PRESTADO`.
@@ -58,6 +58,7 @@ base de datos.
 | `0009_reservas_renovaciones` | Crea `reservas`, sus restricciones e índice de exclusividad; agrega `reserva_id` y `numero_renovaciones` a `prestamos`. |
 | `0010_plazo_in_situ` | Fija la modalidad in situ en 1 día y hace que venza al final de la misma fecha de entrega. |
 | `0011_normalizacion_politicas` | Convierte modalidades en un catálogo puro, define una política por rol y modalidad, normaliza los tipos permitidos y elimina datos descriptivos duplicados de `prestamos`. |
+| `0012_expiracion_reserva_mismo_dia` | Elimina los días de gracia y la fecha de expiración redundante; una reserva vence al terminar su propia fecha. |
 
 En el modelo final, `prestamos` conserva las FKs de usuario, modalidad y política,
 además del único dato histórico necesario: `dias_plazo`. El rol y el nombre de la

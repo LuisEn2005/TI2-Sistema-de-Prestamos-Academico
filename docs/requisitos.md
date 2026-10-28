@@ -121,7 +121,6 @@ classDiagram
         +int modalidad_id
         +int max_items_simultaneos
         +int dias_prestamo
-        +int dias_gracia_reserva
     }
 
     class Item {
@@ -225,4 +224,4 @@ classDiagram
 
 ## 7. Estado de implementación
 
-Los Sprints 1–4 implementan identidad, inventario, préstamos, reservas y renovaciones. El esquema SQLAlchemy y las migraciones `0001`–`0011` funcionan con SQLite y PostgreSQL; Astro consume los endpoints Flask de usuarios, ítems, políticas, modalidades, préstamos y reservas. Sanciones y políticas editables corresponden al Sprint 5, y auditoría y cierre integral al Sprint 6. El detalle de aceptación se mantiene en el [plan de sprints](sprints/plan.md).
+Los Sprints 1–4 implementan identidad, inventario, préstamos, reservas y renovaciones. El esquema SQLAlchemy y las migraciones `0001`–`0012` funcionan con SQLite y PostgreSQL; Astro consume los endpoints Flask de usuarios, ítems, políticas, modalidades, préstamos y reservas. Sanciones y políticas editables corresponden al Sprint 5, y auditoría y cierre integral al Sprint 6. El detalle de aceptación se mantiene en el [plan de sprints](sprints/plan.md).

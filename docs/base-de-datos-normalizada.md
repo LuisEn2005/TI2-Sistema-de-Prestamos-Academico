@@ -19,7 +19,7 @@ foráneas y `JOIN`.
 | --- | --- | --- |
 | `modalidades` | `id`, `nombre`, `activo` | Nombre único; no contiene plazos. |
 | `tipos_recurso` | `codigo`, `nombre` | Catálogo referenciado por inventario y políticas. |
-| `politicas_servicio` | `id`, `rol_aplicable`, `modalidad_id`, `max_items_simultaneos`, `dias_prestamo`, `dias_gracia_reserva` | Una sola fila por `(rol_aplicable, modalidad_id)`; valores positivos y rol restringido. |
+| `politicas_servicio` | `id`, `rol_aplicable`, `modalidad_id`, `max_items_simultaneos`, `dias_prestamo` | Una sola fila por `(rol_aplicable, modalidad_id)`; valores positivos y rol restringido. |
 | `politica_tipos_recurso` | `politica_servicio_id`, `tipo_recurso_codigo` | PK compuesta y dos FKs; reemplaza la lista separada por comas. |
 | `prestamos` | `id`, `usuario_id`, `reserva_id`, `modalidad_id`, `politica_servicio_id`, `dias_plazo`, fechas y renovaciones | Solo referencias y datos propios de la transacción. |
 
@@ -69,8 +69,14 @@ un contrato legible sin desnormalizar la base de datos.
 El arranque de Flask garantiza estos valores de forma idempotente. Para una
 carga SQL manual puede utilizarse
 [`backend/scripts/semillas_politicas.sql`](../backend/scripts/semillas_politicas.sql).
-La migración ejecutable completa está en
-[`0011_normalizacion_politicas.py`](../backend/prestamos_academicos/base_datos/migraciones/versions/0011_normalizacion_politicas.py).
+Las migraciones ejecutables están en
+[`0011_normalizacion_politicas.py`](../backend/prestamos_academicos/base_datos/migraciones/versions/0011_normalizacion_politicas.py)
+y
+[`0012_expiracion_reserva_mismo_dia.py`](../backend/prestamos_academicos/base_datos/migraciones/versions/0012_expiracion_reserva_mismo_dia.py).
+
+Las reservas no tienen días de gracia ni una segunda fecha de expiración. Se
+mantienen activas durante `fecha_reserva` y expiran al comenzar el día siguiente;
+la migración `0012` elimina ambos datos redundantes.
 
 ## Migración de datos existentes
 
