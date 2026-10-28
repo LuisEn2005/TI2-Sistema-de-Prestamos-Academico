@@ -19,10 +19,11 @@ if (usuario) {
       propias.length === 0
         ? el('p', { class: 'vacio' }, 'Su perfil no tiene una política de préstamo.')
         : el('table', {},
-            el('thead', {}, el('tr', {}, ...['Perfil', 'Ítems simultáneos', 'Días de préstamo', 'Recursos permitidos'].map((t) => el('th', {}, t)))),
+            el('thead', {}, el('tr', {}, ...['Perfil', 'Modalidad', 'Ítems simultáneos', 'Días de préstamo', 'Recursos permitidos'].map((t) => el('th', {}, t)))),
             el('tbody', {}, ...propias.map((p) => el('tr', {},
-              el('td', {}, ETIQUETA_ROL[p.rol]), el('td', {}, String(p.max_items_simultaneos)),
-              el('td', {}, String(p.dias_prestamo_default)), el('td', {}, p.tipos_recurso_permitidos.join(', ').toLowerCase()))))));
+              el('td', {}, ETIQUETA_ROL[p.rol]), el('td', {}, p.modalidad),
+              el('td', {}, String(p.max_items_simultaneos)), el('td', {}, String(p.dias_prestamo)),
+              el('td', {}, p.tipos_recurso_permitidos.join(', ').toLowerCase()))))));
   } catch (error) {
     avisar(mensajeDe(error), true);
   }

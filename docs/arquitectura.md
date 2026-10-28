@@ -35,7 +35,8 @@ migraciones de Alembic.
 Por ejemplo, al registrar un préstamo:
 
 1. `prestamos/rutas.py` valida el cuerpo HTTP y el permiso del usuario.
-2. `prestamos/servicio.py` comprueba habilitación, modalidad, política, cupo e ítems.
+2. `prestamos/servicio.py` resuelve la política por rol y modalidad, y comprueba
+   habilitación, tipos permitidos, cupo e ítems.
 3. La unidad de trabajo crea una sola sesión para todos los repositorios.
 4. El dominio calcula la fecha límite y registra la entrega.
 5. Los repositorios guardan el préstamo y cambian los estados de los ítems.
@@ -49,9 +50,6 @@ modificar servicios ni repositorios.
 
 ```mermaid
 erDiagram
-    POLITICAS_SERVICIO ||--o{ PERFILES_ESTUDIANTE : aplica
-    POLITICAS_SERVICIO ||--o{ PERFILES_DOCENTE : aplica
-    POLITICAS_SERVICIO ||--o{ PERFILES_ADMINISTRATIVO : aplica
     USUARIOS ||--o| PERFILES_ESTUDIANTE : tiene
     USUARIOS ||--o| PERFILES_DOCENTE : tiene
     USUARIOS ||--o| PERFILES_ADMINISTRATIVO : tiene
@@ -59,7 +57,12 @@ erDiagram
     USUARIOS ||--o| PERFILES_ADMINISTRADOR_SISTEMA : tiene
     USUARIOS ||--o{ PRESTAMOS : solicita
     USUARIOS ||--o{ RESERVAS : solicita
+    MODALIDADES ||--o{ POLITICAS_SERVICIO : configura
+    TIPOS_RECURSO ||--o{ POLITICA_TIPOS_RECURSO : clasifica
+    POLITICAS_SERVICIO ||--o{ POLITICA_TIPOS_RECURSO : permite
+    TIPOS_RECURSO ||--o{ ITEMS : tipifica
     MODALIDADES ||--o{ PRESTAMOS : define
+    POLITICAS_SERVICIO ||--o{ PRESTAMOS : aplica
     RESERVAS ||--o| PRESTAMOS : origina
     ITEMS ||--o{ RESERVAS : corresponde
     PRESTAMOS ||--|{ DETALLES_PRESTAMO : contiene
@@ -67,9 +70,12 @@ erDiagram
 ```
 
 Los modelos SQLAlchemy están centralizados en `base_datos/modelos.py`. Las
-migraciones `0001`–`0010` conservan la evolución desde el MVP y se aplican al
-iniciar Flask. Restricciones únicas parciales impiden que un mismo ítem aparezca
-en dos préstamos activos o en más de una reserva activa.
+migraciones `0001`–`0011` conservan la evolución desde el MVP y se aplican al
+iniciar Flask. La migración `0011` normaliza políticas por rol y modalidad,
+convierte los tipos permitidos en una relación y elimina las copias descriptivas
+de `prestamos`. Restricciones únicas parciales impiden que un mismo ítem aparezca
+en dos préstamos activos o en más de una reserva activa. El diseño detallado se
+documenta en [Préstamos y políticas](base-de-datos-normalizada.md).
 
 ## Frontend
 

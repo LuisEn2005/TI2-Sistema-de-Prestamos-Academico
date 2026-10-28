@@ -118,8 +118,9 @@ classDiagram
     class PoliticaServicio {
         +int id
         +string rol_aplicable
+        +int modalidad_id
         +int max_items_simultaneos
-        +int dias_prestamo_default
+        +int dias_prestamo
         +int dias_gracia_reserva
     }
 
@@ -151,7 +152,7 @@ classDiagram
     class Modalidad {
         +int id
         +string nombre
-        +int dias_plazo
+        +bool activo
     }
 
     class Reserva {
@@ -189,7 +190,7 @@ classDiagram
         +string detalle
     }
 
-    Usuario "1" --> "1" PoliticaServicio : aplica según rol
+    PoliticaServicio "0..*" --> "1" Modalidad : aplica bajo
     Usuario "1" --> "0..*" Reserva : realiza
     Usuario "1" --> "0..*" Prestamo : solicita
     Usuario "1" --> "0..*" Sancion : recibe
@@ -201,6 +202,7 @@ classDiagram
 
     Reserva "0..*" --> "1" Item : sobre
     Prestamo "1" --> "1" Modalidad : bajo
+    Prestamo "0..*" --> "1" PoliticaServicio : aplica
     Prestamo "0..1" --> "0..1" Reserva : origina desde
     Prestamo "1" --> "1..*" DetallePrestamo : contiene
     DetallePrestamo "0..*" --> "1" Item : referencia
@@ -214,10 +216,13 @@ classDiagram
 - **DetallePrestamo** existe para soportar préstamos de múltiples ítems en una sola transacción sin duplicar lógica de fechas/estado en `Prestamo`.
 - **Sancion** se vincula opcionalmente a un `Prestamo` (para las automáticas por retraso) pero puede existir sin préstamo asociado (para pérdidas o daños reportados aparte).
 - **HistorialMovimiento** actúa como bitácora transversal: cualquier entidad relevante (préstamo, reserva, sanción, ítem) puede generar un evento, cubriendo RF17 y RNF03 sin necesidad de tablas de auditoría separadas por entidad.
-- **PoliticaServicio** desacopla límites y plazos del código. Su aplicación ya funciona; la interfaz para editarlos y cerrar RF18 está planificada para el Sprint 5.
+- **PoliticaServicio** desacopla límites y plazos del código y representa una
+  combinación única de rol y modalidad. Los tipos permitidos se relacionan mediante
+  `politica_tipos_recurso`, no como una lista en una columna. Su aplicación ya
+  funciona; la interfaz para editarlos y cerrar RF18 está planificada para el Sprint 5.
 
 ---
 
 ## 7. Estado de implementación
 
-Los Sprints 1–4 implementan identidad, inventario, préstamos, reservas y renovaciones. El esquema SQLAlchemy y las migraciones `0001`–`0010` funcionan con SQLite y PostgreSQL; Astro consume los endpoints Flask de usuarios, ítems, políticas, modalidades, préstamos y reservas. Sanciones y políticas editables corresponden al Sprint 5, y auditoría y cierre integral al Sprint 6. El detalle de aceptación se mantiene en el [plan de sprints](sprints/plan.md).
+Los Sprints 1–4 implementan identidad, inventario, préstamos, reservas y renovaciones. El esquema SQLAlchemy y las migraciones `0001`–`0011` funcionan con SQLite y PostgreSQL; Astro consume los endpoints Flask de usuarios, ítems, políticas, modalidades, préstamos y reservas. Sanciones y políticas editables corresponden al Sprint 5, y auditoría y cierre integral al Sprint 6. El detalle de aceptación se mantiene en el [plan de sprints](sprints/plan.md).

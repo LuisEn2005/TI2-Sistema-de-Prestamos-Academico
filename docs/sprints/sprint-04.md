@@ -57,6 +57,13 @@ base de datos.
 | `0008_plazo_efectivo` | Agrega `dias_plazo_aplicado`, reconstruye su valor en préstamos existentes y ajusta el máximo inicial de la modalidad in situ a 15 días. |
 | `0009_reservas_renovaciones` | Crea `reservas`, sus restricciones e índice de exclusividad; agrega `reserva_id` y `numero_renovaciones` a `prestamos`. |
 | `0010_plazo_in_situ` | Fija la modalidad in situ en 1 día y hace que venza al final de la misma fecha de entrega. |
+| `0011_normalizacion_politicas` | Convierte modalidades en un catálogo puro, define una política por rol y modalidad, normaliza los tipos permitidos y elimina datos descriptivos duplicados de `prestamos`. |
+
+En el modelo final, `prestamos` conserva las FKs de usuario, modalidad y política,
+además del único dato histórico necesario: `dias_plazo`. El rol y el nombre de la
+modalidad se recuperan por `JOIN`; los tipos permitidos se almacenan en
+`politica_tipos_recurso`. El detalle técnico está en
+[el modelo normalizado](../base-de-datos-normalizada.md).
 
 Las reservas usan los estados `PENDIENTE`, `CONFIRMADA`, `EXPIRADA`, `CANCELADA`
 y `CONVERTIDA`. El préstamo conserva una referencia opcional a la reserva que lo
@@ -85,7 +92,7 @@ no expone como si fuera aplicable el máximo interno de la modalidad.
 
 ## Calidad y automatización
 
-- **118 pruebas backend** cubren dominio, API, persistencia, migraciones y el
+- **119 pruebas backend** cubren dominio, API, persistencia, migraciones y el
   recorrido de PostgreSQL; la prueba de PostgreSQL se omite localmente si no existe
   `TEST_POSTGRES_URL`.
 - El frontend genera siete páginas con `astro check` sin errores.
