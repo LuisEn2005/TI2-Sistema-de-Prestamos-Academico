@@ -204,6 +204,9 @@ class PrestamoDB(Base):
             "modalidad_dias_plazo IS NULL OR modalidad_dias_plazo > 0",
             name="ck_prestamo_plazo_positivo"),
         CheckConstraint(
+            "dias_plazo_aplicado IS NULL OR dias_plazo_aplicado > 0",
+            name="ck_prestamo_plazo_aplicado_positivo"),
+        CheckConstraint(
             "rol_solicitante IS NULL OR rol_solicitante IN "
             "('ESTUDIANTE','DOCENTE','ADMINISTRATIVO')", name="ck_prestamo_rol_valido"),
         Index("ix_prestamos_usuario", "usuario_id"),
@@ -215,6 +218,7 @@ class PrestamoDB(Base):
     modalidad_id: Mapped[int | None] = mapped_column(ForeignKey("modalidades.id"))
     modalidad_nombre: Mapped[str | None] = mapped_column(String(60))
     modalidad_dias_plazo: Mapped[int | None] = mapped_column(Integer)
+    dias_plazo_aplicado: Mapped[int | None] = mapped_column(Integer)
     fecha_prestamo: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_ahora
     )

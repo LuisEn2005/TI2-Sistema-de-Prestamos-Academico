@@ -126,6 +126,7 @@ def prestamo_a_dominio(fila: PrestamoDB, detalles: list[DetallePrestamoDB]) -> P
         usuarioId=UsuarioId(fila.usuario_id),
         rolSolicitante=RolUsuario(fila.rol_solicitante) if fila.rol_solicitante else None,
         modalidad=modalidad,
+        diasPlazoAplicado=fila.dias_plazo_aplicado,
         fechaEntrega=fila.fecha_prestamo,
         fechaDevolucionEsperada=fila.fecha_devolucion_esperada,
         fechaDevolucionReal=fila.fecha_devolucion,

@@ -160,7 +160,7 @@ class PrestamoApplicationService:
             "usuario": nombres.get(p.usuarioId.valor),
             "rol_solicitante": p.rolSolicitante.value if p.rolSolicitante else None,
             "modalidad": p.modalidad.nombre if p.modalidad else None,
-            "dias_plazo": p.modalidad.diasPlazo if p.modalidad else None,
+            "dias_plazo": p.diasPlazoAplicado,
             "items": [{
                 "item_id": d.itemId.valor,
                 "codigo": items[d.itemId.valor].codigo,

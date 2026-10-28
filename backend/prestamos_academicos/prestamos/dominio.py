@@ -71,6 +71,7 @@ class Prestamo:
     reservaId: Optional[ReservaId] = None
     rolSolicitante: Optional[RolUsuario] = None
     modalidad: Optional[ModalidadSnapshot] = None
+    diasPlazoAplicado: Optional[int] = None
     fechaEntrega: Optional[datetime] = None
     fechaDevolucionEsperada: Optional[date] = None
     fechaDevolucionReal: Optional[datetime] = None
@@ -94,6 +95,7 @@ class Prestamo:
             fechaEntrega=ahora,
             detalles=[DetallePrestamo(itemId=item) for item in items],
         )
+        prestamo.diasPlazoAplicado = modalidad.diasEfectivos(diasPolitica)
         prestamo.fechaDevolucionEsperada = prestamo.calcularFechaLimite(hoy, diasPolitica)
         return prestamo
 

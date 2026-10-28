@@ -62,6 +62,7 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
                 modalidad_id=m.modalidadOrigenId.valor if m and m.modalidadOrigenId else None,
                 modalidad_nombre=m.nombre if m else None,
                 modalidad_dias_plazo=m.diasPlazo if m else None,
+                dias_plazo_aplicado=prestamo.diasPlazoAplicado,
                 fecha_devolucion_esperada=prestamo.fechaDevolucionEsperada)
             if prestamo.fechaEntrega is not None:
                 fila.fecha_prestamo = prestamo.fechaEntrega
