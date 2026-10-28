@@ -20,10 +20,10 @@ cuatro archivos para que una operación pueda seguirse sin recorrer capas disper
 | `repositorio.py` | Consultas y escritura mediante SQLAlchemy. |
 | `rutas.py` | Endpoints Flask y conversión a JSON. |
 
-Los módulos `identidad/`, `inventario/`, `prestamos/` y
-`configuracion_servicio/` tienen recorridos funcionales. `reservas/`,
-`sanciones/` y `auditoria/` conservan únicamente el modelo de dominio previsto
-para los Sprints 4–6; no se presentan como funcionalidades terminadas.
+Los módulos `identidad/`, `inventario/`, `prestamos/`, `reservas/` y
+`configuracion_servicio/` tienen recorridos funcionales. `sanciones/` y
+`auditoria/` conservan únicamente el modelo de dominio previsto para los
+Sprints 5 y 6; no se presentan como funcionalidades terminadas.
 
 `compartido/` contiene autenticación, validaciones HTTP, errores, reloj e
 identificadores comunes. `base_datos/` reúne la conexión, los modelos ORM, los
@@ -58,15 +58,18 @@ erDiagram
     USUARIOS ||--o| PERFILES_GESTOR_INVENTARIO : tiene
     USUARIOS ||--o| PERFILES_ADMINISTRADOR_SISTEMA : tiene
     USUARIOS ||--o{ PRESTAMOS : solicita
+    USUARIOS ||--o{ RESERVAS : solicita
     MODALIDADES ||--o{ PRESTAMOS : define
+    RESERVAS ||--o| PRESTAMOS : origina
+    ITEMS ||--o{ RESERVAS : corresponde
     PRESTAMOS ||--|{ DETALLES_PRESTAMO : contiene
     ITEMS ||--o{ DETALLES_PRESTAMO : participa
 ```
 
 Los modelos SQLAlchemy están centralizados en `base_datos/modelos.py`. Las
-migraciones `0001`–`0007` conservan la evolución desde el MVP y se aplican al
-iniciar Flask. Una restricción única parcial impide que un mismo ítem aparezca en
-dos préstamos activos.
+migraciones `0001`–`0009` conservan la evolución desde el MVP y se aplican al
+iniciar Flask. Restricciones únicas parciales impiden que un mismo ítem aparezca
+en dos préstamos activos o en más de una reserva activa.
 
 ## Frontend
 
