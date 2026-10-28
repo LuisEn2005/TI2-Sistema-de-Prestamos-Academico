@@ -128,3 +128,29 @@ test('el gestor opera inventario y no accede a la administración de usuarios', 
   await page.goto('/admin/usuarios');
   await expect(page.getByRole('heading', { name: 'Acceso restringido' })).toBeVisible();
 });
+
+test('el estudiante reserva y el administrador convierte la reserva en préstamo', async ({ page }) => {
+  await ingresar(page, 'jesus.perez@escuela.edu');
+  await page.goto('/reservas');
+  await page.getByLabel('Buscar recurso').fill('clean code');
+  const selectorRecurso = page.getByLabel('Recurso', { exact: true });
+  const opcion = selectorRecurso.locator('option').filter({ hasText: 'LIB-CLEAN' });
+  await expect(opcion).toHaveCount(1);
+  await selectorRecurso.selectOption((await opcion.getAttribute('value'))!);
+  await page.getByRole('button', { name: 'Solicitar reserva' }).click();
+  await expect(page.locator('#mensaje')).toContainText('Reserva solicitada');
+  const propia = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
+  await expect(propia).toContainText('Pendiente');
+
+  await ingresar(page);
+  await page.goto('/reservas');
+  const gestion = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
+  await gestion.getByRole('button', { name: 'Confirmar' }).click();
+  await expect(gestion).toContainText('Confirmada');
+  await gestion.getByLabel('Modalidad para LIB-CLEAN').selectOption({
+    label: 'In situ (en sala)',
+  });
+  await gestion.getByRole('button', { name: 'Registrar entrega' }).click();
+  await expect(page.locator('#mensaje')).toContainText('Reserva convertida en préstamo');
+  await expect(gestion).toContainText('Convertida en préstamo');
+});

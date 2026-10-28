@@ -10,6 +10,7 @@ import { $, avisar, el, fechaLegible, mensajeDe, opciones, retardo, soloFecha } 
 const LIMITE = 15;
 const usuario = await exigirSesion();
 const gestiona = tienePermiso(usuario, 'REGISTRAR_ENTREGA_PRESTAMO');
+const puedeRenovar = tienePermiso(usuario, 'RENOVAR_PRESTAMO');
 let pagina = 1;
 let seleccion: ItemDTO[] = [];
 let condicionesOk = false;
@@ -58,6 +59,19 @@ function filaDe(p: PrestamoDTO) {
   ].filter(Boolean);
 
   const acciones = el('div', {}, el('div', { class: `estado ${claseEstado}` }, textoEstado));
+  if (p.estado === 'activo' && (gestiona || (puedeRenovar && p.usuario_id === usuario?.id))) {
+    const renovar = el('button', { type: 'button', class: 'pequeno secundario' }, 'Renovar préstamo');
+    renovar.addEventListener('click', async () => {
+      try {
+        const renovado = await api.post<PrestamoDTO>(`/api/prestamos/${p.id}/renovacion`);
+        avisar(`Préstamo renovado. Nueva fecha límite: ${soloFecha(renovado.fecha_limite)}.`);
+        await cargarLista();
+      } catch (error) {
+        avisar(mensajeDe(error), true);
+      }
+    });
+    acciones.append(renovar);
+  }
   if (gestiona && p.estado === 'activo') {
     const boton = el('button', { type: 'button', class: 'pequeno secundario' }, 'Registrar devolución');
     boton.addEventListener('click', () => abrirDevolucion(p));

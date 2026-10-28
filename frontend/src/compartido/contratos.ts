@@ -29,9 +29,9 @@ export type ItemPrestamoDTO = {
   condicion: CondicionDevolucion | null; observacion: string | null;
 };
 export type PrestamoDTO = {
-  id: number; usuario_id: number; usuario: string;
+  id: number; reserva_id: number | null; usuario_id: number; usuario: string;
   rol_solicitante: RolPrestatario | null;       // null en préstamos anteriores al Sprint 3
-  modalidad: string | null; dias_plazo: number | null;
+  modalidad: string | null; dias_plazo: number | null; numero_renovaciones: number;
   items: ItemPrestamoDTO[];
   fecha_prestamo: string; fecha_limite: string | null; fecha_devolucion: string | null;
   estado: 'activo' | 'devuelto'; vencido: boolean; dias_atraso: number;
@@ -48,6 +48,16 @@ export type PoliticaDTO = {
   id: number; rol: Rol; max_items_simultaneos: number; dias_prestamo_default: number;
   dias_gracia_reserva: number; tipos_recurso_permitidos: string[];
 };
+export type EstadoReserva = 'PENDIENTE' | 'CONFIRMADA' | 'EXPIRADA' | 'CANCELADA' | 'CONVERTIDA';
+export type ReservaDTO = {
+  id: number; usuario_id: number; usuario: string; item_id: number;
+  codigo: string; item: string; rol_solicitante: RolPrestatario;
+  fecha_solicitud: string; fecha_reserva: string; fecha_expiracion: string;
+  estado: EstadoReserva;
+};
+export type PaginaReservasDTO = {
+  reservas: ReservaDTO[]; total: number; pagina: number; limite: number;
+};
 
 export const ETIQUETA_ESTADO: Record<Estado, string> = {
   DISPONIBLE: 'Disponible', PRESTADO: 'Prestado', RESERVADO: 'Reservado',
@@ -60,4 +70,8 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
 };
 export const ETIQUETA_CONDICION: Record<CondicionDevolucion, string> = {
   BUEN_ESTADO: 'Buen estado', DANADO: 'Dañado', PERDIDO: 'Perdido',
+};
+export const ETIQUETA_RESERVA: Record<EstadoReserva, string> = {
+  PENDIENTE: 'Pendiente', CONFIRMADA: 'Confirmada', EXPIRADA: 'Expirada',
+  CANCELADA: 'Cancelada', CONVERTIDA: 'Convertida en préstamo',
 };

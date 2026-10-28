@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base titulo="Reservas">
+  <div class="encabezado-pagina">
+    <h1>Reservas</h1>
+    <p>Solicite un recurso para una fecha futura y consulte su confirmación o vencimiento.</p>
+  </div>
+
+  <section id="nueva" hidden>
+    <h2>Nueva reserva</h2>
+    <form id="formulario">
+      <div class="barra">
+        <div><label for="buscar-item">Buscar recurso</label><input id="buscar-item" type="search" maxlength="120" placeholder="Código o nombre" /></div>
+        <div><label for="item">Recurso</label><select id="item" required></select></div>
+        <div><label for="fecha">Fecha de reserva</label><input id="fecha" type="date" required /></div>
+        <div id="zona-rol" hidden><label for="rol">Reservar como</label><select id="rol"></select></div>
+        <button id="reservar" type="submit">Solicitar reserva</button>
+      </div>
+      <p class="tenue pequeno">Los recursos prestados pueden solicitarse para una fecha futura; su renovación quedará bloqueada hasta resolver la reserva.</p>
+    </form>
+  </section>
+
+  <h2 style="margin-top:2rem">Seguimiento</h2>
+  <div class="barra">
+    <div><label for="estado">Mostrar</label><select id="estado">
+      <option value="">Todas</option>
+      <option value="PENDIENTE">Pendientes</option>
+      <option value="CONFIRMADA">Confirmadas</option>
+      <option value="CONVERTIDA">Convertidas</option>
+      <option value="CANCELADA">Canceladas</option>
+      <option value="EXPIRADA">Expiradas</option>
+    </select></div>
+  </div>
+  <ul id="lista" class="indice"></ul>
+  <div class="paginacion">
+    <button id="anterior" type="button" class="secundario">Anterior</button>
+    <span id="pagina" class="tenue pequeno"></span>
+    <button id="siguiente" type="button" class="secundario">Siguiente</button>
+  </div>
+  <script>import '../funcionalidades/reservas.ts';</script>
+</Base>
