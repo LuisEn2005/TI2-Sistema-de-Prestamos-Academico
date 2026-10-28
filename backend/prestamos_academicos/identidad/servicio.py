@@ -9,7 +9,7 @@ from .dominio import (
     PerfilAdministradorSistema, PerfilAdministrativo, PerfilDocente, PerfilEstudiante,
     PerfilGestorInventario, Permiso, ServicioAutorizacionRol, Usuario,
 )
-from ..compartido import PoliticaServicioId, RolUsuario
+from ..compartido import RolUsuario
 from ..compartido import validacion as v
 from ..compartido import Conflicto, ErrorAplicacion, NoAutenticado, NoEncontrado, SinPermiso
 
@@ -78,33 +78,19 @@ class IdentidadApplicationService:
             uow.commit()
 
     # -- gestión de usuarios (RF01) ---------------------------------------
-    def _politica_id(self, uow, rol):
-        politica = uow.politicas.find_by_rol(rol)
-        return politica.id if politica else None
-
-    def _aplicar_perfil(self, uow, usuario, rol, datos, existente_politica=None):
+    def _aplicar_perfil(self, uow, usuario, rol, datos):
         datos = v.objeto(datos, f"el perfil {rol.value}")
         campos_perfil = {
-            RolUsuario.ESTUDIANTE: {"codigo_estudiante", "matricula_vigente",
-                                    "politica_servicio_id"},
+            RolUsuario.ESTUDIANTE: {"codigo_estudiante", "matricula_vigente"},
             RolUsuario.DOCENTE: {"codigo_empleado", "tipo_contrato",
-                                 "vinculacion_vigente", "politica_servicio_id"},
+                                 "vinculacion_vigente"},
             RolUsuario.ADMINISTRATIVO: {"codigo_empleado", "cargo_administrativo",
-                                        "vinculacion_vigente", "politica_servicio_id"},
+                                        "vinculacion_vigente"},
             RolUsuario.GESTOR_INVENTARIO: {"codigo_empleado", "area_responsable",
                                            "fecha_asignacion"},
             RolUsuario.ADMINISTRADOR_SISTEMA: {"codigo_empleado", "fecha_asignacion"},
         }
         v.campos(datos, campos_perfil[rol], f"el perfil {rol.value}")
-        politica = existente_politica or self._politica_id(uow, rol)
-        if "politica_servicio_id" in datos:
-            solicitada = datos["politica_servicio_id"]
-            if type(solicitada) is not int or uow.politicas.find_by_id(solicitada) is None:
-                raise ErrorAplicacion("La política de servicio indicada no existe.", 400)
-            if uow.politicas.find_by_id(solicitada).rolAplicable != rol:
-                raise ErrorAplicacion("La política indicada no corresponde a este perfil.", 400)
-            politica = PoliticaServicioId(solicitada)
-
         if rol == RolUsuario.ESTUDIANTE:
             previo = usuario.perfilEstudiante
             usuario.perfilEstudiante = PerfilEstudiante(
@@ -112,8 +98,7 @@ class IdentidadApplicationService:
                                          etiqueta="código de estudiante"),
                 matriculaVigente=v.booleano(
                     datos, "matricula_vigente",
-                    defecto=previo.matriculaVigente if previo else True),
-                politicaServicioId=politica)
+                    defecto=previo.matriculaVigente if previo else True))
         elif rol == RolUsuario.DOCENTE:
             previo = usuario.perfilDocente
             usuario.perfilDocente = PerfilDocente(
@@ -123,8 +108,7 @@ class IdentidadApplicationService:
                                      etiqueta="tipo de contrato"),
                 vinculacionVigente=v.booleano(
                     datos, "vinculacion_vigente",
-                    defecto=previo.vinculacionVigente if previo else True),
-                politicaServicioId=politica)
+                    defecto=previo.vinculacionVigente if previo else True))
         elif rol == RolUsuario.ADMINISTRATIVO:
             previo = usuario.perfilAdministrativo
             usuario.perfilAdministrativo = PerfilAdministrativo(
@@ -134,8 +118,7 @@ class IdentidadApplicationService:
                                             etiqueta="cargo"),
                 vinculacionVigente=v.booleano(
                     datos, "vinculacion_vigente",
-                    defecto=previo.vinculacionVigente if previo else True),
-                politicaServicioId=politica)
+                    defecto=previo.vinculacionVigente if previo else True))
         elif rol == RolUsuario.GESTOR_INVENTARIO:
             previo = usuario.perfilGestorInventario
             usuario.perfilGestorInventario = PerfilGestorInventario(
@@ -254,9 +237,7 @@ class IdentidadApplicationService:
                     previo = self._perfil_de(usuario, rol)
                     # Combina con los datos actuales para permitir ediciones parciales.
                     combinado = self._perfil_a_dict(previo) | v.objeto(datos_perfil)
-                    self._aplicar_perfil(
-                        uow, usuario, rol, combinado,
-                        existente_politica=getattr(previo, "politicaServicioId", None))
+                    self._aplicar_perfil(uow, usuario, rol, combinado)
             usuario.sincronizarRoles()
             if not usuario.roles:
                 raise ErrorAplicacion("El usuario debe conservar al menos un perfil.", 400)

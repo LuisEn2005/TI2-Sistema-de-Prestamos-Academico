@@ -2,7 +2,7 @@
 
 ## Alcance y estado
 
-Este plan parte de los [requisitos RF01–RF18 y RNF01–RNF06](../requisitos.md). **Sprints 1, 2 y 3 están implementados** ([MVP](sprint-01.md), [Sprint 2](sprint-02.md) y [Sprint 3](sprint-03.md)). **Sprints 4–6 están planificados**: describen entregas esperadas, no funcionalidades existentes. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
+Este plan parte de los [requisitos RF01–RF18 y RNF01–RNF06](../requisitos.md). **Sprints 1–4 están implementados** ([MVP](sprint-01.md), [Sprint 2](sprint-02.md), [Sprint 3](sprint-03.md) y [Sprint 4](sprint-04.md)). **Sprints 5–6 están planificados**. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
 
 Cada sprint debe entregar una funcionalidad visible en Astro, una API y reglas en Flask, persistencia cuando corresponda y comprobaciones de su recorrido principal. La cobertura parcial de un requisito en un sprint no equivale a su cierre; la tabla de trazabilidad indica dónde quedará completo.
 
@@ -38,7 +38,7 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Demostración:** un encargado entrega varios recursos, ve el plazo calculado y registra su devolución con el estado individual de cada ítem.
 - **Resultado:** implementado; reglas, API, cambios incompatibles y decisiones por validar en el [documento del Sprint 3](sprint-03.md).
 
-## Sprint 4 — Reservas y renovaciones · Planificado
+## Sprint 4 — Reservas y renovaciones · Terminado
 
 **Objetivo.** Gestionar solicitudes previas a la entrega y respetar su prioridad.
 
@@ -46,6 +46,7 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Frontend:** solicitud y seguimiento de reservas, cancelación, presentación de vencimientos y acción de renovación con el motivo de aceptación o rechazo.
 - **Cierre:** RF05, RF08 y RF09 completos. RF07 y RF12 implementan el flujo de reserva y renovación; su validación contra sanciones activas se cerrará en Sprint 5.
 - **Demostración:** una reserva bloquea la disponibilidad según su estado; al cancelarse o expirar libera el recurso, y una reserva pendiente impide renovarlo.
+- **Resultado:** implementado; ver [Sprint 4](sprint-04.md) para reglas, API, persistencia, pruebas y límites.
 
 ## Sprint 5 — Sanciones y políticas configurables · Planificado
 

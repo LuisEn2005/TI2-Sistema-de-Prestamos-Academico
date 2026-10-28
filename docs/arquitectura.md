@@ -20,10 +20,10 @@ cuatro archivos para que una operación pueda seguirse sin recorrer capas disper
 | `repositorio.py` | Consultas y escritura mediante SQLAlchemy. |
 | `rutas.py` | Endpoints Flask y conversión a JSON. |
 
-Los módulos `identidad/`, `inventario/`, `prestamos/` y
-`configuracion_servicio/` tienen recorridos funcionales. `reservas/`,
-`sanciones/` y `auditoria/` conservan únicamente el modelo de dominio previsto
-para los Sprints 4–6; no se presentan como funcionalidades terminadas.
+Los módulos `identidad/`, `inventario/`, `prestamos/`, `reservas/` y
+`configuracion_servicio/` tienen recorridos funcionales. `sanciones/` y
+`auditoria/` conservan únicamente el modelo de dominio previsto para los
+Sprints 5 y 6; no se presentan como funcionalidades terminadas.
 
 `compartido/` contiene autenticación, validaciones HTTP, errores, reloj e
 identificadores comunes. `base_datos/` reúne la conexión, los modelos ORM, los
@@ -35,7 +35,8 @@ migraciones de Alembic.
 Por ejemplo, al registrar un préstamo:
 
 1. `prestamos/rutas.py` valida el cuerpo HTTP y el permiso del usuario.
-2. `prestamos/servicio.py` comprueba habilitación, modalidad, política, cupo e ítems.
+2. `prestamos/servicio.py` resuelve la política por rol y modalidad, y comprueba
+   habilitación, tipos permitidos, cupo e ítems.
 3. La unidad de trabajo crea una sola sesión para todos los repositorios.
 4. El dominio calcula la fecha límite y registra la entrega.
 5. Los repositorios guardan el préstamo y cambian los estados de los ítems.
@@ -49,24 +50,33 @@ modificar servicios ni repositorios.
 
 ```mermaid
 erDiagram
-    POLITICAS_SERVICIO ||--o{ PERFILES_ESTUDIANTE : aplica
-    POLITICAS_SERVICIO ||--o{ PERFILES_DOCENTE : aplica
-    POLITICAS_SERVICIO ||--o{ PERFILES_ADMINISTRATIVO : aplica
     USUARIOS ||--o| PERFILES_ESTUDIANTE : tiene
     USUARIOS ||--o| PERFILES_DOCENTE : tiene
     USUARIOS ||--o| PERFILES_ADMINISTRATIVO : tiene
     USUARIOS ||--o| PERFILES_GESTOR_INVENTARIO : tiene
     USUARIOS ||--o| PERFILES_ADMINISTRADOR_SISTEMA : tiene
     USUARIOS ||--o{ PRESTAMOS : solicita
+    USUARIOS ||--o{ RESERVAS : solicita
+    MODALIDADES ||--o{ POLITICAS_SERVICIO : configura
+    TIPOS_RECURSO ||--o{ POLITICA_TIPOS_RECURSO : clasifica
+    POLITICAS_SERVICIO ||--o{ POLITICA_TIPOS_RECURSO : permite
+    TIPOS_RECURSO ||--o{ ITEMS : tipifica
     MODALIDADES ||--o{ PRESTAMOS : define
+    POLITICAS_SERVICIO ||--o{ PRESTAMOS : aplica
+    RESERVAS ||--o| PRESTAMOS : origina
+    ITEMS ||--o{ RESERVAS : corresponde
     PRESTAMOS ||--|{ DETALLES_PRESTAMO : contiene
     ITEMS ||--o{ DETALLES_PRESTAMO : participa
 ```
 
 Los modelos SQLAlchemy están centralizados en `base_datos/modelos.py`. Las
-migraciones `0001`–`0007` conservan la evolución desde el MVP y se aplican al
-iniciar Flask. Una restricción única parcial impide que un mismo ítem aparezca en
-dos préstamos activos.
+migraciones `0001`–`0012` conservan la evolución desde el MVP y se aplican al
+iniciar Flask. La migración `0011` normaliza políticas por rol y modalidad,
+convierte los tipos permitidos en una relación y elimina las copias descriptivas
+de `prestamos`. `0012` elimina los días de gracia: una reserva expira al terminar
+su fecha reservada y esa fecha no se duplica en otra columna. Restricciones únicas parciales impiden que un mismo ítem aparezca
+en dos préstamos activos o en más de una reserva activa. El diseño detallado se
+documenta en [Préstamos y políticas](base-de-datos-normalizada.md).
 
 ## Frontend
 

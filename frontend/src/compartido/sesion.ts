@@ -83,6 +83,9 @@ export async function dibujarNavegacion() {
   }
   const enlaces: [string, string][] = [['/', 'Catálogo']];
   if (usuario) enlaces.push(['/prestamos', 'Préstamos']);
+  if (tienePermiso(usuario, 'RESERVAR_ITEM') || tienePermiso(usuario, 'CONFIRMAR_RESERVA')) {
+    enlaces.push(['/reservas', 'Reservas']);
+  }
   if (tienePermiso(usuario, 'REGISTRAR_ITEM_INVENTARIO')) enlaces.push(['/admin/inventario', 'Inventario']);
   if (tienePermiso(usuario, 'GESTIONAR_USUARIOS_Y_ROLES')) enlaces.push(['/admin/usuarios', 'Usuarios']);
 

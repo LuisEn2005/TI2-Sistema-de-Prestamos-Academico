@@ -12,9 +12,10 @@ from prestamos_academicos.identidad import (
     Usuario,
 )
 from prestamos_academicos.inventario import EstadoItem, Libro, listar_tipos, obtener_tipo
+from prestamos_academicos.reservas import EstadoReserva, Reserva
 from prestamos_academicos.configuracion_servicio import Modalidad, PoliticaServicio
 from prestamos_academicos.prestamos import (
-    CondicionDevolucion, EstadoPrestamo, ModalidadSnapshot, Prestamo, PrestamoDevueltoTarde,
+    CondicionDevolucion, EstadoPrestamo, Prestamo, PrestamoDevueltoTarde,
 )
 
 
@@ -108,21 +109,16 @@ class PrestamoTest(unittest.TestCase):
     HOY = date(2026, 10, 19)
     AHORA = datetime(2026, 10, 19, 20, 0, tzinfo=timezone.utc)
 
-    def _prestamo(self, items=(1, 2), dias_modalidad=15, dias_politica=7, rol=RolUsuario.ESTUDIANTE):
+    def _prestamo(self, items=(1, 2), dias=7, rol=RolUsuario.ESTUDIANTE):
         return Prestamo.entregar(
-            usuarioId=UsuarioId(1), rol=rol,
-            modalidad=ModalidadSnapshot(ModalidadId(1), "Externa", dias_modalidad),
-            diasPolitica=dias_politica, items=[ItemId(i) for i in items], ahora=self.AHORA,
-            hoy=self.HOY)
+            usuarioId=UsuarioId(1), politicaId=PoliticaServicioId(1), rol=rol,
+            modalidadId=ModalidadId(1), modalidadNombre="Externa", diasPlazo=dias,
+            items=[ItemId(i) for i in items], ahora=self.AHORA, hoy=self.HOY)
 
-    def test_plazo_es_el_menor_entre_modalidad_y_politica(self):
-        self.assertEqual(self._prestamo(dias_modalidad=15, dias_politica=7).fechaDevolucionEsperada,
-                         date(2026, 10, 26))
-        self.assertEqual(self._prestamo(dias_modalidad=15, dias_politica=20).fechaDevolucionEsperada,
-                         date(2026, 11, 3))
-        self.assertEqual(self._prestamo(dias_modalidad=1, dias_politica=7).fechaDevolucionEsperada,
-                         date(2026, 10, 20))
-        self.assertEqual(ModalidadSnapshot(None, "x", 3).diasEfectivos(10), 3)
+    def test_plazo_proviene_de_la_politica_aplicada(self):
+        self.assertEqual(self._prestamo(dias=7).fechaDevolucionEsperada, date(2026, 10, 26))
+        self.assertEqual(self._prestamo(dias=15).fechaDevolucionEsperada, date(2026, 11, 3))
+        self.assertEqual(self._prestamo(dias=1).fechaDevolucionEsperada, date(2026, 10, 19))
 
     def test_entregar_valida_items_y_plazos(self):
         with self.assertRaises(ErrorDominio):
@@ -130,9 +126,7 @@ class PrestamoTest(unittest.TestCase):
         with self.assertRaises(ErrorDominio):
             self._prestamo(items=(1, 1))
         with self.assertRaises(ErrorDominio):
-            self._prestamo(dias_modalidad=0)
-        with self.assertRaises(ErrorDominio):
-            self._prestamo(dias_politica=0)
+            self._prestamo(dias=0)
         p = self._prestamo()
         self.assertEqual((p.estado, p.rolSolicitante), (EstadoPrestamo.ACTIVO, RolUsuario.ESTUDIANTE))
         self.assertEqual([d.itemId.valor for d in p.detalles], [1, 2])
@@ -143,6 +137,17 @@ class PrestamoTest(unittest.TestCase):
         self.assertEqual((p.diasAtraso(date(2026, 10, 26)), p.estaVencido(date(2026, 10, 26))), (0, False))
         self.assertEqual((p.diasAtraso(date(2026, 10, 29)), p.estaVencido(date(2026, 10, 29))), (3, True))
         self.assertEqual(Prestamo().diasAtraso(self.HOY), 0)  # préstamo anterior: sin fecha límite
+
+    def test_renovacion_extiende_el_plazo_efectivo(self):
+        p = self._prestamo()
+        p.renovar(self.HOY)
+        self.assertEqual((p.fechaDevolucionEsperada, p.numeroRenovaciones),
+                         (date(2026, 11, 2), 1))
+        with self.assertRaisesRegex(ErrorDominio, "vencido"):
+            p.renovar(date(2026, 11, 3))
+        p.estado = EstadoPrestamo.DEVUELTO
+        with self.assertRaisesRegex(ErrorDominio, "activo"):
+            p.renovar(self.HOY)
 
     def test_devolucion_registra_condicion_por_item_y_eventos(self):
         p = self._prestamo()
@@ -177,36 +182,60 @@ class PrestamoTest(unittest.TestCase):
             p.registrarDevolucion(buenas, hoy=self.HOY)
 
 
+class ReservaTest(unittest.TestCase):
+    def test_ciclo_y_expiracion(self):
+        reserva = Reserva.solicitar(
+            usuario_id=UsuarioId(1), item_id=ItemId(2), rol=RolUsuario.ESTUDIANTE,
+            fecha_solicitud=datetime(2026, 10, 19, tzinfo=timezone.utc),
+            fecha_reserva=date(2026, 10, 20), hoy=date(2026, 10, 19))
+        self.assertEqual(reserva.estado, EstadoReserva.PENDIENTE)
+        self.assertFalse(reserva.estaVencida(date(2026, 10, 20)))
+        self.assertTrue(reserva.estaVencida(date(2026, 10, 21)))
+        reserva.confirmar()
+        self.assertEqual(reserva.estado, EstadoReserva.CONFIRMADA)
+        reserva.convertir()
+        self.assertEqual(reserva.estado, EstadoReserva.CONVERTIDA)
+        with self.assertRaises(ErrorDominio):
+            reserva.cancelar()
+
+    def test_rechaza_fecha_pasada_y_transiciones_invalidas(self):
+        with self.assertRaises(ErrorDominio):
+            Reserva.solicitar(
+                usuario_id=UsuarioId(1), item_id=ItemId(2), rol=RolUsuario.ESTUDIANTE,
+                fecha_solicitud=datetime.now(timezone.utc), fecha_reserva=date(2026, 10, 18),
+                hoy=date(2026, 10, 19))
+        reserva = Reserva(estado=EstadoReserva.PENDIENTE)
+        reserva.cancelar()
+        with self.assertRaises(ErrorDominio):
+            reserva.confirmar()
+
+
 class ReglasDePrestamoTest(unittest.TestCase):
     def test_politica_aplica_cupo_y_tipos(self):
         politica = PoliticaServicio(
-            maxItemsSimultaneos=3, diasPrestamoDefault=7, tiposRecursoPermitidos="LIBRO, equipo")
+            maxItemsSimultaneos=3, diasPrestamo=7,
+            tiposRecursoPermitidos=["LIBRO", "equipo"])
         self.assertEqual([politica.cupoRestante(n) for n in (0, 2, 3, 5)], [3, 1, 0, 0])
         self.assertTrue(politica.permiteTipo("libro") and politica.permiteTipo("EQUIPO"))
         self.assertFalse(politica.permiteTipo("MOBILIARIO"))
         self.assertEqual(politica.tiposPermitidos(), ["LIBRO", "EQUIPO"])
 
-    def test_modalidad_entrega_una_copia_inmutable(self):
-        m = Modalidad(id=ModalidadId(2), nombre="Externa", diasPlazoDefault=15, activo=True)
-        snap = m.snapshot()
-        m.diasPlazoDefault = 3                                   # un cambio posterior de configuración
-        self.assertEqual((snap.nombre, snap.diasPlazo), ("Externa", 15))
-        with self.assertRaises(Exception):
-            snap.diasPlazo = 1
+    def test_modalidad_es_un_catalogo_sin_reglas_de_plazo(self):
+        m = Modalidad(id=ModalidadId(2), nombre="Externa", activo=True)
+        self.assertEqual((m.id.valor, m.nombre, m.activo), (2, "Externa", True))
+        self.assertNotIn("diasPlazoDefault", vars(m))
 
     def test_usuario_presta_con_el_perfil_que_elige(self):
         u = Usuario(
             activo=True,
-            perfilEstudiante=PerfilEstudiante("E1", True, PoliticaServicioId(10)),
-            perfilDocente=PerfilDocente("D1", "Contratado", False, PoliticaServicioId(20)),
+            perfilEstudiante=PerfilEstudiante("E1", True),
+            perfilDocente=PerfilDocente("D1", "Contratado", False),
             perfilGestorInventario=PerfilGestorInventario("G1", "Lab", date(2026, 1, 1)))
         u.sincronizarRoles()
         self.assertEqual(u.rolesPrestatarios(), [RolUsuario.ESTUDIANTE, RolUsuario.DOCENTE])
         self.assertTrue(u.vinculacionVigentePara(RolUsuario.ESTUDIANTE))
         self.assertFalse(u.vinculacionVigentePara(RolUsuario.DOCENTE))
         self.assertFalse(u.vinculacionVigentePara(RolUsuario.ADMINISTRATIVO))
-        self.assertEqual(u.politicaIdPara(RolUsuario.DOCENTE).valor, 20)
-        self.assertIsNone(u.politicaIdPara(RolUsuario.ADMINISTRATIVO))
 
 
 if __name__ == "__main__":

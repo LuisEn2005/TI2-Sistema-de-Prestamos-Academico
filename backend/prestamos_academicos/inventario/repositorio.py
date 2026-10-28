@@ -2,7 +2,7 @@ from sqlalchemy import func, select, update
 
 from .dominio import EstadoItem, IItemRepository
 from ..base_datos import mapeadores
-from ..base_datos.modelos import ItemDB
+from ..base_datos.modelos import ItemDB, TipoRecursoDB
 
 
 def _like(texto):
@@ -13,6 +13,12 @@ def _like(texto):
 class SqlAlchemyItemRepository(IItemRepository):
     def __init__(self, sesion):
         self.sesion = sesion
+
+    def asegurar_tipo(self, codigo, nombre):
+        """Sincroniza el registro extensible del dominio con el catálogo SQL."""
+        if self.sesion.get(TipoRecursoDB, codigo) is None:
+            self.sesion.add(TipoRecursoDB(codigo=codigo, nombre=nombre))
+            self.sesion.flush()
 
     def save(self, item):
         fila = self.sesion.get(ItemDB, item.id.valor) if item.id else None

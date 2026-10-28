@@ -8,6 +8,7 @@ from ..configuracion_servicio.repositorio import (
 from ..identidad.repositorio import SqlAlchemyUsuarioRepository
 from ..inventario.repositorio import SqlAlchemyItemRepository
 from ..prestamos.repositorio import SqlAlchemyPrestamoRepository
+from ..reservas.repositorio import SqlAlchemyReservaRepository
 
 
 class IUnitOfWork(ABC):
@@ -16,6 +17,7 @@ class IUnitOfWork(ABC):
     politicas = None
     modalidades = None
     prestamos = None
+    reservas = None
 
     @abstractmethod
     def begin(self): ...
@@ -47,6 +49,7 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
         self.politicas = SqlAlchemyPoliticaRepository(self.sesion)
         self.modalidades = SqlAlchemyModalidadRepository(self.sesion)
         self.prestamos = SqlAlchemyPrestamoRepository(self.sesion)
+        self.reservas = SqlAlchemyReservaRepository(self.sesion)
 
     def commit(self):
         self.sesion.commit()

@@ -113,18 +113,14 @@ class SqlAlchemyUsuarioRepository(IUsuarioRepository):
             usuario.perfilAdministrativo, usuario.perfilGestorInventario,
             usuario.perfilAdministradorSistema,
         )
-        pid = lambda p: p.valor if p else None  # noqa: E731
         self._sincronizar("estudiante", fila.id, e and dict(
-            codigo_estudiante=e.codigoEstudiante, matricula_vigente=bool(e.matriculaVigente),
-            politica_servicio_id=pid(e.politicaServicioId)))
+            codigo_estudiante=e.codigoEstudiante, matricula_vigente=bool(e.matriculaVigente)))
         self._sincronizar("docente", fila.id, d and dict(
             codigo_empleado=d.codigoEmpleado, tipo_contrato=d.tipoContrato,
-            vinculacion_vigente=bool(d.vinculacionVigente),
-            politica_servicio_id=pid(d.politicaServicioId)))
+            vinculacion_vigente=bool(d.vinculacionVigente)))
         self._sincronizar("administrativo", fila.id, a and dict(
             codigo_empleado=a.codigoEmpleado, cargo_administrativo=a.cargoAdministrativo,
-            vinculacion_vigente=bool(a.vinculacionVigente),
-            politica_servicio_id=pid(a.politicaServicioId)))
+            vinculacion_vigente=bool(a.vinculacionVigente)))
         self._sincronizar("gestor", fila.id, g and dict(
             codigo_empleado=g.codigoEmpleado, area_responsable=g.areaResponsable,
             fecha_asignacion=g.fechaAsignacion))

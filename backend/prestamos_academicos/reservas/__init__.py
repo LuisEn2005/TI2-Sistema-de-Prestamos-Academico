@@ -1,10 +1,11 @@
-"""Modelo planificado de reservas para el Sprint 4."""
+"""Reservas y prioridad de recursos (Sprint 4)."""
 
 from .dominio import (
-    EstadoReserva, Reserva, ReservaCancelada, ReservaConfirmada, ReservaExpirada,
+    ESTADOS_ACTIVOS, EstadoReserva, IReservaRepository, Reserva,
+    ReservaCancelada, ReservaConfirmada, ReservaExpirada,
 )
 
 __all__ = [
-    "EstadoReserva", "Reserva", "ReservaCancelada", "ReservaConfirmada",
-    "ReservaExpirada",
+    "ESTADOS_ACTIVOS", "EstadoReserva", "IReservaRepository", "Reserva",
+    "ReservaCancelada", "ReservaConfirmada", "ReservaExpirada",
 ]

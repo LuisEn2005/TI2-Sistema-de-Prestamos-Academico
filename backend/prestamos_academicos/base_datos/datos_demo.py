@@ -114,8 +114,8 @@ def preparar_datos(fabrica_sesiones, *, datos_demo, admin_correo=None, admin_pas
         return SqlAlchemyUnitOfWork(fabrica_sesiones)
 
     configuracion = ConfiguracionApplicationService(uow)
-    configuracion.asegurar_politicas_base()
     configuracion.asegurar_modalidades_base()
+    configuracion.asegurar_politicas_base()
     identidad = IdentidadApplicationService(uow)
 
     if datos_demo:
