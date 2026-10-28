@@ -1,7 +1,7 @@
 """Casos de uso del contexto Préstamos (Sprint 3: RF10, RF11 y parte de RF13).
 
-Un préstamo entrega uno o más ítems bajo una modalidad. La fecha límite sale de la modalidad
-y de la política del perfil con que se presta (RN2); los cupos y los tipos de recurso
+Un préstamo entrega uno o más ítems bajo una modalidad. La fecha límite sale de la política
+definida para la combinación de perfil y modalidad (RN2); los cupos y los tipos de recurso
 permitidos se aplican por perfil (RF03, RF13); la devolución registra la condición de cada
 ítem y deja el recurso en el estado que corresponde. Todo ocurre en una sola transacción.
 """
@@ -73,16 +73,15 @@ class PrestamoApplicationService:
             raise ErrorAplicacion(f"La modalidad «{modalidad.nombre}» no está activa.", 422)
 
         rol = self._elegir_rol(usuario, rol_solicitante)
-        politica_id = usuario.politicaIdPara(rol)
-        politica = uow.politicas.find_by_id(politica_id.valor) if politica_id else None
+        politica = uow.politicas.find_by_rol_y_modalidad(rol, modalidad_id)
         if politica is None:
-            raise ErrorAplicacion("El perfil del usuario no tiene una política de servicio.", 422)
+            raise ErrorAplicacion(
+                "El perfil no tiene una política para la modalidad seleccionada.", 422)
 
         hoy = self.reloj.hoy()
         try:
-            snapshot = modalidad.snapshot()
-            dias = snapshot.diasEfectivos(politica.diasPrestamoDefault)
-            limite = Prestamo(modalidad=snapshot).calcularFechaLimite(hoy, politica.diasPrestamoDefault)
+            dias = politica.diasPrestamo
+            limite = Prestamo.calcularFechaLimite(hoy, dias)
         except ErrorDominio as e:
             raise ErrorAplicacion(str(e), 422)
         return ContextoPrestamo(
@@ -160,8 +159,8 @@ class PrestamoApplicationService:
             "usuario_id": p.usuarioId.valor,
             "usuario": nombres.get(p.usuarioId.valor),
             "rol_solicitante": p.rolSolicitante.value if p.rolSolicitante else None,
-            "modalidad": p.modalidad.nombre if p.modalidad else None,
-            "dias_plazo": p.diasPlazoAplicado,
+            "modalidad": p.modalidadNombre,
+            "dias_plazo": p.diasPlazo,
             "numero_renovaciones": p.numeroRenovaciones,
             "items": [{
                 "item_id": d.itemId.valor,
@@ -238,8 +237,9 @@ class PrestamoApplicationService:
 
             try:
                 prestamo = Prestamo.entregar(
-                    usuarioId=UsuarioId(usuario_id), rol=ctx.rol, modalidad=ctx.modalidad.snapshot(),
-                    diasPolitica=ctx.politica.diasPrestamoDefault,
+                    usuarioId=UsuarioId(usuario_id), politicaId=ctx.politica.id,
+                    rol=ctx.rol, modalidadId=ctx.modalidad.id,
+                    modalidadNombre=ctx.modalidad.nombre, diasPlazo=ctx.politica.diasPrestamo,
                     items=[ItemId(i) for i in item_ids], ahora=self.reloj.ahora(),
                     hoy=self.reloj.hoy())
             except ErrorDominio as e:
@@ -282,9 +282,9 @@ class PrestamoApplicationService:
 
             try:
                 prestamo = Prestamo.entregar(
-                    usuarioId=UsuarioId(usuario_id), rol=ctx.rol,
-                    modalidad=ctx.modalidad.snapshot(),
-                    diasPolitica=ctx.politica.diasPrestamoDefault,
+                    usuarioId=UsuarioId(usuario_id), politicaId=ctx.politica.id,
+                    rol=ctx.rol, modalidadId=ctx.modalidad.id,
+                    modalidadNombre=ctx.modalidad.nombre, diasPlazo=ctx.politica.diasPrestamo,
                     items=[ItemId(item_id)], ahora=self.reloj.ahora(), hoy=self.reloj.hoy())
                 prestamo.reservaId = ReservaId(reserva_id)
                 reserva.convertir()

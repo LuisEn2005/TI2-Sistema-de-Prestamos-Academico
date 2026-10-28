@@ -99,16 +99,18 @@ class GestionUsuariosTest(ApiBase):
             "/api/usuarios/prestatarios?q=jesus", headers=gestor).json
         self.assertEqual([u["nombre"] for u in filtrados], ["Jesus Perez"])
 
-    def test_registrar_usuario_asigna_politica_del_perfil(self):
+    def test_registrar_usuario_usa_politicas_por_rol_y_modalidad(self):
         h = self.ingresar()
         r = self.cliente.post("/api/usuarios", headers=h, json=self.NUEVO)
         self.assertEqual(r.status_code, 201, r.json)
         self.assertEqual(r.json["correo"], "ana.quispe@escuela.edu")
         self.assertEqual(r.json["roles"], ["ESTUDIANTE"])
         self.assertTrue(r.json["habilitado"])
-        politica = r.json["perfiles"]["ESTUDIANTE"]["politica_servicio_id"]
+        self.assertNotIn("politica_servicio_id", r.json["perfiles"]["ESTUDIANTE"])
         politicas = self.cliente.get("/api/politicas", headers=h).json
-        self.assertEqual(next(p for p in politicas if p["id"] == politica)["rol"], "ESTUDIANTE")
+        estudiante = [p for p in politicas if p["rol"] == "ESTUDIANTE"]
+        self.assertEqual([(p["modalidad"], p["dias_prestamo"]) for p in estudiante],
+                         [("In situ (en sala)", 1), ("Externa (a domicilio)", 7)])
         self.ingresar("ana.quispe@escuela.edu", "clave-segura-1")
         self.assertNotIn("password", str(r.json).lower())
 

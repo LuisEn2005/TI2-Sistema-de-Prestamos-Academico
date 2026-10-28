@@ -84,6 +84,7 @@ class InventarioApplicationService:
             if uow.items.find_by_codigo(item.codigo):
                 raise Conflicto(f"Ya existe un recurso con el código {item.codigo}.")
             try:
+                uow.items.asegurar_tipo(tipo.nombre, tipo.etiqueta)
                 guardado = uow.items.save(item)
                 uow.commit()
             except IntegrityError:

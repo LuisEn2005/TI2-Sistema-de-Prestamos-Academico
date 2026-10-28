@@ -10,7 +10,7 @@ from ..identidad import (
 from ..inventario import EstadoItem
 from ..inventario import obtener_tipo
 from ..prestamos import (
-    CondicionDevolucion, DetallePrestamo, EstadoPrestamo, ModalidadSnapshot, Prestamo,
+    CondicionDevolucion, DetallePrestamo, EstadoPrestamo, Prestamo,
 )
 from ..reservas import EstadoReserva, Reserva
 from ..compartido import (
@@ -23,23 +23,15 @@ from .modelos import (
 )
 
 
-def _pid(valor):
-    return None if valor is None else PoliticaServicioId(valor)
-
-
-def _raw(identificador):
-    return None if identificador is None else identificador.valor
-
-
 # ---- Políticas ----------------------------------------------------------
 def politica_a_dominio(fila: PoliticaServicioDB) -> PoliticaServicio:
     return PoliticaServicio(
         id=PoliticaServicioId(fila.id),
         rolAplicable=RolUsuario(fila.rol_aplicable),
+        modalidadId=ModalidadId(fila.modalidad_id),
         maxItemsSimultaneos=fila.max_items_simultaneos,
-        diasPrestamoDefault=fila.dias_prestamo_default,
+        diasPrestamo=fila.dias_prestamo,
         diasGraciaReserva=fila.dias_gracia_reserva,
-        tiposRecursoPermitidos=fila.tipos_recurso_permitidos,
     )
 
 
@@ -58,16 +50,13 @@ def usuario_a_dominio(fila: UsuarioDB, perfiles: dict) -> Usuario:
         activo=fila.activo,
         versionSesion=fila.version_sesion,
         perfilEstudiante=e and PerfilEstudiante(
-            codigoEstudiante=e.codigo_estudiante, matriculaVigente=e.matricula_vigente,
-            politicaServicioId=_pid(e.politica_servicio_id)),
+            codigoEstudiante=e.codigo_estudiante, matriculaVigente=e.matricula_vigente),
         perfilDocente=d and PerfilDocente(
             codigoEmpleado=d.codigo_empleado, tipoContrato=d.tipo_contrato,
-            vinculacionVigente=d.vinculacion_vigente,
-            politicaServicioId=_pid(d.politica_servicio_id)),
+            vinculacionVigente=d.vinculacion_vigente),
         perfilAdministrativo=a and PerfilAdministrativo(
             codigoEmpleado=a.codigo_empleado, cargoAdministrativo=a.cargo_administrativo,
-            vinculacionVigente=a.vinculacion_vigente,
-            politicaServicioId=_pid(a.politica_servicio_id)),
+            vinculacionVigente=a.vinculacion_vigente),
         perfilGestorInventario=g and PerfilGestorInventario(
             g.codigo_empleado, g.area_responsable, g.fecha_asignacion),
         perfilAdministradorSistema=adm and PerfilAdministradorSistema(
@@ -111,8 +100,7 @@ def item_a_orm(item, fila: ItemDB | None = None) -> ItemDB:
 
 # ---- Modalidades --------------------------------------------------------
 def modalidad_a_dominio(fila: ModalidadDB) -> Modalidad:
-    return Modalidad(id=ModalidadId(fila.id), nombre=fila.nombre,
-                     diasPlazoDefault=fila.dias_plazo_default, activo=fila.activo)
+    return Modalidad(id=ModalidadId(fila.id), nombre=fila.nombre, activo=fila.activo)
 
 
 # ---- Reservas -----------------------------------------------------------
@@ -130,19 +118,18 @@ def reserva_a_dominio(fila: ReservaDB) -> Reserva:
 
 
 # ---- Préstamos ----------------------------------------------------------
-def prestamo_a_dominio(fila: PrestamoDB, detalles: list[DetallePrestamoDB]) -> Prestamo:
-    modalidad = None
-    if fila.modalidad_dias_plazo is not None:
-        modalidad = ModalidadSnapshot(
-            modalidadOrigenId=None if fila.modalidad_id is None else ModalidadId(fila.modalidad_id),
-            nombre=fila.modalidad_nombre, diasPlazo=fila.modalidad_dias_plazo)
+def prestamo_a_dominio(fila: PrestamoDB, detalles: list[DetallePrestamoDB], *,
+                       rol=None, modalidad_nombre=None) -> Prestamo:
     return Prestamo(
         id=PrestamoId(fila.id),
         usuarioId=UsuarioId(fila.usuario_id),
         reservaId=ReservaId(fila.reserva_id) if fila.reserva_id else None,
-        rolSolicitante=RolUsuario(fila.rol_solicitante) if fila.rol_solicitante else None,
-        modalidad=modalidad,
-        diasPlazoAplicado=fila.dias_plazo_aplicado,
+        politicaServicioId=(PoliticaServicioId(fila.politica_servicio_id)
+                            if fila.politica_servicio_id else None),
+        rolSolicitante=RolUsuario(rol) if rol else None,
+        modalidadId=ModalidadId(fila.modalidad_id) if fila.modalidad_id else None,
+        modalidadNombre=modalidad_nombre,
+        diasPlazo=fila.dias_plazo,
         numeroRenovaciones=fila.numero_renovaciones,
         fechaEntrega=fila.fecha_prestamo,
         fechaDevolucionEsperada=fila.fecha_devolucion_esperada,

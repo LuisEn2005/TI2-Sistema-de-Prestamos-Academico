@@ -19,10 +19,6 @@ def _fecha(valor):
     return valor.isoformat() if valor else None
 
 
-def _politica_id(perfil):
-    return perfil.politicaServicioId.valor if perfil and perfil.politicaServicioId else None
-
-
 def usuario_a_json(usuario, permisos=None):
     perfiles = {}
     if usuario.perfilEstudiante:
@@ -30,7 +26,6 @@ def usuario_a_json(usuario, permisos=None):
         perfiles["ESTUDIANTE"] = {
             "codigo_estudiante": p.codigoEstudiante,
             "matricula_vigente": p.matriculaVigente,
-            "politica_servicio_id": _politica_id(p),
         }
     if usuario.perfilDocente:
         p = usuario.perfilDocente
@@ -38,7 +33,6 @@ def usuario_a_json(usuario, permisos=None):
             "codigo_empleado": p.codigoEmpleado,
             "tipo_contrato": p.tipoContrato,
             "vinculacion_vigente": p.vinculacionVigente,
-            "politica_servicio_id": _politica_id(p),
         }
     if usuario.perfilAdministrativo:
         p = usuario.perfilAdministrativo
@@ -46,7 +40,6 @@ def usuario_a_json(usuario, permisos=None):
             "codigo_empleado": p.codigoEmpleado,
             "cargo_administrativo": p.cargoAdministrativo,
             "vinculacion_vigente": p.vinculacionVigente,
-            "politica_servicio_id": _politica_id(p),
         }
     if usuario.perfilGestorInventario:
         p = usuario.perfilGestorInventario

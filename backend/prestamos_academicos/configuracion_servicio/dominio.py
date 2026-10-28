@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 from ..compartido import (
     ModalidadId, PoliticaSancionId, PoliticaServicioId, RolUsuario,
 )
-from ..prestamos import ModalidadSnapshot
 from ..sanciones import OrigenSancion
 
 
@@ -17,28 +16,22 @@ from ..sanciones import OrigenSancion
 class Modalidad:
     id: Optional[ModalidadId] = None
     nombre: Optional[str] = None
-    diasPlazoDefault: Optional[int] = None
     activo: Optional[bool] = True
-
-    def snapshot(self) -> ModalidadSnapshot:
-        return ModalidadSnapshot(self.id, self.nombre, self.diasPlazoDefault)
 
 
 @dataclass
 class PoliticaServicio:
     id: Optional[PoliticaServicioId] = None
     rolAplicable: Optional[RolUsuario] = None
+    modalidadId: Optional[ModalidadId] = None
+    modalidadNombre: Optional[str] = None
     maxItemsSimultaneos: Optional[int] = None
-    diasPrestamoDefault: Optional[int] = None
+    diasPrestamo: Optional[int] = None
     diasGraciaReserva: Optional[int] = None
-    tiposRecursoPermitidos: Optional[str] = None
+    tiposRecursoPermitidos: List[str] = field(default_factory=list)
 
     def tiposPermitidos(self) -> List[str]:
-        return [
-            tipo.strip().upper()
-            for tipo in (self.tiposRecursoPermitidos or "").split(",")
-            if tipo.strip()
-        ]
+        return [tipo.strip().upper() for tipo in (self.tiposRecursoPermitidos or [])]
 
     def permiteTipo(self, tipo: str) -> bool:
         return (tipo or "").upper() in self.tiposPermitidos()
@@ -60,7 +53,11 @@ class IPoliticaRepository(ABC):
     def save(self, politica: PoliticaServicio) -> PoliticaServicio: ...
 
     @abstractmethod
-    def find_by_rol(self, rol: RolUsuario) -> Optional[PoliticaServicio]: ...
+    def find_by_rol_y_modalidad(
+            self, rol: RolUsuario, modalidad_id: int) -> Optional[PoliticaServicio]: ...
+
+    @abstractmethod
+    def listar_por_rol(self, rol: RolUsuario) -> List[PoliticaServicio]: ...
 
     @abstractmethod
     def find_by_id(self, politica_id: int) -> Optional[PoliticaServicio]: ...

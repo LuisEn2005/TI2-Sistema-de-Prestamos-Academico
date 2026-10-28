@@ -5,17 +5,18 @@ from ..compartido import RolUsuario
 
 # Políticas iniciales por perfil (RF03). El gestor no presta para sí mismo.
 POLITICAS_BASE = {
-    RolUsuario.ESTUDIANTE: dict(max=3, dias=7, gracia=2, tipos="LIBRO,EQUIPO,MATERIAL"),
-    RolUsuario.DOCENTE: dict(max=5, dias=15, gracia=3, tipos="LIBRO,EQUIPO,MATERIAL,MOBILIARIO"),
-    RolUsuario.ADMINISTRATIVO: dict(max=5, dias=15, gracia=3,
-                                    tipos="LIBRO,EQUIPO,MATERIAL,MOBILIARIO"),
+    RolUsuario.ESTUDIANTE: dict(max=3, externa=7, gracia=2,
+                                tipos=["LIBRO", "EQUIPO", "MATERIAL"]),
+    RolUsuario.DOCENTE: dict(max=5, externa=15, gracia=3,
+                             tipos=["LIBRO", "EQUIPO", "MATERIAL", "MOBILIARIO"]),
+    RolUsuario.ADMINISTRATIVO: dict(max=5, externa=15, gracia=3,
+                                    tipos=["LIBRO", "EQUIPO", "MATERIAL", "MOBILIARIO"]),
 }
 
-# Modalidades iniciales (RF10). El plazo de la modalidad es un tope: el plazo efectivo es el
-# menor entre este y los días de la política del perfil (RN2). Pasan a ser editables en el Sprint 5.
+# Las modalidades son un catálogo. Los plazos se definen por rol y modalidad.
 MODALIDAD_IN_SITU = "In situ (en sala)"
 MODALIDAD_EXTERNA = "Externa (a domicilio)"
-MODALIDADES_BASE = ((MODALIDAD_IN_SITU, 1), (MODALIDAD_EXTERNA, 15))
+MODALIDADES_BASE = (MODALIDAD_IN_SITU, MODALIDAD_EXTERNA)
 
 
 class ConfiguracionApplicationService:
@@ -24,19 +25,25 @@ class ConfiguracionApplicationService:
 
     def asegurar_politicas_base(self):
         with self._uow() as uow:
+            modalidades = {m.nombre: m for m in uow.modalidades.listar()}
             for rol, p in POLITICAS_BASE.items():
-                if uow.politicas.find_by_rol(rol) is None:
-                    uow.politicas.save(PoliticaServicio(
-                        rolAplicable=rol, maxItemsSimultaneos=p["max"],
-                        diasPrestamoDefault=p["dias"], diasGraciaReserva=p["gracia"],
-                        tiposRecursoPermitidos=p["tipos"]))
+                for nombre, dias in (
+                        (MODALIDAD_IN_SITU, 1), (MODALIDAD_EXTERNA, p["externa"])):
+                    modalidad = modalidades[nombre]
+                    if uow.politicas.find_by_rol_y_modalidad(rol, modalidad.id.valor) is None:
+                        uow.politicas.save(PoliticaServicio(
+                            rolAplicable=rol, modalidadId=modalidad.id,
+                            modalidadNombre=modalidad.nombre,
+                            maxItemsSimultaneos=p["max"], diasPrestamo=dias,
+                            diasGraciaReserva=p["gracia"],
+                            tiposRecursoPermitidos=p["tipos"]))
             uow.commit()
 
     def asegurar_modalidades_base(self):
         with self._uow() as uow:
-            for nombre, dias in MODALIDADES_BASE:
+            for nombre in MODALIDADES_BASE:
                 if uow.modalidades.find_by_nombre(nombre) is None:
-                    uow.modalidades.save(Modalidad(nombre=nombre, diasPlazoDefault=dias, activo=True))
+                    uow.modalidades.save(Modalidad(nombre=nombre, activo=True))
             uow.commit()
 
     def listar_modalidades(self):

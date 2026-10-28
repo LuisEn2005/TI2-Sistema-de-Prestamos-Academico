@@ -109,10 +109,9 @@ class ReservaApplicationService:
             if motivo:
                 raise ErrorAplicacion(motivo, 422)
             rol = self._elegir_rol(usuario, rol_solicitante)
-            politica_id = usuario.politicaIdPara(rol)
-            politica = uow.politicas.find_by_id(politica_id.valor) if politica_id else None
-            if politica is None:
-                raise ErrorAplicacion("El perfil no tiene una política de servicio.", 422)
+            politicas = uow.politicas.listar_por_rol(rol)
+            if not politicas:
+                raise ErrorAplicacion("El perfil no tiene políticas de servicio.", 422)
             item = uow.items.find_by_id(item_id)
             if item is None:
                 raise NoEncontrado("El recurso no existe.")
@@ -121,17 +120,22 @@ class ReservaApplicationService:
             if item.estado not in (EstadoItem.DISPONIBLE, EstadoItem.PRESTADO):
                 raise Conflicto(
                     f"El recurso {item.codigo} está {item.estado.value} y no puede reservarse.")
-            if not politica.permiteTipo(item.TIPO):
+            aplicables = [p for p in politicas if p.permiteTipo(item.TIPO)]
+            if not aplicables:
                 raise ErrorAplicacion(
                     f"La política del perfil {rol.value} no permite reservar {item.codigo}.", 422)
-            if uow.reservas.contar_activas_usuario(usuario.id.valor) >= politica.maxItemsSimultaneos:
+            # La modalidad se elige al convertir la reserva. Hasta entonces se
+            # aplica el límite más restrictivo de las políticas compatibles.
+            max_reservas = min(p.maxItemsSimultaneos for p in aplicables)
+            dias_gracia = min(p.diasGraciaReserva for p in aplicables)
+            if uow.reservas.contar_activas_usuario(usuario.id.valor) >= max_reservas:
                 raise ErrorAplicacion(
-                    f"Alcanzó el máximo de {politica.maxItemsSimultaneos} reservas activas.", 422)
+                    f"Alcanzó el máximo de {max_reservas} reservas activas.", 422)
             try:
                 reserva = Reserva.solicitar(
                     usuario_id=UsuarioId(usuario.id.valor), item_id=ItemId(item_id), rol=rol,
                     fecha_solicitud=self.reloj.ahora(), fecha_reserva=fecha_reserva,
-                    dias_gracia=politica.diasGraciaReserva, hoy=hoy)
+                    dias_gracia=dias_gracia, hoy=hoy)
             except ErrorDominio as error:
                 raise ErrorAplicacion(str(error), 422)
             if item.estado == EstadoItem.DISPONIBLE and not uow.items.cambiar_estado_si(

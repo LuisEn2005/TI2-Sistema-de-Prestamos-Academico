@@ -22,19 +22,37 @@ def _ahora():
 class PoliticaServicioDB(Base):
     __tablename__ = "politicas_servicio"
     __table_args__ = (
+        UniqueConstraint("rol_aplicable", "modalidad_id", name="uq_politica_rol_modalidad"),
+        CheckConstraint(
+            "rol_aplicable IN ('ESTUDIANTE','DOCENTE','ADMINISTRATIVO')",
+            name="ck_politica_rol_valido"),
         CheckConstraint("max_items_simultaneos > 0", name="ck_politica_max_positivo"),
-        CheckConstraint("dias_prestamo_default > 0", name="ck_politica_dias_positivo"),
+        CheckConstraint("dias_prestamo > 0", name="ck_politica_dias_positivo"),
         CheckConstraint("dias_gracia_reserva >= 0", name="ck_politica_gracia_no_negativa"),
-        CheckConstraint("length(trim(tipos_recurso_permitidos)) > 0",
-                        name="ck_politica_tipos_no_vacios"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    rol_aplicable: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    rol_aplicable: Mapped[str] = mapped_column(String(30), nullable=False)
+    modalidad_id: Mapped[int] = mapped_column(ForeignKey("modalidades.id"), nullable=False)
     max_items_simultaneos: Mapped[int] = mapped_column(Integer, nullable=False)
-    dias_prestamo_default: Mapped[int] = mapped_column(Integer, nullable=False)
+    dias_prestamo: Mapped[int] = mapped_column(Integer, nullable=False)
     dias_gracia_reserva: Mapped[int] = mapped_column(Integer, nullable=False)
-    tipos_recurso_permitidos: Mapped[str] = mapped_column(String(200), nullable=False)
+
+
+class TipoRecursoDB(Base):
+    __tablename__ = "tipos_recurso"
+
+    codigo: Mapped[str] = mapped_column(String(30), primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+
+
+class PoliticaTipoRecursoDB(Base):
+    __tablename__ = "politica_tipos_recurso"
+
+    politica_servicio_id: Mapped[int] = mapped_column(
+        ForeignKey("politicas_servicio.id", ondelete="CASCADE"), primary_key=True)
+    tipo_recurso_codigo: Mapped[str] = mapped_column(
+        ForeignKey("tipos_recurso.codigo"), primary_key=True)
 
 
 class UsuarioDB(Base):
@@ -71,9 +89,6 @@ class PerfilEstudianteDB(Base):
     )
     codigo_estudiante: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     matricula_vigente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    politica_servicio_id: Mapped[int] = mapped_column(
-        ForeignKey("politicas_servicio.id"), nullable=False
-    )
 
 
 class PerfilDocenteDB(Base):
@@ -89,9 +104,6 @@ class PerfilDocenteDB(Base):
     codigo_empleado: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     tipo_contrato: Mapped[str] = mapped_column(String(60), nullable=False)
     vinculacion_vigente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    politica_servicio_id: Mapped[int] = mapped_column(
-        ForeignKey("politicas_servicio.id"), nullable=False
-    )
 
 
 class PerfilAdministrativoDB(Base):
@@ -109,9 +121,6 @@ class PerfilAdministrativoDB(Base):
     codigo_empleado: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     cargo_administrativo: Mapped[str] = mapped_column(String(80), nullable=False)
     vinculacion_vigente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    politica_servicio_id: Mapped[int] = mapped_column(
-        ForeignKey("politicas_servicio.id"), nullable=False
-    )
 
 
 class PerfilGestorInventarioDB(Base):
@@ -163,7 +172,7 @@ class ItemDB(Base):
     codigo: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     nombre: Mapped[str] = mapped_column(String(160), nullable=False)
     categoria: Mapped[str] = mapped_column(String(80), nullable=False)
-    tipo: Mapped[str] = mapped_column(String(30), nullable=False)
+    tipo: Mapped[str] = mapped_column(ForeignKey("tipos_recurso.codigo"), nullable=False)
     estado: Mapped[str] = mapped_column(String(30), nullable=False, default="DISPONIBLE")
     atributos: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     texto_busqueda: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -176,17 +185,15 @@ class ItemDB(Base):
 
 
 class ModalidadDB(Base):
-    """Forma de préstamo (en sala o externa) con su propio plazo en días (RF10)."""
+    """Catálogo de formas de préstamo; los plazos pertenecen a las políticas."""
 
     __tablename__ = "modalidades"
     __table_args__ = (
         CheckConstraint("length(trim(nombre)) > 0", name="ck_modalidad_nombre_no_vacio"),
-        CheckConstraint("dias_plazo_default > 0", name="ck_modalidad_dias_positivo"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
-    dias_plazo_default: Mapped[int] = mapped_column(Integer, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
@@ -221,37 +228,28 @@ class ReservaDB(Base):
 
 
 class PrestamoDB(Base):
-    """Cabecera del préstamo. La modalidad se guarda como copia (snapshot): cambiar la
-    configuración después no altera los préstamos ya registrados. Los campos de
-    modalidad, rol y fecha límite son NULL solo en préstamos anteriores al Sprint 3."""
+    """Cabecera normalizada. El plazo otorgado se conserva como dato transaccional;
+    el rol y el nombre de modalidad se obtienen mediante las llaves foráneas."""
 
     __tablename__ = "prestamos"
     __table_args__ = (
         CheckConstraint(
             "fecha_devolucion IS NULL OR fecha_devolucion >= fecha_prestamo",
             name="ck_prestamo_fechas_ordenadas"),
-        CheckConstraint(
-            "modalidad_dias_plazo IS NULL OR modalidad_dias_plazo > 0",
-            name="ck_prestamo_plazo_positivo"),
-        CheckConstraint(
-            "dias_plazo_aplicado IS NULL OR dias_plazo_aplicado > 0",
-            name="ck_prestamo_plazo_aplicado_positivo"),
+        CheckConstraint("dias_plazo IS NULL OR dias_plazo > 0",
+                        name="ck_prestamo_dias_plazo_positivo"),
         CheckConstraint(
             "numero_renovaciones >= 0", name="ck_prestamo_renovaciones_no_negativas"),
-        CheckConstraint(
-            "rol_solicitante IS NULL OR rol_solicitante IN "
-            "('ESTUDIANTE','DOCENTE','ADMINISTRATIVO')", name="ck_prestamo_rol_valido"),
         Index("ix_prestamos_usuario", "usuario_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
     reserva_id: Mapped[int | None] = mapped_column(ForeignKey("reservas.id"), unique=True)
-    rol_solicitante: Mapped[str | None] = mapped_column(String(30))
     modalidad_id: Mapped[int | None] = mapped_column(ForeignKey("modalidades.id"))
-    modalidad_nombre: Mapped[str | None] = mapped_column(String(60))
-    modalidad_dias_plazo: Mapped[int | None] = mapped_column(Integer)
-    dias_plazo_aplicado: Mapped[int | None] = mapped_column(Integer)
+    politica_servicio_id: Mapped[int | None] = mapped_column(
+        ForeignKey("politicas_servicio.id"))
+    dias_plazo: Mapped[int | None] = mapped_column(Integer)
     numero_renovaciones: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fecha_prestamo: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_ahora

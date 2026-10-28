@@ -34,6 +34,48 @@ def crear_base_del_sprint_1(ruta):
 
 
 class MigracionTest(unittest.TestCase):
+    def test_esquema_de_prestamos_y_politicas_esta_normalizado(self):
+        with TemporaryDirectory() as d:
+            ruta = Path(d) / "normalizada.sqlite"
+            create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k")
+            con = sqlite3.connect(ruta)
+            con.execute("PRAGMA foreign_keys=ON")
+            columnas_prestamo = {
+                fila[1] for fila in con.execute("PRAGMA table_info('prestamos')")}
+            self.assertEqual(columnas_prestamo, {
+                "id", "usuario_id", "reserva_id", "modalidad_id",
+                "politica_servicio_id", "dias_plazo", "numero_renovaciones",
+                "fecha_prestamo", "fecha_devolucion_esperada", "fecha_devolucion",
+            })
+            columnas_modalidad = {
+                fila[1] for fila in con.execute("PRAGMA table_info('modalidades')")}
+            self.assertEqual(columnas_modalidad, {"id", "nombre", "activo"})
+            columnas_politica = {
+                fila[1] for fila in con.execute("PRAGMA table_info('politicas_servicio')")}
+            self.assertEqual(columnas_politica, {
+                "id", "rol_aplicable", "modalidad_id", "max_items_simultaneos",
+                "dias_prestamo", "dias_gracia_reserva",
+            })
+            reglas = con.execute("""
+                SELECT p.rol_aplicable, m.nombre, p.dias_prestamo
+                FROM politicas_servicio p
+                JOIN modalidades m ON m.id = p.modalidad_id
+                ORDER BY p.rol_aplicable, m.id
+            """).fetchall()
+            self.assertEqual(reglas, [
+                ("ADMINISTRATIVO", "In situ (en sala)", 1),
+                ("ADMINISTRATIVO", "Externa (a domicilio)", 15),
+                ("DOCENTE", "In situ (en sala)", 1),
+                ("DOCENTE", "Externa (a domicilio)", 15),
+                ("ESTUDIANTE", "In situ (en sala)", 1),
+                ("ESTUDIANTE", "Externa (a domicilio)", 7),
+            ])
+            self.assertEqual(con.execute(
+                "SELECT count(*) FROM politica_tipos_recurso").fetchone()[0], 22)
+            with self.assertRaises(sqlite3.IntegrityError):
+                con.execute("INSERT INTO politica_tipos_recurso VALUES (1, 'DESCONOCIDO')")
+            con.close()
+
     def test_actualiza_una_base_del_sprint_1_conservando_los_datos(self):
         with TemporaryDirectory() as d:
             ruta = Path(d) / "mvp.sqlite"
@@ -52,7 +94,7 @@ class MigracionTest(unittest.TestCase):
             jesus = next(u for u in usuarios if u["nombre"] == "Jesus Perez")
             luis = next(u for u in usuarios if u["nombre"] == "Luis Ramos")
             self.assertEqual(jesus["roles"], ["ESTUDIANTE"])
-            self.assertIsNotNone(jesus["perfiles"]["ESTUDIANTE"]["politica_servicio_id"])
+            self.assertNotIn("politica_servicio_id", jesus["perfiles"]["ESTUDIANTE"])
             self.assertEqual(luis["roles"], ["DOCENTE", "GESTOR_INVENTARIO"])
             for correo in ("jesus.perez@escuela.edu", "luis.ramos@escuela.edu"):
                 acceso = c.post("/api/auth/login", json={"correo": correo, "password": CLAVE})
@@ -97,9 +139,11 @@ class MigracionTest(unittest.TestCase):
                              [("Externa (a domicilio)", 1)])
             self.assertEqual(c2.get("/api/items").json["total"], 26)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0010")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0011")
             self.assertEqual(con.execute(
-                "SELECT dias_plazo_default FROM modalidades WHERE nombre = 'In situ (en sala)'"
+                "SELECT dias_prestamo FROM politicas_servicio p JOIN modalidades m "
+                "ON m.id=p.modalidad_id WHERE p.rol_aplicable='ESTUDIANTE' "
+                "AND m.nombre='In situ (en sala)'"
             ).fetchone()[0], 1)
 
     def test_claves_foraneas_activas(self):

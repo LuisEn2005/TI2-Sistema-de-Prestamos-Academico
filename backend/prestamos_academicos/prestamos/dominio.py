@@ -9,7 +9,8 @@ from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from ..compartido import (
-    ErrorDominio, ItemId, ModalidadId, PrestamoId, ReservaId, RolUsuario, UsuarioId,
+    ErrorDominio, ItemId, ModalidadId, PoliticaServicioId, PrestamoId, ReservaId,
+    RolUsuario, UsuarioId,
 )
 
 
@@ -31,16 +32,6 @@ class DetallePrestamo:
     itemId: Optional[ItemId] = None
     condicion: Optional[CondicionDevolucion] = None
     observacion: Optional[str] = None
-
-
-@dataclass(frozen=True)
-class ModalidadSnapshot:
-    modalidadOrigenId: Optional[ModalidadId] = None
-    nombre: Optional[str] = None
-    diasPlazo: Optional[int] = None
-
-    def diasEfectivos(self, diasPolitica: int) -> int:
-        return min(self.diasPlazo, diasPolitica)
 
 
 @dataclass
@@ -69,9 +60,11 @@ class Prestamo:
     id: Optional[PrestamoId] = None
     usuarioId: Optional[UsuarioId] = None
     reservaId: Optional[ReservaId] = None
+    politicaServicioId: Optional[PoliticaServicioId] = None
     rolSolicitante: Optional[RolUsuario] = None
-    modalidad: Optional[ModalidadSnapshot] = None
-    diasPlazoAplicado: Optional[int] = None
+    modalidadId: Optional[ModalidadId] = None
+    modalidadNombre: Optional[str] = None
+    diasPlazo: Optional[int] = None
     numeroRenovaciones: int = 0
     fechaEntrega: Optional[datetime] = None
     fechaDevolucionEsperada: Optional[date] = None
@@ -81,8 +74,9 @@ class Prestamo:
     eventos: List[object] = field(default_factory=list, repr=False, compare=False)
 
     @classmethod
-    def entregar(cls, *, usuarioId: UsuarioId, rol: RolUsuario,
-                 modalidad: ModalidadSnapshot, diasPolitica: int,
+    def entregar(cls, *, usuarioId: UsuarioId, politicaId: PoliticaServicioId,
+                 rol: RolUsuario, modalidadId: ModalidadId, modalidadNombre: str,
+                 diasPlazo: int,
                  items: Iterable[ItemId], ahora: datetime, hoy: date) -> "Prestamo":
         items = list(items)
         if not items:
@@ -91,21 +85,21 @@ class Prestamo:
             raise ErrorDominio("Un ítem no puede repetirse dentro del mismo préstamo.")
         prestamo = cls(
             usuarioId=usuarioId,
+            politicaServicioId=politicaId,
             rolSolicitante=rol,
-            modalidad=modalidad,
+            modalidadId=modalidadId,
+            modalidadNombre=modalidadNombre,
+            diasPlazo=diasPlazo,
             fechaEntrega=ahora,
             detalles=[DetallePrestamo(itemId=item) for item in items],
         )
-        prestamo.diasPlazoAplicado = modalidad.diasEfectivos(diasPolitica)
-        prestamo.fechaDevolucionEsperada = prestamo.calcularFechaLimite(hoy, diasPolitica)
+        prestamo.fechaDevolucionEsperada = prestamo.calcularFechaLimite(hoy, diasPlazo)
         return prestamo
 
-    def calcularFechaLimite(self, hoy: date, diasPolitica: int) -> date:
-        if self.modalidad is None or not self.modalidad.diasPlazo or self.modalidad.diasPlazo < 1:
-            raise ErrorDominio("El préstamo necesita una modalidad con plazo en días.")
-        if diasPolitica < 1:
-            raise ErrorDominio("La política del perfil debe permitir al menos un día de préstamo.")
-        dias = self.modalidad.diasEfectivos(diasPolitica)
+    @staticmethod
+    def calcularFechaLimite(hoy: date, dias: int) -> date:
+        if dias < 1:
+            raise ErrorDominio("La política debe otorgar al menos un día de préstamo.")
         # Un plazo de un día vence al terminar la fecha de entrega. Para plazos
         # mayores se conserva la convención institucional de sumar días calendario.
         return hoy if dias == 1 else hoy + timedelta(days=dias)
@@ -153,9 +147,9 @@ class Prestamo:
             raise ErrorDominio("Solo puede renovarse un préstamo activo.")
         if self.estaVencido(hoy):
             raise ErrorDominio("No puede renovarse un préstamo vencido.")
-        if not self.fechaDevolucionEsperada or not self.diasPlazoAplicado:
+        if not self.fechaDevolucionEsperada or not self.diasPlazo:
             raise ErrorDominio("El préstamo anterior no tiene un plazo renovable.")
-        self.fechaDevolucionEsperada += timedelta(days=self.diasPlazoAplicado)
+        self.fechaDevolucionEsperada += timedelta(days=self.diasPlazo)
         self.numeroRenovaciones += 1
 
 

@@ -2,7 +2,9 @@ from sqlalchemy import func, select
 
 from .dominio import IPrestamoRepository
 from ..base_datos import mapeadores
-from ..base_datos.modelos import DetallePrestamoDB, PrestamoDB
+from ..base_datos.modelos import (
+    DetallePrestamoDB, ModalidadDB, PoliticaServicioDB, PrestamoDB,
+)
 
 
 class SqlAlchemyPrestamoRepository(IPrestamoRepository):
@@ -17,7 +19,24 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
         for d in self.sesion.scalars(
                 select(DetallePrestamoDB).where(DetallePrestamoDB.prestamo_id.in_([f.id for f in filas]))):
             detalles.setdefault(d.prestamo_id, []).append(d)
-        return [mapeadores.prestamo_a_dominio(f, detalles.get(f.id, [])) for f in filas]
+        contexto_filas = self.sesion.execute(
+            select(
+                PrestamoDB.id,
+                PoliticaServicioDB.rol_aplicable,
+                ModalidadDB.nombre,
+            )
+            .outerjoin(PoliticaServicioDB,
+                       PoliticaServicioDB.id == PrestamoDB.politica_servicio_id)
+            .outerjoin(ModalidadDB, ModalidadDB.id == PrestamoDB.modalidad_id)
+            .where(PrestamoDB.id.in_([f.id for f in filas]))
+        ).all()
+        contextos = {prestamo_id: (rol, modalidad) for prestamo_id, rol, modalidad
+                     in contexto_filas}
+        return [mapeadores.prestamo_a_dominio(
+            f, detalles.get(f.id, []),
+            rol=contextos.get(f.id, (None, None))[0],
+            modalidad_nombre=contextos.get(f.id, (None, None))[1],
+        ) for f in filas]
 
     def find_by_id(self, prestamo_id):
         fila = self.sesion.get(PrestamoDB, prestamo_id)
@@ -55,15 +74,13 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
     def save(self, prestamo):
         fila = self.sesion.get(PrestamoDB, prestamo.id.valor) if prestamo.id else None
         if fila is None:
-            m = prestamo.modalidad
             fila = PrestamoDB(
                 usuario_id=prestamo.usuarioId.valor,
                 reserva_id=prestamo.reservaId.valor if prestamo.reservaId else None,
-                rol_solicitante=prestamo.rolSolicitante.value if prestamo.rolSolicitante else None,
-                modalidad_id=m.modalidadOrigenId.valor if m and m.modalidadOrigenId else None,
-                modalidad_nombre=m.nombre if m else None,
-                modalidad_dias_plazo=m.diasPlazo if m else None,
-                dias_plazo_aplicado=prestamo.diasPlazoAplicado,
+                politica_servicio_id=(prestamo.politicaServicioId.valor
+                                      if prestamo.politicaServicioId else None),
+                modalidad_id=prestamo.modalidadId.valor if prestamo.modalidadId else None,
+                dias_plazo=prestamo.diasPlazo,
                 numero_renovaciones=prestamo.numeroRenovaciones,
                 fecha_devolucion_esperada=prestamo.fechaDevolucionEsperada)
             if prestamo.fechaEntrega is not None:

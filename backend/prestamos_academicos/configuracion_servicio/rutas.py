@@ -11,7 +11,6 @@ def modalidad_a_json(modalidad):
     return {
         "id": modalidad.id.valor,
         "nombre": modalidad.nombre,
-        "dias_plazo_default": modalidad.diasPlazoDefault,
         "activo": modalidad.activo,
     }
 
@@ -20,12 +19,12 @@ def politica_a_json(politica):
     return {
         "id": politica.id.valor,
         "rol": politica.rolAplicable.value,
+        "modalidad_id": politica.modalidadId.valor,
+        "modalidad": politica.modalidadNombre,
         "max_items_simultaneos": politica.maxItemsSimultaneos,
-        "dias_prestamo_default": politica.diasPrestamoDefault,
+        "dias_prestamo": politica.diasPrestamo,
         "dias_gracia_reserva": politica.diasGraciaReserva,
-        "tipos_recurso_permitidos": [
-            tipo for tipo in politica.tiposRecursoPermitidos.split(",") if tipo
-        ],
+        "tipos_recurso_permitidos": politica.tiposPermitidos(),
     }
 
 

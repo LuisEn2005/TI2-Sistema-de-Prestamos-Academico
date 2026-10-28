@@ -195,6 +195,9 @@ registrar_tipo(TipoItem("MATERIAL", "Material", Material, (
 
 class IItemRepository(ABC):
     @abstractmethod
+    def asegurar_tipo(self, codigo: str, nombre: str) -> None: ...
+
+    @abstractmethod
     def save(self, item: Item) -> Item: ...
 
     @abstractmethod

@@ -59,8 +59,9 @@ class PermisosTest(PrestamosBase):
     def test_modalidades_exigen_sesion(self):
         self.assertEqual(self.cliente.get("/api/modalidades").status_code, 401)
         lista = self.cliente.get("/api/modalidades", headers=self.ingresar(ESTUDIANTE)).json
-        self.assertEqual([(m["nombre"], m["dias_plazo_default"]) for m in lista],
-                         [(IN_SITU, 1), (EXTERNA, 15)])
+        self.assertEqual([(m["nombre"], m["activo"]) for m in lista],
+                         [(IN_SITU, True), (EXTERNA, True)])
+        self.assertTrue(all("dias_plazo_default" not in m for m in lista))
 
 
 class EntregaTest(PrestamosBase):
@@ -72,12 +73,15 @@ class EntregaTest(PrestamosBase):
         self.assertEqual([i["codigo"] for i in p["items"]], ["LIB-CLRS", "LIB-CLEAN"])
         self.assertEqual((p["estado"], p["vencido"], p["dias_atraso"]), ("activo", False, 0))
         self.assertEqual((p["modalidad"], p["rol_solicitante"]), (EXTERNA, "ESTUDIANTE"))
-        # Externa permite 15 días, pero la política de estudiante solo 7: gana el menor (RN2).
+        # La combinación ESTUDIANTE + EXTERNA concede 7 días.
         self.assertEqual(p["fecha_limite"], "2026-10-26")
         self.assertEqual(p["dias_plazo"], 7)
         with self.app.extensions["fabrica_sesiones"]() as sesion:
             fila = sesion.get(PrestamoDB, p["id"])
-            self.assertEqual((fila.modalidad_dias_plazo, fila.dias_plazo_aplicado), (15, 7))
+            self.assertEqual(fila.dias_plazo, 7)
+            self.assertIsNotNone(fila.politica_servicio_id)
+            self.assertFalse(hasattr(fila, "modalidad_nombre"))
+            self.assertFalse(hasattr(fila, "rol_solicitante"))
         for codigo in ("LIB-CLRS", "LIB-CLEAN"):
             self.assertEqual(self.estado_item(codigo), "PRESTADO")
 
@@ -108,7 +112,7 @@ class EntregaTest(PrestamosBase):
         antes = self.cliente.get(url, headers=h).json
         self.assertEqual((antes["dias_plazo"], antes["fecha_limite"], antes["cupo_restante"]),
                          (7, "2026-10-26", 3))
-        self.assertEqual(antes["tipos_permitidos"], ["LIBRO", "EQUIPO", "MATERIAL"])
+        self.assertEqual(set(antes["tipos_permitidos"]), {"LIBRO", "EQUIPO", "MATERIAL"})
         entrega = self.entregar(h, codigos=("LIB-CLRS", "LIB-CLEAN")).json
         despues = self.cliente.get(url, headers=h).json
         self.assertEqual((despues["items_en_prestamo"], despues["cupo_restante"]), (2, 1))

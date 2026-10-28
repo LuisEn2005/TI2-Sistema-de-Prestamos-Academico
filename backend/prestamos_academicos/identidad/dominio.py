@@ -8,7 +8,7 @@ from datetime import date
 from enum import Enum
 from typing import Iterable, List, Optional, Set
 
-from ..compartido import PoliticaServicioId, RolUsuario, UsuarioId
+from ..compartido import RolUsuario, UsuarioId
 
 
 class Permiso(str, Enum):
@@ -76,7 +76,6 @@ class ServicioAutorizacionRol:
 class PerfilEstudiante:
     codigoEstudiante: Optional[str] = None
     matriculaVigente: Optional[bool] = None
-    politicaServicioId: Optional[PoliticaServicioId] = None
 
 
 @dataclass
@@ -84,7 +83,6 @@ class PerfilDocente:
     codigoEmpleado: Optional[str] = None
     tipoContrato: Optional[str] = None
     vinculacionVigente: bool = True
-    politicaServicioId: Optional[PoliticaServicioId] = None
 
 
 @dataclass
@@ -92,7 +90,6 @@ class PerfilAdministrativo:
     codigoEmpleado: Optional[str] = None
     cargoAdministrativo: Optional[str] = None
     vinculacionVigente: bool = True
-    politicaServicioId: Optional[PoliticaServicioId] = None
 
 
 @dataclass
@@ -201,11 +198,6 @@ class Usuario:
         if RolUsuario(rol) == RolUsuario.ESTUDIANTE:
             return bool(perfil.matriculaVigente)
         return bool(perfil.vinculacionVigente)
-
-    def politicaIdPara(self, rol: RolUsuario):
-        perfil = self._perfilPrestatario(rol)
-        return perfil.politicaServicioId if perfil is not None else None
-
 
 class IUsuarioRepository(ABC):
     @abstractmethod

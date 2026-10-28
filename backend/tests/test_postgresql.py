@@ -58,7 +58,7 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         modalidades = cliente.get("/api/modalidades", headers=cabeceras).json
         in_situ = next(m for m in modalidades if m["nombre"].startswith("In situ"))
         externa = next(m for m in modalidades if m["nombre"].startswith("Externa"))
-        self.assertEqual(in_situ["dias_plazo_default"], 1)
+        self.assertNotIn("dias_plazo_default", in_situ)
         segundo = cliente.post("/api/items", headers=cabeceras, json={
             "tipo": "LIBRO", "codigo": "lib-ci-2", "nombre": "Libro CI 2",
             "categoria": "Pruebas", "atributos": {"isbn": "978-0000000004", "autor": "Autor CI"}})
@@ -104,5 +104,26 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         motor = create_engine(URL)
         with motor.connect() as conexion:
             self.assertEqual(conexion.execute(text(
-                "SELECT version_num FROM alembic_version")).scalar_one(), "0010")
+                "SELECT version_num FROM alembic_version")).scalar_one(), "0011")
+            columnas = set(conexion.execute(text("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_schema='public' AND table_name='prestamos'
+            """)).scalars())
+            self.assertEqual(columnas, {
+                "id", "usuario_id", "reserva_id", "modalidad_id",
+                "politica_servicio_id", "dias_plazo", "numero_renovaciones",
+                "fecha_prestamo", "fecha_devolucion_esperada", "fecha_devolucion",
+            })
+            self.assertEqual(conexion.execute(text("""
+                SELECT p.rol_aplicable, m.nombre, p.dias_prestamo
+                FROM politicas_servicio p JOIN modalidades m ON m.id=p.modalidad_id
+                ORDER BY p.rol_aplicable, m.id
+            """)).all(), [
+                ("ADMINISTRATIVO", "In situ (en sala)", 1),
+                ("ADMINISTRATIVO", "Externa (a domicilio)", 15),
+                ("DOCENTE", "In situ (en sala)", 1),
+                ("DOCENTE", "Externa (a domicilio)", 15),
+                ("ESTUDIANTE", "In situ (en sala)", 1),
+                ("ESTUDIANTE", "Externa (a domicilio)", 7),
+            ])
         motor.dispose()
