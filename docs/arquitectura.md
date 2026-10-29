@@ -20,10 +20,10 @@ cuatro archivos para que una operación pueda seguirse sin recorrer capas disper
 | `repositorio.py` | Consultas y escritura mediante SQLAlchemy. |
 | `rutas.py` | Endpoints Flask y conversión a JSON. |
 
-Los módulos `identidad/`, `inventario/`, `prestamos/`, `reservas/` y
-`configuracion_servicio/` tienen recorridos funcionales. `sanciones/` y
-`auditoria/` conservan únicamente el modelo de dominio previsto para los
-Sprints 5 y 6; no se presentan como funcionalidades terminadas.
+Los módulos `identidad/`, `inventario/`, `prestamos/`, `reservas/`, `sanciones/`
+y `configuracion_servicio/` tienen recorridos funcionales. `auditoria/` conserva
+el modelo de dominio previsto para el Sprint 6 y todavía no se presenta como una
+funcionalidad terminada.
 
 `compartido/` contiene autenticación, validaciones HTTP, errores, reloj e
 identificadores comunes. `base_datos/` reúne la conexión, los modelos ORM, los
@@ -57,6 +57,8 @@ erDiagram
     USUARIOS ||--o| PERFILES_ADMINISTRADOR_SISTEMA : tiene
     USUARIOS ||--o{ PRESTAMOS : solicita
     USUARIOS ||--o{ RESERVAS : solicita
+    USUARIOS ||--o{ SANCIONES : recibe
+    USUARIOS ||--o{ SANCIONES : registra
     MODALIDADES ||--o{ POLITICAS_SERVICIO : configura
     TIPOS_RECURSO ||--o{ POLITICA_TIPOS_RECURSO : clasifica
     POLITICAS_SERVICIO ||--o{ POLITICA_TIPOS_RECURSO : permite
@@ -66,15 +68,17 @@ erDiagram
     RESERVAS ||--o| PRESTAMOS : origina
     ITEMS ||--o{ RESERVAS : corresponde
     PRESTAMOS ||--|{ DETALLES_PRESTAMO : contiene
+    PRESTAMOS ||--o{ SANCIONES : origina
     ITEMS ||--o{ DETALLES_PRESTAMO : participa
 ```
 
 Los modelos SQLAlchemy están centralizados en `base_datos/modelos.py`. Las
-migraciones `0001`–`0012` conservan la evolución desde el MVP y se aplican al
+migraciones `0001`–`0013` conservan la evolución desde el MVP y se aplican al
 iniciar Flask. La migración `0011` normaliza políticas por rol y modalidad,
 convierte los tipos permitidos en una relación y elimina las copias descriptivas
 de `prestamos`. `0012` elimina los días de gracia: una reserva expira al terminar
-su fecha reservada y esa fecha no se duplica en otra columna. Restricciones únicas parciales impiden que un mismo ítem aparezca
+su fecha reservada y esa fecha no se duplica en otra columna. `0013` incorpora
+sanciones y el factor de atraso configurable por política. Restricciones únicas parciales impiden que un mismo ítem aparezca
 en dos préstamos activos o en más de una reserva activa. El diseño detallado se
 documenta en [Préstamos y políticas](base-de-datos-normalizada.md).
 

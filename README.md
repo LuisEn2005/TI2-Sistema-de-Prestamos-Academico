@@ -4,7 +4,7 @@ Sistema para administrar recursos de la Escuela de Computación: catálogo, rese
 
 ## Estado actual
 
-Los **Sprints 1–4 están terminados**. El Sprint 1 entregó el MVP de préstamo y devolución. El [Sprint 2](docs/sprints/sprint-02.md) incorporó identidad e inventario administrables y el [Sprint 3](docs/sprints/sprint-03.md) completó préstamos, modalidades, cupos y devoluciones. El [Sprint 4](docs/sprints/sprint-04.md) incorpora **reservas y renovaciones**: solicitud por fecha, confirmación, cancelación, expiración, conversión en préstamo y prioridad de una reserva frente a la renovación. El plazo efectivo queda persistido: 1 día in situ para cualquier perfil, 7 días externos para estudiantes y 15 para docentes o administrativos con la configuración inicial. El proyecto está en torno al **63 % del alcance funcional**. Los Sprints 5–6 continúan planificados: sanciones, políticas editables y auditoría todavía no están terminados.
+Los **Sprints 1–5 están terminados**. El Sprint 1 entregó el MVP de préstamo y devolución. El [Sprint 2](docs/sprints/sprint-02.md) incorporó identidad e inventario administrables, el [Sprint 3](docs/sprints/sprint-03.md) completó préstamos y devoluciones y el [Sprint 4](docs/sprints/sprint-04.md) añadió reservas y renovaciones. El [Sprint 5](docs/sprints/sprint-05.md) incorpora **sanciones y políticas editables**: generación automática por atraso, registro por daño o pérdida, bloqueo de operaciones, cierre y configuración administrativa. Están implementados **17 de los 18 requisitos funcionales**; el Sprint 6 continúa planificado para auditoría, historial y validación integral.
 
 ## Estructura del repositorio
 
@@ -19,7 +19,8 @@ backend/
     prestamos/                      Dominio, servicio, repositorio y rutas de préstamos
     configuracion_servicio/         Políticas y modalidades
     reservas/                       Dominio, servicio, repositorio y rutas de reservas
-    sanciones/ auditoria/           Dominio planificado para Sprints 5–6
+    sanciones/                      Dominio, servicio, repositorio y rutas de sanciones
+    auditoria/                      Dominio planificado para el Sprint 6
     compartido/                     Autenticación, validación, errores y reloj
     base_datos/                     SQLAlchemy, unidad de trabajo y migraciones
   alembic.ini                       Configuración de la CLI de migraciones
@@ -47,7 +48,7 @@ La secuencia parte del [Sprint 1 implementado](docs/sprints/sprint-01.md) y term
 | **2 · Identidad e inventario — terminado** | Usuarios, roles, vinculación, políticas por perfil e inventario administrable. Cierre de RF01, RF03, RF04 y RF06; avance de RF02 y RF05. | Autenticación, permisos, modelos completos, migraciones y PostgreSQL; catálogo filtrable. | Gestión de usuarios y recursos, filtros y vistas por rol. |
 | **3 · Préstamos completos — terminado** | Modalidades, varios ítems, plazos, devolución con condición y límites por perfil. Cierre de RF10–RF11; avance de RF13. | Reglas y transacciones de préstamos; cálculo de fecha límite. | Flujo de entrega, devolución y consulta de préstamos. |
 | **4 · Reservas y renovaciones — terminado** | Reservar, cancelar, expirar, convertir reserva en préstamo y renovar. Cierre de RF05, RF08–RF09; avance de RF07 y RF12. | Estados, expiración al final del día reservado, prioridad, plazo efectivo y normalización (`0008`–`0012`). | Solicitud, seguimiento, gestión y renovación. |
-| **5 · Sanciones y configuración — planificado** | Sanciones automáticas y manuales, cierre, bloqueo y políticas administrables. Cierre de RF02, RF07, RF12–RF16 y RF18. | Reglas de sanción, elegibilidad y configuración persistente. | Gestión de sanciones y panel de políticas. |
+| **5 · Sanciones y configuración — terminado** | Sanciones automáticas y manuales, cierre, bloqueo y políticas administrables. Cierre de RF02, RF07, RF12–RF16 y RF18. | Reglas de sanción, elegibilidad y configuración persistente. | Gestión de sanciones y panel de políticas. |
 | **6 · Auditoría y entrega integral — planificado** | Historial y validación de todos los flujos. Cierre de RF17 y verificación conjunta de RF01–RF18 y RNF01–RNF06. | Auditoría, pruebas integradas, migraciones y despliegue con PostgreSQL. | Historial consultable y revisión de todos los recorridos por rol. |
 
 El Sprint 6 solo se considerará terminado cuando **todas las funcionalidades RF01–RF18 operen de extremo a extremo** en Astro, Flask y PostgreSQL, con permisos, trazabilidad y pruebas de los casos principales. La planificación de tareas en Jira se realizará después.
@@ -121,7 +122,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y seis recorridos Playwright. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
+La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y siete recorridos Playwright. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
 
 ## Documentación de referencia
 
@@ -132,13 +133,14 @@ La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) eje
 - [Sprint 2: identidad e inventario](docs/sprints/sprint-02.md)
 - [Sprint 3: préstamos completos](docs/sprints/sprint-03.md)
 - [Sprint 4: reservas y renovaciones](docs/sprints/sprint-04.md)
+- [Sprint 5: sanciones y políticas configurables](docs/sprints/sprint-05.md)
 - [Plan y cierre de requisitos por sprint](docs/sprints/plan.md)
 
 ## Recorridos disponibles
 
 - **Visitante:** consultar el catálogo con búsqueda, filtros por tipo, categoría y estado, y ver el detalle de cada recurso, sin iniciar sesión.
-- **Estudiante, docente o administrativo:** iniciar sesión, ver su política de servicio, consultar sus préstamos con su fecha límite y cambiar su contraseña.
-- **Gestor de inventario:** registrar y editar recursos, cambiar su estado, entregar varios recursos a la vez bajo una modalidad (con plazo y cupo a la vista) y registrar devoluciones indicando la condición de cada ítem. Puede consultar únicamente los prestatarios habilitados necesarios para una entrega.
-- **Administrador del sistema:** gestionar usuarios, perfiles y accesos, además de realizar las operaciones de inventario y préstamos.
+- **Estudiante, docente o administrativo:** iniciar sesión, reservar recursos, consultar y renovar sus préstamos, revisar sus sanciones y cambiar su contraseña.
+- **Gestor de inventario:** administrar recursos, reservas, entregas y devoluciones; también puede registrar sanciones por daño o pérdida.
+- **Administrador del sistema:** gestionar usuarios, cerrar sanciones y configurar cupos, plazos, factores de atraso y modalidades, además de las operaciones del gestor.
 
-Detalle de endpoints, reglas y límites en los documentos del [Sprint 2](docs/sprints/sprint-02.md) y [Sprint 3](docs/sprints/sprint-03.md); el [Sprint 1](docs/sprints/sprint-01.md) conserva la evidencia del MVP original.
+Detalle de endpoints, reglas y límites en los documentos de cada sprint; el [Sprint 1](docs/sprints/sprint-01.md) conserva la evidencia del MVP original.
