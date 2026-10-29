@@ -32,6 +32,7 @@ class SqlAlchemyPoliticaRepository(IPoliticaRepository):
         fila.modalidad_id = politica.modalidadId.valor
         fila.max_items_simultaneos = politica.maxItemsSimultaneos
         fila.dias_prestamo = politica.diasPrestamo
+        fila.dias_sancion_por_dia_atraso = politica.diasSancionPorDiaAtraso
         self.sesion.add(fila)
         self.sesion.flush()
         self.sesion.execute(delete(PoliticaTipoRecursoDB).where(

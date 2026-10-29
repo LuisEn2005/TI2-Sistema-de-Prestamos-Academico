@@ -103,6 +103,8 @@ class ReservaApplicationService:
                 422)
         self.expirar_vencidas()
         with self._uow() as uow:
+            uow.sanciones.sincronizar_vencidas(
+                hoy, self.reloj.ahora(), actor.id.valor)
             usuario = uow.usuarios.find_by_id(actor.id.valor)
             motivo = usuario.motivoNoHabilitado()
             if motivo:

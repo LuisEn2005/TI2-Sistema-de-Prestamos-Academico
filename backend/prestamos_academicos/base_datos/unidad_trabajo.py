@@ -9,6 +9,7 @@ from ..identidad.repositorio import SqlAlchemyUsuarioRepository
 from ..inventario.repositorio import SqlAlchemyItemRepository
 from ..prestamos.repositorio import SqlAlchemyPrestamoRepository
 from ..reservas.repositorio import SqlAlchemyReservaRepository
+from ..sanciones.repositorio import SqlAlchemySancionRepository
 
 
 class IUnitOfWork(ABC):
@@ -18,6 +19,7 @@ class IUnitOfWork(ABC):
     modalidades = None
     prestamos = None
     reservas = None
+    sanciones = None
 
     @abstractmethod
     def begin(self): ...
@@ -50,6 +52,7 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
         self.modalidades = SqlAlchemyModalidadRepository(self.sesion)
         self.prestamos = SqlAlchemyPrestamoRepository(self.sesion)
         self.reservas = SqlAlchemyReservaRepository(self.sesion)
+        self.sanciones = SqlAlchemySancionRepository(self.sesion)
 
     def commit(self):
         self.sesion.commit()

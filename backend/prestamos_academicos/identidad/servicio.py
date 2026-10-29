@@ -12,6 +12,7 @@ from .dominio import (
 from ..compartido import RolUsuario
 from ..compartido import validacion as v
 from ..compartido import Conflicto, ErrorAplicacion, NoAutenticado, NoEncontrado, SinPermiso
+from ..compartido.reloj import Reloj
 
 MIN_PASSWORD = 8
 _HASH_FICTICIO = generate_password_hash("sin-usuario")
@@ -35,17 +36,24 @@ def validar_correo(correo):
 
 
 class IdentidadApplicationService:
-    def __init__(self, fabrica_uow):
+    def __init__(self, fabrica_uow, reloj=None):
         self._uow = fabrica_uow
+        self.reloj = reloj or Reloj()
         self.autorizacion = ServicioAutorizacionRol()
+
+    def _sincronizar_sanciones(self, uow, usuario_id=None):
+        uow.sanciones.sincronizar_vencidas(
+            self.reloj.hoy(), self.reloj.ahora(), usuario_id)
 
     # -- autenticación ---------------------------------------------------
     def autenticar(self, correo, password):
         if not isinstance(correo, str) or not isinstance(password, str):
             raise NoAutenticado()
         with self._uow() as uow:
+            self._sincronizar_sanciones(uow)
             usuario = uow.usuarios.find_by_email(correo)
             hash_guardado = uow.usuarios.password_hash_de(usuario.id.valor) if usuario else None
+            uow.commit()
         # Se verifica siempre un hash para no revelar si el correo existe.
         ok = check_password_hash(hash_guardado or _HASH_FICTICIO, password)
         if not (usuario and hash_guardado and ok):
@@ -57,7 +65,9 @@ class IdentidadApplicationService:
     def usuario_de_sesion(self, usuario_id, version_sesion=None):
         """Carga el usuario con sus roles vigentes; None si ya no puede acceder."""
         with self._uow() as uow:
+            self._sincronizar_sanciones(uow, usuario_id)
             usuario = uow.usuarios.find_by_id(usuario_id)
+            uow.commit()
         return usuario if (
             usuario and usuario.activo
             and (version_sesion is None or usuario.versionSesion == version_sesion)
@@ -272,14 +282,18 @@ class IdentidadApplicationService:
     def listar_usuarios(self, *, texto=None, rol=None, activo=None, habilitado=None):
         rol_enum = self._leer_rol(rol) if rol else None
         with self._uow() as uow:
+            self._sincronizar_sanciones(uow)
             usuarios = uow.usuarios.listar(texto=texto, rol=rol_enum, activo=activo)
+            uow.commit()
         if habilitado is not None:
             usuarios = [u for u in usuarios if u.estaHabilitado() == habilitado]
         return usuarios
 
     def obtener_usuario(self, usuario_id):
         with self._uow() as uow:
+            self._sincronizar_sanciones(uow, usuario_id)
             usuario = uow.usuarios.find_by_id(usuario_id)
+            uow.commit()
         if usuario is None:
             raise NoEncontrado("El usuario no existe.")
         return usuario

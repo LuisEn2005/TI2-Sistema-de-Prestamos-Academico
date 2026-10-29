@@ -16,6 +16,7 @@ from .identidad.servicio import IdentidadApplicationService
 from .inventario.servicio import InventarioApplicationService
 from .prestamos.servicio import PrestamoApplicationService
 from .reservas.servicio import ReservaApplicationService
+from .sanciones.servicio import SancionApplicationService
 from .base_datos.conexion import crear_fabrica_sesiones
 from .base_datos.datos_demo import preparar_datos
 from .base_datos.aplicar_migraciones import aplicar_migraciones
@@ -44,14 +45,16 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
     def fabrica_uow():
         return SqlAlchemyUnitOfWork(fabrica_sesiones)
 
-    identidad = IdentidadApplicationService(fabrica_uow)
     reloj_aplicacion = reloj or Reloj(config.zona_horaria)
+    identidad = IdentidadApplicationService(fabrica_uow, reloj_aplicacion)
     app.extensions["servicios"] = SimpleNamespace(
         identidad=identidad,
         inventario=InventarioApplicationService(fabrica_uow),
         prestamos=PrestamoApplicationService(
             fabrica_uow, identidad, reloj_aplicacion),
         reservas=ReservaApplicationService(
+            fabrica_uow, identidad, reloj_aplicacion),
+        sanciones=SancionApplicationService(
             fabrica_uow, identidad, reloj_aplicacion),
         configuracion=ConfiguracionApplicationService(fabrica_uow),
         tokens=EmisorTokens(clave),
@@ -70,9 +73,10 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
     from .inventario import rutas as rutas_inventario
     from .prestamos import rutas as rutas_prestamos
     from .reservas import rutas as rutas_reservas
+    from .sanciones import rutas as rutas_sanciones
     for modulo in (
             rutas_identidad, rutas_inventario, rutas_prestamos, rutas_reservas,
-            rutas_configuracion):
+            rutas_configuracion, rutas_sanciones):
         app.register_blueprint(modulo.bp)
 
     @app.get("/api/salud")

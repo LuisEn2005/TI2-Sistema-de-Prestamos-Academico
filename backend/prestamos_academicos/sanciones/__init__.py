@@ -1,11 +1,12 @@
-"""Modelo planificado de sanciones para el Sprint 5."""
+"""Sanciones automáticas y manuales del Sprint 5."""
 
 from .dominio import (
     EstadoSancion, Monto, OrigenSancion, Sancion, SancionCerrada,
     SancionGenerada,
 )
+from .servicio import SancionApplicationService
 
 __all__ = [
     "EstadoSancion", "Monto", "OrigenSancion", "Sancion", "SancionCerrada",
-    "SancionGenerada",
+    "SancionApplicationService", "SancionGenerada",
 ]

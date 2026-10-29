@@ -104,7 +104,7 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         motor = create_engine(URL)
         with motor.connect() as conexion:
             self.assertEqual(conexion.execute(text(
-                "SELECT version_num FROM alembic_version")).scalar_one(), "0012")
+                "SELECT version_num FROM alembic_version")).scalar_one(), "0013")
             columnas = set(conexion.execute(text("""
                 SELECT column_name FROM information_schema.columns
                 WHERE table_schema='public' AND table_name='prestamos'
