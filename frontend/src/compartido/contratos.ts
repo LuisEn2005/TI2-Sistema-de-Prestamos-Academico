@@ -35,6 +35,7 @@ export type PrestamoDTO = {
   items: ItemPrestamoDTO[];
   fecha_prestamo: string; fecha_limite: string | null; fecha_devolucion: string | null;
   estado: 'activo' | 'devuelto'; vencido: boolean; dias_atraso: number;
+  sancion_generada_id?: number;
 };
 export type PaginaPrestamosDTO = { prestamos: PrestamoDTO[]; total: number; pagina: number; limite: number };
 export type ModalidadDTO = { id: number; nombre: string; activo: boolean };
@@ -47,7 +48,15 @@ export type CondicionesPrestamoDTO = {
 export type PoliticaDTO = {
   id: number; rol: Rol; modalidad_id: number; modalidad: string;
   max_items_simultaneos: number; dias_prestamo: number;
+  dias_sancion_por_dia_atraso: number;
   tipos_recurso_permitidos: string[];
+};
+export type SancionDTO = {
+  id: number; usuario_id: number; usuario: string; prestamo_id: number | null;
+  origen: 'RETRASO' | 'DANO' | 'PERDIDA'; motivo: string;
+  monto: string | null; moneda: string | null;
+  fecha_inicio: string; fecha_fin: string | null; estado: 'ACTIVA' | 'CERRADA';
+  resolucion: string | null;
 };
 export type EstadoReserva = 'PENDIENTE' | 'CONFIRMADA' | 'EXPIRADA' | 'CANCELADA' | 'CONVERTIDA';
 export type ReservaDTO = {
