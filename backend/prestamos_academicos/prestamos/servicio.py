@@ -18,6 +18,7 @@ from ..compartido import ItemId, ReservaId, RolUsuario, UsuarioId
 from ..compartido import validacion as v
 from ..compartido import Conflicto, ErrorAplicacion, NoEncontrado, SinPermiso
 from ..compartido.reloj import Reloj
+from ..sanciones import Sancion
 
 MAX_ITEMS_POR_PRESTAMO = 50
 MAX_OBSERVACION = 300
@@ -59,6 +60,8 @@ class PrestamoApplicationService:
 
     # -- reglas compartidas por la previsualización y la entrega ---------------------------
     def _resolver_contexto(self, uow, usuario_id, modalidad_id, rol_solicitante) -> ContextoPrestamo:
+        hoy = self.reloj.hoy()
+        uow.sanciones.sincronizar_vencidas(hoy, self.reloj.ahora(), usuario_id)
         usuario = uow.usuarios.find_by_id(usuario_id)
         if usuario is None:
             raise NoEncontrado("El usuario no existe.")
@@ -78,7 +81,6 @@ class PrestamoApplicationService:
             raise ErrorAplicacion(
                 "El perfil no tiene una política para la modalidad seleccionada.", 422)
 
-        hoy = self.reloj.hoy()
         try:
             dias = politica.diasPrestamo
             limite = Prestamo.calcularFechaLimite(hoy, dias)
@@ -304,6 +306,8 @@ class PrestamoApplicationService:
                 raise NoEncontrado("El préstamo no existe.")
             if prestamo.usuarioId.valor != actor.id.valor and not self._ve_todo(actor):
                 raise SinPermiso("Solo el titular o un gestor puede renovar el préstamo.")
+            uow.sanciones.sincronizar_vencidas(
+                self.reloj.hoy(), self.reloj.ahora(), prestamo.usuarioId.valor)
             usuario = uow.usuarios.find_by_id(prestamo.usuarioId.valor)
             motivo = usuario.motivoNoHabilitado()
             if motivo:
@@ -333,9 +337,11 @@ class PrestamoApplicationService:
             prestamo = uow.prestamos.find_by_id(prestamo_id)
             if prestamo is None:
                 raise NoEncontrado("El préstamo no existe.")
+            hoy = self.reloj.hoy()
+            dias_atraso = prestamo.diasAtraso(hoy)
             try:
                 prestamo.registrarDevolucion(
-                    pedidas, hoy=self.reloj.hoy(), fecha=self.reloj.ahora(),
+                    pedidas, hoy=hoy, fecha=self.reloj.ahora(),
                     observaciones=observaciones)
             except ErrorDominio as e:
                 raise Conflicto(str(e)) if "ya fue devuelto" in str(e) else ErrorAplicacion(str(e), 422)
@@ -347,6 +353,15 @@ class PrestamoApplicationService:
                         "Un recurso del préstamo no figura como prestado; revise su estado.")
             guardado = uow.prestamos.save(prestamo)
             vista = self._vistas(uow, [guardado])[0]
+            if dias_atraso > 0:
+                politica = (uow.politicas.find_by_id(prestamo.politicaServicioId.valor)
+                            if prestamo.politicaServicioId else None)
+                factor = politica.diasSancionPorDiaAtraso if politica else 1
+                sancion = uow.sanciones.save(Sancion.porAtraso(
+                    usuario_id=prestamo.usuarioId.valor, prestamo_id=prestamo.id.valor,
+                    dias_atraso=dias_atraso, factor=factor, hoy=hoy))
+                uow.sanciones.actualizar_cache_usuario(prestamo.usuarioId.valor)
+                vista["sancion_generada_id"] = sancion.id.valor
             uow.commit()
         return vista
 

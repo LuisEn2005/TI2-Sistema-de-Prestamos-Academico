@@ -1,0 +1,37 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base titulo="Sanciones">
+  <div class="encabezado-pagina">
+    <h1>Sanciones</h1>
+    <p>Consulte los bloqueos por atraso, daño o pérdida y su estado de resolución.</p>
+  </div>
+
+  <section id="registro" hidden>
+    <h2>Registrar sanción manual</h2>
+    <form id="formulario" class="barra">
+      <div><label for="usuario">Usuario</label><select id="usuario" required></select></div>
+      <div><label for="origen">Origen</label><select id="origen">
+        <option value="DANO">Daño</option><option value="PERDIDA">Pérdida</option>
+      </select></div>
+      <div><label for="dias">Duración (días)</label><input id="dias" type="number" min="1" max="365" /></div>
+      <div><label for="monto">Monto (S/)</label><input id="monto" type="number" min="0.01" max="99999999.99" step="0.01" /></div>
+      <div><label for="motivo">Motivo</label><input id="motivo" maxlength="300" required /></div>
+      <button type="submit">Registrar</button>
+    </form>
+    <p class="tenue pequeno">Indique al menos una duración o un monto.</p>
+  </section>
+
+  <div class="barra" style="margin-top:2rem">
+    <div><label for="estado">Mostrar</label><select id="estado">
+      <option value="">Todas</option><option value="ACTIVA">Activas</option>
+      <option value="CERRADA">Cerradas</option>
+    </select></div>
+  </div>
+  <div class="tabla-envoltura"><table>
+    <thead><tr><th>Usuario</th><th>Origen</th><th>Detalle</th><th>Vigencia</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody id="filas"></tbody>
+  </table></div>
+  <script>import '../funcionalidades/sanciones.ts';</script>
+</Base>

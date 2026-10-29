@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base titulo="Configuración">
+  <div class="encabezado-pagina">
+    <h1>Configuración del servicio</h1>
+    <p>Edite solamente los límites, plazos y sanciones que aplica el sistema.</p>
+  </div>
+
+  <h2>Modalidades</h2>
+  <div class="tabla-envoltura"><table>
+    <thead><tr><th>Modalidad</th><th>Activa</th><th>Acción</th></tr></thead>
+    <tbody id="modalidades"></tbody>
+  </table></div>
+
+  <h2 style="margin-top:2rem">Políticas por perfil y modalidad</h2>
+  <div class="tabla-envoltura"><table>
+    <thead><tr><th>Perfil</th><th>Modalidad</th><th>Cupo</th><th>Días de préstamo</th><th>Sanción por día de atraso</th><th>Acción</th></tr></thead>
+    <tbody id="politicas"></tbody>
+  </table></div>
+  <p class="tenue pequeno">Los cambios se aplican a las operaciones nuevas. Los préstamos existentes conservan el plazo que recibieron.</p>
+  <script>import '../../funcionalidades/configuracion.ts';</script>
+</Base>

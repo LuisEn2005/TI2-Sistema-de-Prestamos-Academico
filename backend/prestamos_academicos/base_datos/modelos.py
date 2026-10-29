@@ -5,10 +5,11 @@ Los roles de un usuario se deducen de los perfiles que tiene (patrón Party/Role
 """
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import (
-    JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, Text,
-    UniqueConstraint, text,
+    JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric,
+    String, Text, UniqueConstraint, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,6 +29,8 @@ class PoliticaServicioDB(Base):
             name="ck_politica_rol_valido"),
         CheckConstraint("max_items_simultaneos > 0", name="ck_politica_max_positivo"),
         CheckConstraint("dias_prestamo > 0", name="ck_politica_dias_positivo"),
+        CheckConstraint(
+            "dias_sancion_por_dia_atraso > 0", name="ck_politica_sancion_positiva"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -35,6 +38,8 @@ class PoliticaServicioDB(Base):
     modalidad_id: Mapped[int] = mapped_column(ForeignKey("modalidades.id"), nullable=False)
     max_items_simultaneos: Mapped[int] = mapped_column(Integer, nullable=False)
     dias_prestamo: Mapped[int] = mapped_column(Integer, nullable=False)
+    dias_sancion_por_dia_atraso: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1)
 
 
 class TipoRecursoDB(Base):
@@ -275,3 +280,39 @@ class DetallePrestamoDB(Base):
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     condicion: Mapped[str | None] = mapped_column(String(20))
     observacion: Mapped[str | None] = mapped_column(String(300))
+
+
+class SancionDB(Base):
+    """Bloqueo temporal o pendiente de resolución para un usuario."""
+
+    __tablename__ = "sanciones"
+    __table_args__ = (
+        CheckConstraint(
+            "origen IN ('RETRASO','DANO','PERDIDA')", name="ck_sancion_origen_valido"),
+        CheckConstraint(
+            "estado IN ('ACTIVA','CERRADA')", name="ck_sancion_estado_valido"),
+        CheckConstraint(
+            "fecha_fin IS NULL OR fecha_fin >= fecha_inicio",
+            name="ck_sancion_fechas_ordenadas"),
+        CheckConstraint("monto IS NULL OR monto > 0", name="ck_sancion_monto_positivo"),
+        CheckConstraint(
+            "(monto IS NULL AND moneda IS NULL) OR "
+            "(monto IS NOT NULL AND moneda IS NOT NULL)",
+            name="ck_sancion_monto_moneda"),
+        Index("ix_sanciones_usuario_estado", "usuario_id", "estado"),
+        Index("ix_sanciones_prestamo", "prestamo_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    prestamo_id: Mapped[int | None] = mapped_column(ForeignKey("prestamos.id"))
+    creada_por_usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    origen: Mapped[str] = mapped_column(String(20), nullable=False)
+    motivo: Mapped[str] = mapped_column(String(300), nullable=False)
+    monto: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    moneda: Mapped[str | None] = mapped_column(String(3))
+    fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_fin: Mapped[date | None] = mapped_column(Date)
+    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVA")
+    cerrada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolucion: Mapped[str | None] = mapped_column(String(300))

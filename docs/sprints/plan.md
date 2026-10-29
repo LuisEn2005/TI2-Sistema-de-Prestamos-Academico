@@ -2,7 +2,7 @@
 
 ## Alcance y estado
 
-Este plan parte de los [requisitos RF01–RF18 y RNF01–RNF06](../requisitos.md). **Sprints 1–4 están implementados** ([MVP](sprint-01.md), [Sprint 2](sprint-02.md), [Sprint 3](sprint-03.md) y [Sprint 4](sprint-04.md)). **Sprints 5–6 están planificados**. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
+Este plan parte de los [requisitos RF01–RF18 y RNF01–RNF06](../requisitos.md). **Sprints 1–5 están implementados** ([MVP](sprint-01.md), [Sprint 2](sprint-02.md), [Sprint 3](sprint-03.md), [Sprint 4](sprint-04.md) y [Sprint 5](sprint-05.md)). **El Sprint 6 está planificado**. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
 
 Cada sprint debe entregar una funcionalidad visible en Astro, una API y reglas en Flask, persistencia cuando corresponda y comprobaciones de su recorrido principal. La cobertura parcial de un requisito en un sprint no equivale a su cierre; la tabla de trazabilidad indica dónde quedará completo.
 
@@ -48,7 +48,7 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Demostración:** una reserva bloquea la disponibilidad según su estado; al cancelarse o expirar libera el recurso, y una reserva pendiente impide renovarlo.
 - **Resultado:** implementado; ver [Sprint 4](sprint-04.md) para reglas, API, persistencia, pruebas y límites.
 
-## Sprint 5 — Sanciones y políticas configurables · Planificado
+## Sprint 5 — Sanciones y políticas configurables · Terminado
 
 **Objetivo.** Aplicar incumplimientos y permitir cambiar reglas sin modificar código.
 
@@ -56,6 +56,7 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Frontend:** consulta del estado de sanciones, registro y cierre por personal autorizado, mensajes de bloqueo y panel administrativo de políticas.
 - **Cierre:** RF02, RF07, RF12, RF13, RF14, RF15, RF16 y RF18 completos. Se comprueba también la aplicación de la política por perfil definida en RF03.
 - **Demostración:** un atraso genera la sanción correspondiente; mientras esté activa, el usuario no puede iniciar nuevas operaciones; un administrador cambia una regla desde la interfaz.
+- **Resultado:** implementado; ver [Sprint 5](sprint-05.md) para reglas, API, persistencia, pruebas y límites.
 
 ## Sprint 6 — Auditoría y entrega integral · Planificado
 

@@ -31,6 +31,7 @@ def politica_a_dominio(fila: PoliticaServicioDB) -> PoliticaServicio:
         modalidadId=ModalidadId(fila.modalidad_id),
         maxItemsSimultaneos=fila.max_items_simultaneos,
         diasPrestamo=fila.dias_prestamo,
+        diasSancionPorDiaAtraso=fila.dias_sancion_por_dia_atraso,
     )
 
 

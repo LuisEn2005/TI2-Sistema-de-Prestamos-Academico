@@ -54,11 +54,18 @@ class MigracionTest(unittest.TestCase):
                 fila[1] for fila in con.execute("PRAGMA table_info('politicas_servicio')")}
             self.assertEqual(columnas_politica, {
                 "id", "rol_aplicable", "modalidad_id", "max_items_simultaneos",
-                "dias_prestamo",
+                "dias_prestamo", "dias_sancion_por_dia_atraso",
             })
             columnas_reserva = {
                 fila[1] for fila in con.execute("PRAGMA table_info('reservas')")}
             self.assertNotIn("fecha_expiracion", columnas_reserva)
+            columnas_sancion = {
+                fila[1] for fila in con.execute("PRAGMA table_info('sanciones')")}
+            self.assertEqual(columnas_sancion, {
+                "id", "usuario_id", "prestamo_id", "creada_por_usuario_id",
+                "origen", "motivo", "monto", "moneda", "fecha_inicio", "fecha_fin",
+                "estado", "cerrada_en", "resolucion",
+            })
             reglas = con.execute("""
                 SELECT p.rol_aplicable, m.nombre, p.dias_prestamo
                 FROM politicas_servicio p
@@ -142,7 +149,7 @@ class MigracionTest(unittest.TestCase):
                              [("Externa (a domicilio)", 1)])
             self.assertEqual(c2.get("/api/items").json["total"], 26)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0012")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0013")
             self.assertEqual(con.execute(
                 "SELECT dias_prestamo FROM politicas_servicio p JOIN modalidades m "
                 "ON m.id=p.modalidad_id WHERE p.rol_aplicable='ESTUDIANTE' "
@@ -285,8 +292,8 @@ class SinDatosDemoTest(unittest.TestCase):
             with patch.dict(os.environ, {
                 "ADMIN_CORREO": "gestor@escuela.edu",
                 "ADMIN_PASSWORD": "clave-inicial-segura",
+                "DATOS_DEMO": "0",
             }):
-                os.environ.pop("DATOS_DEMO", None)
                 cliente = create_app(url, secret_key="k").test_client()
             self.assertEqual(cliente.get("/api/items").json["total"], 0)
             acceso = cliente.post("/api/auth/login", json={

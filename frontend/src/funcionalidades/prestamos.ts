@@ -133,6 +133,7 @@ function abrirDevolucion(p: PrestamoDTO) {
 function resumenDeDevolucion(p: PrestamoDTO) {
   const partes = ['Devolución registrada.'];
   if (p.dias_atraso > 0) partes.push(`Atraso de ${plural(p.dias_atraso, 'día', 'días')}.`);
+  if (p.sancion_generada_id) partes.push('Se generó una sanción automática.');
   const danados = p.items.filter((i) => i.condicion === 'DANADO').map((i) => i.codigo);
   const perdidos = p.items.filter((i) => i.condicion === 'PERDIDO').map((i) => i.codigo);
   if (danados.length) partes.push(`En mantenimiento: ${danados.join(', ')}.`);

@@ -2,7 +2,10 @@
 
 from flask import Blueprint, jsonify
 
-from ..compartido.autenticacion import requiere_autenticacion, servicios
+from ..compartido import validacion as v
+from ..compartido.autenticacion import requiere_autenticacion, requiere_permiso, servicios
+from ..compartido.http import cuerpo_json, id_ruta
+from ..identidad import Permiso
 
 bp = Blueprint("configuracion", __name__, url_prefix="/api")
 
@@ -23,6 +26,7 @@ def politica_a_json(politica):
         "modalidad": politica.modalidadNombre,
         "max_items_simultaneos": politica.maxItemsSimultaneos,
         "dias_prestamo": politica.diasPrestamo,
+        "dias_sancion_por_dia_atraso": politica.diasSancionPorDiaAtraso,
         "tipos_recurso_permitidos": politica.tiposPermitidos(),
     }
 
@@ -37,3 +41,19 @@ def listar_politicas():
 @requiere_autenticacion
 def listar_modalidades():
     return jsonify([modalidad_a_json(m) for m in servicios().configuracion.listar_modalidades()])
+
+
+@bp.patch("/politicas/<int:politica_id>")
+@requiere_permiso(Permiso.CONFIGURAR_POLITICAS)
+def actualizar_politica(politica_id):
+    return jsonify(politica_a_json(servicios().configuracion.actualizar_politica(
+        id_ruta(politica_id), cuerpo_json())))
+
+
+@bp.patch("/modalidades/<int:modalidad_id>")
+@requiere_permiso(Permiso.CONFIGURAR_POLITICAS)
+def actualizar_modalidad(modalidad_id):
+    datos = cuerpo_json()
+    v.campos(datos, {"activo"})
+    return jsonify(modalidad_a_json(servicios().configuracion.actualizar_modalidad(
+        id_ruta(modalidad_id), v.booleano(datos, "activo"))))

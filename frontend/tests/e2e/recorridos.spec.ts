@@ -159,3 +159,35 @@ test('el estudiante reserva y el administrador convierte la reserva en préstamo
   await expect(page.locator('#mensaje')).toContainText('Reserva convertida en préstamo');
   await expect(gestion).toContainText('Convertida en préstamo');
 });
+
+test('el administrador configura una política y gestiona una sanción', async ({ page }) => {
+  await ingresar(page);
+  await page.goto('/admin/configuracion');
+  const factor = page.getByLabel(
+    'Sanción por atraso de Estudiante · Externa (a domicilio)');
+  await factor.fill('2');
+  await page.getByRole('button', {
+    name: 'Guardar política de Estudiante · Externa (a domicilio)',
+  }).click();
+  await expect(page.locator('#mensaje')).toContainText('actualizada');
+  // Se restaura el valor inicial para que la demostración siga siendo repetible.
+  await factor.fill('1');
+  await page.getByRole('button', {
+    name: 'Guardar política de Estudiante · Externa (a domicilio)',
+  }).click();
+
+  await page.goto('/sanciones');
+  await page.getByLabel('Usuario').selectOption({
+    label: 'Jesus Perez (jesus.perez@escuela.edu)',
+  });
+  await page.getByLabel('Duración (días)').fill('1');
+  await page.getByLabel('Motivo').fill('Daño de prueba E2E');
+  await page.getByRole('button', { name: 'Registrar' }).click();
+  await expect(page.locator('#mensaje')).toContainText('Sanción registrada');
+  const sancion = page.getByRole('row').filter({ hasText: 'Daño de prueba E2E' });
+  await expect(sancion).toContainText('Activa');
+  page.once('dialog', (dialogo) => dialogo.accept('Prueba finalizada'));
+  await sancion.getByRole('button', { name: 'Cerrar' }).click();
+  await expect(page.locator('#mensaje')).toContainText('Sanción cerrada');
+  await expect(sancion).toContainText('Cerrada');
+});

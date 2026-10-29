@@ -11,7 +11,7 @@ from prestamos_academicos import (
 class ImportacionesDelDominioTest(unittest.TestCase):
     def test_contextos_exponen_sus_clases(self):
         self.assertIsNotNone(auditoria.HistorialMovimiento)
-        self.assertIsNotNone(configuracion_servicio.PoliticaSancion)
+        self.assertIsNotNone(configuracion_servicio.PoliticaServicio)
         self.assertIsNotNone(identidad.Usuario)
         self.assertIsNotNone(inventario.Item)
         self.assertIsNotNone(prestamos.Prestamo)

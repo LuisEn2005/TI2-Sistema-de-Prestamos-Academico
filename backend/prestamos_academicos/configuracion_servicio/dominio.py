@@ -6,10 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from ..compartido import (
-    ModalidadId, PoliticaSancionId, PoliticaServicioId, RolUsuario,
-)
-from ..sanciones import OrigenSancion
+from ..compartido import ModalidadId, PoliticaServicioId, RolUsuario
 
 
 @dataclass
@@ -27,6 +24,7 @@ class PoliticaServicio:
     modalidadNombre: Optional[str] = None
     maxItemsSimultaneos: Optional[int] = None
     diasPrestamo: Optional[int] = None
+    diasSancionPorDiaAtraso: int = 1
     tiposRecursoPermitidos: List[str] = field(default_factory=list)
 
     def tiposPermitidos(self) -> List[str]:
@@ -37,14 +35,6 @@ class PoliticaServicio:
 
     def cupoRestante(self, itemsEnPrestamo: int) -> int:
         return max(0, (self.maxItemsSimultaneos or 0) - itemsEnPrestamo)
-
-
-@dataclass
-class PoliticaSancion:
-    id: Optional[PoliticaSancionId] = None
-    origenAplicable: Optional[OrigenSancion] = None
-    diasBase: Optional[int] = None
-    diasPorDiaAtraso: Optional[int] = None
 
 
 class IPoliticaRepository(ABC):
