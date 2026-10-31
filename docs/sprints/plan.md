@@ -2,7 +2,7 @@
 
 ## Alcance y estado
 
-Este plan parte de los [requisitos RF01–RF18 y RNF01–RNF06](../requisitos.md). **Sprints 1–5 están implementados** ([MVP](sprint-01.md), [Sprint 2](sprint-02.md), [Sprint 3](sprint-03.md), [Sprint 4](sprint-04.md) y [Sprint 5](sprint-05.md)). **El Sprint 6 está planificado**. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
+Este plan parte de los [requisitos RF01–RF18 y RNF01–RNF06](../requisitos.md). **Sprints 1–5 están implementados** ([MVP](sprint-01.md), [Sprint 2](sprint-02.md), [Sprint 3](sprint-03.md), [Sprint 4](sprint-04.md) y [Sprint 5](sprint-05.md)). **El Sprint 6 está en progreso**. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
 
 Cada sprint debe entregar una funcionalidad visible en Astro, una API y reglas en Flask, persistencia cuando corresponda y comprobaciones de su recorrido principal. La cobertura parcial de un requisito en un sprint no equivale a su cierre; la tabla de trazabilidad indica dónde quedará completo.
 
@@ -45,7 +45,7 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Backend:** reserva por usuario habilitado, ítem y fecha o franja; confirmación, cancelación y expiración con liberación del recurso; conversión de reserva confirmada en préstamo; renovación condicionada a ausencia de reservas pendientes y a la elegibilidad del usuario.
 - **Frontend:** solicitud y seguimiento de reservas, cancelación, presentación de vencimientos y acción de renovación con el motivo de aceptación o rechazo.
 - **Cierre:** RF05, RF08 y RF09 completos. RF07 y RF12 implementan el flujo de reserva y renovación; su validación contra sanciones activas se cerrará en Sprint 5.
-- **Demostración:** una reserva bloquea la disponibilidad según su estado; al cancelarse o expirar libera el recurso, y una reserva pendiente impide renovarlo.
+- **Demostración original:** la reserva se convertía en préstamo y podía cancelarse o expirar. El calendario por rango, las solicitudes concurrentes y el bloqueo únicamente por reservas confirmadas sustituyen esa primera regla en el Sprint 6.
 - **Resultado:** implementado; ver [Sprint 4](sprint-04.md) para reglas, API, persistencia, pruebas y límites.
 
 ## Sprint 5 — Sanciones y políticas configurables · Terminado
@@ -58,12 +58,13 @@ Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una impleme
 - **Demostración:** un atraso genera la sanción correspondiente; mientras esté activa, el usuario no puede iniciar nuevas operaciones; un administrador cambia una regla desde la interfaz.
 - **Resultado:** implementado; ver [Sprint 5](sprint-05.md) para reglas, API, persistencia, pruebas y límites.
 
-## Sprint 6 — Auditoría y entrega integral · Planificado
+## Sprint 6 — Calendario, auditoría y entrega integral · En progreso
 
-**Objetivo.** Completar la trazabilidad y validar el sistema entero en su configuración final.
+**Objetivo.** Completar la disponibilidad por fechas, la trazabilidad y validar el sistema entero en su configuración final.
 
-- **Backend:** historial de préstamos, reservas, sanciones y cambios de estado por usuario e ítem; registro de fecha, responsable y observaciones; filtros por fecha y estado; revisión de permisos, integridad de datos, migraciones y despliegue con PostgreSQL.
-- **Frontend:** historial consultable y revisión de todos los flujos para visitante, estudiante o personal y administrador, con mensajes y estados coherentes.
+- **Backend implementado:** rangos de reserva, cupo compartido, selección manual, calendario laborable, reprogramación por cierres y política externa de 14 días para personal.
+- **Frontend implementado:** calendario público, cola de solicitudes para el gestor, fechas de inicio y fin y gestión de cierres institucionales.
+- **Pendiente:** historial de préstamos, reservas, sanciones y cambios de estado por usuario e ítem; filtros, auditoría y validación final sobre PostgreSQL.
 - **Cierre:** RF17 y RNF01–RNF06 verificados; regresión de RF01–RF18 sobre PostgreSQL. El sistema deja de depender de datos precargados para funcionar.
 - **Demostración final:** recorrer catálogo público, acceso por rol, administración de usuarios e inventario, reserva, préstamo, renovación, devolución, sanción, cambio de política e historial desde la interfaz Astro, con datos persistidos por Flask y SQLAlchemy.
 

@@ -96,7 +96,7 @@ class EntregaTest(PrestamosBase):
                          (1, "2026-10-19"))                           # igual para docentes
         docente = self.entregar(h, GESTOR_DOCENTE, ("EQ-META",), EXTERNA).json
         self.assertEqual((docente["dias_plazo"], docente["fecha_limite"]),
-                         (15, "2026-11-03"))                          # docente: 15 días
+                         (14, "2026-11-02"))                          # docente: 14 días
         self.assertEqual(docente["rol_solicitante"], "DOCENTE")
 
     def test_el_dia_se_mide_en_hora_de_lima_no_en_utc(self):
@@ -134,7 +134,7 @@ class EntregaTest(PrestamosBase):
         self.assertEqual(sin_rol["roles_posibles"], ["ESTUDIANTE", "DOCENTE"])
         self.assertNotIn("fecha_limite", sin_rol)
         docente = self.cliente.get(base + "&rol_solicitante=DOCENTE", headers=h).json
-        self.assertEqual((docente["dias_plazo"], docente["cupo_restante"]), (15, 5))
+        self.assertEqual((docente["dias_plazo"], docente["cupo_restante"]), (14, 5))
 
     def test_cupo_por_perfil_se_aplica_y_se_libera_al_devolver(self):
         h = self.ingresar()
@@ -149,7 +149,7 @@ class EntregaTest(PrestamosBase):
         self.assertEqual(tres.status_code, 201)
         extra = self.entregar(h, codigos=("LIB-X1",))
         self.assertEqual(extra.status_code, 422)
-        self.assertIn("tiene 3 en préstamo", extra.json["error"])
+        self.assertIn("3 prestados", extra.json["error"])
 
         self.assertEqual(self.devolver(h, tres.json).status_code, 200)
         self.assertEqual(self.entregar(h, codigos=("LIB-X1",)).status_code, 201)
@@ -247,7 +247,7 @@ class EntregaTest(PrestamosBase):
         como_docente = self.entregar(h, "doble@escuela.edu", rol_solicitante="DOCENTE")
         self.assertEqual(como_docente.status_code, 201, como_docente.json)
         self.assertEqual(como_docente.json["rol_solicitante"], "DOCENTE")
-        self.assertEqual(como_docente.json["fecha_limite"], "2026-11-03")
+        self.assertEqual(como_docente.json["fecha_limite"], "2026-11-02")
         ajeno = self.entregar(h, "doble@escuela.edu", ("EQ-META",), rol_solicitante="ADMINISTRATIVO")
         self.assertEqual(ajeno.status_code, 422)
 

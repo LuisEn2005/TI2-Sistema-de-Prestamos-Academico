@@ -39,11 +39,11 @@ El Sistema de Préstamos gestiona el préstamo de recursos (equipos, libros, mat
 
 **Gestión de inventario**
 - RF04: Registrar ítems del inventario (libros, equipos, materiales) con atributos comunes (código, nombre, categoría, estado) y atributos específicos por tipo (ISBN/autor para libros; número de serie/marca-modelo para equipos).
-- RF05: Actualizar el estado de un ítem (disponible, prestado, reservado, en mantenimiento, dado de baja, extraviado).
-- RF06: Consultar disponibilidad de ítems por tipo, categoría o palabra clave.
+- RF05: Actualizar el estado físico de un ítem (disponible, prestado, en mantenimiento, dado de baja o extraviado) y calcular el estado reservado para cada fecha.
+- RF06: Consultar disponibilidad de ítems por tipo, categoría o palabra clave y mediante un calendario público.
 
 **Reservas**
-- RF07: Permitir que un usuario habilitado reserve un ítem disponible para una fecha/franja futura.
+- RF07: Permitir que un usuario habilitado solicite un ítem para un rango futuro; el gestor elige manualmente entre solicitudes incompatibles.
 - RF08: Cancelar o expirar automáticamente una reserva no recogida dentro de un plazo definido por la política.
 - RF09: Convertir una reserva confirmada en préstamo al momento de la entrega.
 
@@ -79,10 +79,13 @@ El Sistema de Préstamos gestiona el préstamo de recursos (equipos, libros, mat
 
 1. Un usuario con al menos una sanción **activa** no puede generar nuevos préstamos ni reservas.
 2. El plazo de devolución se calcula a partir de la **modalidad** del préstamo y la **política** asociada al rol del usuario.
-3. Un ítem solo puede estar en un préstamo activo a la vez; su estado debe reflejarlo (`disponible` → `prestado`).
-4. Una reserva vencida sin ser recogida libera el ítem automáticamente.
-5. La renovación de un préstamo no procede si existe una reserva pendiente sobre el mismo ítem.
+3. Un ítem solo puede estar en un préstamo activo a la vez; las reservas futuras no alteran su estado físico y se reflejan en el calendario.
+4. Una reserva no recogida expira al terminar su fecha de inicio.
+5. La renovación no procede si se superpone con una reserva confirmada; las solicitudes pendientes no bloquean el recurso.
 6. Toda sanción registra su origen (retraso, daño, pérdida) y su estado (activa/cerrada).
+7. Préstamos activos y reservas activas comparten el cupo máximo de la política del usuario.
+8. No se entregan ni reciben recursos los fines de semana o durante un cierre institucional.
+9. Un cierre desplaza obligaciones afectadas al siguiente rango laborable sin generar atraso.
 
 ---
 
@@ -158,7 +161,9 @@ classDiagram
     class Reserva {
         +int id
         +date fecha_solicitud
-        +date fecha_reserva
+        +date fecha_inicio
+        +date fecha_fin
+        +int modalidad_id
         +string estado
     }
 
@@ -229,8 +234,7 @@ classDiagram
 ## 7. Estado de implementación
 
 Los Sprints 1–5 implementan identidad, inventario, préstamos, reservas,
-renovaciones, sanciones y políticas editables. El esquema SQLAlchemy y las
-migraciones `0001`–`0013` funcionan con SQLite y PostgreSQL; Astro consume los
-endpoints Flask de todos esos módulos. La auditoría, el historial filtrable y el
-cierre integral corresponden al Sprint 6. El detalle de aceptación se mantiene en
-el [plan de sprints](sprints/plan.md).
+renovaciones, sanciones y políticas editables. El primer incremento del Sprint 6
+añade rangos, calendario y cierres institucionales mediante la migración `0014`.
+La auditoría, el historial filtrable y el cierre integral siguen pendientes. El
+detalle de aceptación se mantiene en el [plan de sprints](sprints/plan.md).

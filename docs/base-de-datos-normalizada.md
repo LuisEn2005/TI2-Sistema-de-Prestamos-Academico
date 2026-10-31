@@ -21,7 +21,9 @@ foráneas y `JOIN`.
 | `tipos_recurso` | `codigo`, `nombre` | Catálogo referenciado por inventario y políticas. |
 | `politicas_servicio` | `id`, `rol_aplicable`, `modalidad_id`, `max_items_simultaneos`, `dias_prestamo`, `dias_sancion_por_dia_atraso` | Una sola fila por `(rol_aplicable, modalidad_id)`; valores positivos y rol restringido. |
 | `politica_tipos_recurso` | `politica_servicio_id`, `tipo_recurso_codigo` | PK compuesta y dos FKs; reemplaza la lista separada por comas. |
-| `prestamos` | `id`, `usuario_id`, `reserva_id`, `modalidad_id`, `politica_servicio_id`, `dias_plazo`, fechas y renovaciones | Solo referencias y datos propios de la transacción. |
+| `prestamos` | `id`, FKs, `dias_plazo`, `dias_aplazados`, fechas y renovaciones | Conserva el plazo otorgado y separa aplazamientos institucionales. |
+| `reservas` | FKs de usuario, ítem y modalidad, `fecha_inicio`, `fecha_fin`, estado y datos de confirmación | El rango está ordenado y la disponibilidad se calcula por fecha. |
+| `dias_no_laborables` | Rango, tipo, motivo, estado y administrador responsable | Registra feriados, huelgas y otros cierres sin mezclar reglas con préstamos. |
 | `sanciones` | `id`, FKs de usuario, préstamo y responsable, origen, motivo, monto, vigencia, estado y resolución | Fechas ordenadas, monto positivo y estados/orígenes restringidos. |
 
 ```mermaid
@@ -66,8 +68,8 @@ un contrato legible sin desnormalizar la base de datos.
 | Rol | In situ | Externa | Cupo | Tipos permitidos |
 | --- | ---: | ---: | ---: | --- |
 | Estudiante | 1 día | 7 días | 3 | Libro, equipo y material |
-| Docente | 1 día | 15 días | 5 | Libro, equipo, material y mobiliario |
-| Administrativo | 1 día | 15 días | 5 | Libro, equipo, material y mobiliario |
+| Docente | 1 día | 14 días | 5 | Libro, equipo, material y mobiliario |
+| Administrativo | 1 día | 14 días | 5 | Libro, equipo, material y mobiliario |
 
 El arranque de Flask garantiza estos valores de forma idempotente. Para una
 carga SQL manual puede utilizarse
@@ -78,11 +80,14 @@ y
 [`0012_expiracion_reserva_mismo_dia.py`](../backend/prestamos_academicos/base_datos/migraciones/versions/0012_expiracion_reserva_mismo_dia.py).
 La migración
 [`0013_sanciones_y_configuracion.py`](../backend/prestamos_academicos/base_datos/migraciones/versions/0013_sanciones_y_configuracion.py)
-agrega el factor de sanción y el registro relacional de sanciones.
+agrega el factor de sanción y el registro relacional de sanciones. `0014` añade
+los rangos de reserva, responsables de confirmación, aplazamientos y calendario
+institucional; su código está en
+[`0014_calendario_y_rangos.py`](../backend/prestamos_academicos/base_datos/migraciones/versions/0014_calendario_y_rangos.py).
 
 Las reservas no tienen días de gracia ni una segunda fecha de expiración. Se
-mantienen activas durante `fecha_reserva` y expiran al comenzar el día siguiente;
-la migración `0012` elimina ambos datos redundantes.
+mantienen activas durante `fecha_inicio` y expiran al comenzar el día siguiente.
+`fecha_fin` describe el uso solicitado, no un periodo adicional para recogerla.
 
 ## Migración de datos existentes
 

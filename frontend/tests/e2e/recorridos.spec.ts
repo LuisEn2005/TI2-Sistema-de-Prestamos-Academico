@@ -21,6 +21,8 @@ test('el catálogo público permite buscar y consultar un recurso', async ({ pag
   }).click();
   await expect(page.getByRole('dialog')).toContainText('Robert C. Martin');
   await expect(page.getByRole('dialog')).toContainText('LIB-CLEAN');
+  await page.getByRole('button', { name: 'Ver disponibilidad' }).click();
+  await expect(page.getByLabel('Disponibilidad del recurso')).toContainText('Disponible');
 });
 
 test('el login descarta destinos externos escritos con barras invertidas', async ({ page }) => {
@@ -138,12 +140,15 @@ test('el estudiante reserva y el administrador convierte la reserva en préstamo
   await ingresar(page, 'jesus.perez@escuela.edu');
   await page.goto('/reservas');
   await page.getByLabel('Buscar recurso').fill('clean code');
-  const selectorRecurso = page.getByLabel('Recurso', { exact: true });
+  const selectorRecurso = page.getByLabel('Recurso a reservar');
   const opcion = selectorRecurso.locator('option').filter({ hasText: 'LIB-CLEAN' });
   await expect(opcion).toHaveCount(1);
   await selectorRecurso.selectOption((await opcion.getAttribute('value'))!);
+  await page.getByLabel('Modalidad').selectOption({ label: 'Externa (a domicilio)' });
+  await expect(page.getByLabel('Desde')).toHaveValue('2026-10-19');
+  await expect(page.getByLabel('Hasta')).toHaveValue('2026-10-26');
   await page.getByRole('button', { name: 'Solicitar reserva' }).click();
-  await expect(page.locator('#mensaje')).toContainText('Reserva solicitada');
+  await expect(page.locator('#mensaje')).toContainText('Solicitud registrada');
   const propia = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
   await expect(propia).toContainText('Pendiente');
 
@@ -152,9 +157,6 @@ test('el estudiante reserva y el administrador convierte la reserva en préstamo
   const gestion = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
   await gestion.getByRole('button', { name: 'Confirmar' }).click();
   await expect(gestion).toContainText('Confirmada');
-  await gestion.getByLabel('Modalidad para LIB-CLEAN').selectOption({
-    label: 'In situ (en sala)',
-  });
   await gestion.getByRole('button', { name: 'Registrar entrega' }).click();
   await expect(page.locator('#mensaje')).toContainText('Reserva convertida en préstamo');
   await expect(gestion).toContainText('Convertida en préstamo');

@@ -6,9 +6,12 @@ from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, ApiBase
 
 
 class ReservasBase(ApiBase):
-    def reservar(self, h, codigo="LIB-CLRS", fecha="2026-10-20", **extra):
+    def reservar(self, h, codigo="LIB-CLRS", fecha="2026-10-20",
+                 fecha_fin="2026-10-26", **extra):
         return self.cliente.post("/api/reservas", headers=h, json={
-            "item_id": self.item_id(codigo), "fecha_reserva": fecha, **extra})
+            "item_id": self.item_id(codigo),
+            "modalidad_id": self.modalidad_id(EXTERNA),
+            "fecha_inicio": fecha, "fecha_fin": fecha_fin, **extra})
 
     def entregar(self, h, correo=ESTUDIANTE, codigo="LIB-CLRS"):
         return self.cliente.post("/api/prestamos", headers=h, json={
@@ -21,12 +24,13 @@ class ReservasBase(ApiBase):
 class FlujoReservaTest(ReservasBase):
     def test_solicitar_confirmar_y_convertir_en_prestamo(self):
         estudiante = self.ingresar(ESTUDIANTE)
-        creada = self.reservar(estudiante).json
+        creada = self.reservar(
+            estudiante, fecha="2026-10-19", fecha_fin="2026-10-26").json
         self.assertEqual((creada["estado"], creada["rol_solicitante"]),
                          ("PENDIENTE", "ESTUDIANTE"))
-        self.assertEqual(creada["fecha_reserva"], "2026-10-20")
+        self.assertEqual(creada["fecha_inicio"], "2026-10-19")
         self.assertNotIn("fecha_expiracion", creada)
-        self.assertEqual(self.estado_item("LIB-CLRS"), "RESERVADO")
+        self.assertEqual(self.estado_item("LIB-CLRS"), "DISPONIBLE")
 
         administrador = self.ingresar(ADMIN)
         confirmada = self.cliente.post(
@@ -36,7 +40,7 @@ class FlujoReservaTest(ReservasBase):
 
         prestamo = self.cliente.post(
             f"/api/reservas/{creada['id']}/prestamo", headers=administrador,
-            json={"modalidad_id": self.modalidad_id(EXTERNA)})
+            json={})
         self.assertEqual(prestamo.status_code, 201, prestamo.json)
         self.assertEqual((prestamo.json["reserva_id"], prestamo.json["dias_plazo"]),
                          (creada["id"], 7))
@@ -69,30 +73,43 @@ class FlujoReservaTest(ReservasBase):
         self.assertEqual(listado.json["reservas"][0]["estado"], "EXPIRADA")
         self.assertEqual(self.estado_item("LIB-CLRS"), "DISPONIBLE")
 
-    def test_un_recurso_admite_una_sola_reserva_activa(self):
-        self.assertEqual(self.reservar(self.ingresar(ESTUDIANTE)).status_code, 201)
-        repetida = self.reservar(self.ingresar(GESTOR_DOCENTE))
-        self.assertEqual(repetida.status_code, 409)
-        self.assertIn("reserva activa", repetida.json["error"])
+    def test_varias_solicitudes_compiten_y_una_confirmacion_resuelve_el_conflicto(self):
+        primera = self.reservar(self.ingresar(ESTUDIANTE))
+        segunda = self.reservar(self.ingresar(GESTOR_DOCENTE))
+        self.assertEqual((primera.status_code, segunda.status_code), (201, 201))
+        confirmada = self.cliente.post(
+            f"/api/reservas/{segunda.json['id']}/confirmacion",
+            headers=self.ingresar(ADMIN), json={})
+        self.assertEqual(confirmada.status_code, 200, confirmada.json)
+        reservas = self.cliente.get(
+            "/api/reservas", headers=self.ingresar(ADMIN)).json["reservas"]
+        estados = {r["id"]: r["estado"] for r in reservas}
+        self.assertEqual(estados[primera.json["id"]], "RECHAZADA")
+        self.assertEqual(estados[segunda.json["id"]], "CONFIRMADA")
 
 
 class RenovacionTest(ReservasBase):
-    def test_reserva_pendiente_bloquea_renovacion_y_cancelarla_la_habilita(self):
+    def test_reserva_confirmada_bloquea_renovacion_y_cancelarla_la_habilita(self):
         administrador = self.ingresar(ADMIN)
         prestamo = self.entregar(administrador).json
+        titular = self.ingresar(GESTOR_DOCENTE)
         reserva = self.reservar(
-            self.ingresar(GESTOR_DOCENTE), fecha="2026-10-25").json
+            titular, fecha="2026-10-27", fecha_fin="2026-11-02").json
+        confirmada = self.cliente.post(
+            f"/api/reservas/{reserva['id']}/confirmacion",
+            headers=administrador, json={})
+        self.assertEqual(confirmada.status_code, 200, confirmada.json)
         self.assertEqual(self.estado_item("LIB-CLRS"), "PRESTADO")
 
         estudiante = self.ingresar(ESTUDIANTE)
         bloqueada = self.cliente.post(
             f"/api/prestamos/{prestamo['id']}/renovacion", headers=estudiante, json={})
         self.assertEqual(bloqueada.status_code, 409)
-        self.assertIn("reserva pendiente", bloqueada.json["error"])
+        self.assertIn("reserva confirmada", bloqueada.json["error"])
 
         self.cliente.post(
             f"/api/reservas/{reserva['id']}/cancelacion",
-            headers=self.ingresar(GESTOR_DOCENTE), json={})
+            headers=titular, json={})
         renovada = self.cliente.post(
             f"/api/prestamos/{prestamo['id']}/renovacion", headers=estudiante, json={})
         self.assertEqual(renovada.status_code, 200, renovada.json)
@@ -132,13 +149,15 @@ class SeguridadYValidacionReservasTest(ReservasBase):
 
     def test_valida_cuerpo_fecha_estado_y_transiciones(self):
         estudiante = self.ingresar(ESTUDIANTE)
-        base = {"item_id": self.item_id("LIB-CLRS"), "fecha_reserva": "2026-10-20"}
+        base = {"item_id": self.item_id("LIB-CLRS"),
+                "modalidad_id": self.modalidad_id(EXTERNA),
+                "fecha_inicio": "2026-10-20", "fecha_fin": "2026-10-26"}
         casos = [
             ({}, 400),
             ({**base, "item_id": "1"}, 400),
-            ({**base, "fecha_reserva": "20-10-2026"}, 400),
-            ({**base, "fecha_reserva": "2026-10-18"}, 422),
-            ({**base, "fecha_reserva": "2027-10-20"}, 422),
+            ({**base, "fecha_inicio": "20-10-2026"}, 400),
+            ({**base, "fecha_inicio": "2026-10-18"}, 422),
+            ({**base, "fecha_inicio": "2027-10-20", "fecha_fin": "2027-10-21"}, 422),
             ({**base, "otro": True}, 400),
             ({**base, "rol_solicitante": 5}, 400),
             ({**base, "rol_solicitante": "DOCENTE"}, 422),
@@ -154,11 +173,13 @@ class SeguridadYValidacionReservasTest(ReservasBase):
         self.assertEqual(self.cliente.get(
             "/api/reservas?otro=1", headers=estudiante).status_code, 400)
 
-    def test_no_confirma_mientras_el_recurso_sigue_prestado(self):
+    def test_no_confirma_un_rango_que_se_superpone_con_un_prestamo(self):
         administrador = self.ingresar(ADMIN)
         self.entregar(administrador)
-        reserva = self.reservar(self.ingresar(GESTOR_DOCENTE), fecha="2026-10-25").json
+        reserva = self.reservar(
+            self.ingresar(GESTOR_DOCENTE), fecha="2026-10-20",
+            fecha_fin="2026-10-27").json
         respuesta = self.cliente.post(
             f"/api/reservas/{reserva['id']}/confirmacion", headers=administrador, json={})
         self.assertEqual(respuesta.status_code, 409)
-        self.assertIn("sigue prestado", respuesta.json["error"])
+        self.assertIn("ocupado hasta", respuesta.json["error"])

@@ -3,13 +3,17 @@
 import os
 import sqlite3
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from prestamos_academicos.web import create_app
 
-from .ayudas import CLAVE
+from .ayudas import CLAVE, RelojFijo
+
+
+RELOJ_LABORABLE = RelojFijo(datetime(2026, 10, 19, 20, 0, tzinfo=timezone.utc))
 
 
 def crear_base_del_sprint_1(ruta):
@@ -45,7 +49,8 @@ class MigracionTest(unittest.TestCase):
             self.assertEqual(columnas_prestamo, {
                 "id", "usuario_id", "reserva_id", "modalidad_id",
                 "politica_servicio_id", "dias_plazo", "numero_renovaciones",
-                "fecha_prestamo", "fecha_devolucion_esperada", "fecha_devolucion",
+                "dias_aplazados", "fecha_prestamo", "fecha_devolucion_esperada",
+                "fecha_devolucion",
             })
             columnas_modalidad = {
                 fila[1] for fila in con.execute("PRAGMA table_info('modalidades')")}
@@ -59,6 +64,17 @@ class MigracionTest(unittest.TestCase):
             columnas_reserva = {
                 fila[1] for fila in con.execute("PRAGMA table_info('reservas')")}
             self.assertNotIn("fecha_expiracion", columnas_reserva)
+            self.assertEqual(columnas_reserva, {
+                "id", "usuario_id", "item_id", "rol_solicitante", "modalidad_id",
+                "fecha_solicitud", "fecha_inicio", "fecha_fin", "estado",
+                "confirmada_por_usuario_id", "confirmada_en", "motivo_resolucion",
+            })
+            columnas_calendario = {
+                fila[1] for fila in con.execute("PRAGMA table_info('dias_no_laborables')")}
+            self.assertEqual(columnas_calendario, {
+                "id", "fecha_inicio", "fecha_fin", "tipo", "motivo", "activo",
+                "creado_por_usuario_id", "creado_en",
+            })
             columnas_sancion = {
                 fila[1] for fila in con.execute("PRAGMA table_info('sanciones')")}
             self.assertEqual(columnas_sancion, {
@@ -74,9 +90,9 @@ class MigracionTest(unittest.TestCase):
             """).fetchall()
             self.assertEqual(reglas, [
                 ("ADMINISTRATIVO", "In situ (en sala)", 1),
-                ("ADMINISTRATIVO", "Externa (a domicilio)", 15),
+                ("ADMINISTRATIVO", "Externa (a domicilio)", 14),
                 ("DOCENTE", "In situ (en sala)", 1),
-                ("DOCENTE", "Externa (a domicilio)", 15),
+                ("DOCENTE", "Externa (a domicilio)", 14),
                 ("ESTUDIANTE", "In situ (en sala)", 1),
                 ("ESTUDIANTE", "Externa (a domicilio)", 7),
             ])
@@ -90,7 +106,8 @@ class MigracionTest(unittest.TestCase):
         with TemporaryDirectory() as d:
             ruta = Path(d) / "mvp.sqlite"
             crear_base_del_sprint_1(ruta)
-            app = create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k")
+            app = create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k",
+                             reloj=RELOJ_LABORABLE)
             c = app.test_client()
 
             token = c.post("/api/auth/login", json={
@@ -135,21 +152,23 @@ class MigracionTest(unittest.TestCase):
     def test_base_nueva_se_crea_con_alembic_y_conserva_datos_al_reiniciar(self):
         with TemporaryDirectory() as d:
             url = f"sqlite:///{Path(d) / 'nueva.sqlite'}"
-            c1 = create_app(url, datos_demo=True, secret_key="k").test_client()
+            c1 = create_app(url, datos_demo=True, secret_key="k",
+                            reloj=RELOJ_LABORABLE).test_client()
             h = {"Authorization": "Bearer " + c1.post("/api/auth/login", json={
                 "correo": "admin@escuela.edu", "password": CLAVE}).json["token"]}
             modalidad = c1.get("/api/modalidades", headers=h).json[1]["id"]
             entrega = c1.post("/api/prestamos", headers=h, json={
                 "usuario_id": 2, "item_ids": [1], "modalidad_id": modalidad})
             self.assertEqual(entrega.status_code, 201, entrega.json)
-            c2 = create_app(url, datos_demo=True, secret_key="k").test_client()
+            c2 = create_app(url, datos_demo=True, secret_key="k",
+                            reloj=RELOJ_LABORABLE).test_client()
             self.assertEqual(c2.get("/api/items/1").json["estado"], "PRESTADO")
             reabierto = c2.get("/api/prestamos", headers=h).json["prestamos"]
             self.assertEqual([(p["modalidad"], len(p["items"])) for p in reabierto],
                              [("Externa (a domicilio)", 1)])
             self.assertEqual(c2.get("/api/items").json["total"], 26)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0013")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0014")
             self.assertEqual(con.execute(
                 "SELECT dias_prestamo FROM politicas_servicio p JOIN modalidades m "
                 "ON m.id=p.modalidad_id WHERE p.rol_aplicable='ESTUDIANTE' "
@@ -217,7 +236,8 @@ class MigracionDelSprint2Test(unittest.TestCase):
         with TemporaryDirectory() as d:
             ruta = Path(d) / "sprint2.sqlite"
             self._base_del_sprint_2(ruta)
-            c = create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k").test_client()
+            c = create_app(f"sqlite:///{ruta}", datos_demo=True, secret_key="k",
+                           reloj=RELOJ_LABORABLE).test_client()
             h = {"Authorization": "Bearer " + c.post("/api/auth/login", json={
                 "correo": "admin@escuela.edu", "password": CLAVE}).json["token"]}
             lista = c.get("/api/prestamos", headers=h).json["prestamos"]
