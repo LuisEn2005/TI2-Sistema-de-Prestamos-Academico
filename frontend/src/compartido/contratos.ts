@@ -32,6 +32,7 @@ export type PrestamoDTO = {
   id: number; reserva_id: number | null; usuario_id: number; usuario: string;
   rol_solicitante: RolPrestatario | null;       // null en préstamos anteriores al Sprint 3
   modalidad: string | null; dias_plazo: number | null; numero_renovaciones: number;
+  dias_aplazados: number;
   items: ItemPrestamoDTO[];
   fecha_prestamo: string; fecha_limite: string | null; fecha_devolucion: string | null;
   estado: 'activo' | 'devuelto'; vencido: boolean; dias_atraso: number;
@@ -40,9 +41,11 @@ export type PrestamoDTO = {
 export type PaginaPrestamosDTO = { prestamos: PrestamoDTO[]; total: number; pagina: number; limite: number };
 export type ModalidadDTO = { id: number; nombre: string; activo: boolean };
 export type CondicionesPrestamoDTO = {
-  usuario_id: number; rol_solicitante: RolPrestatario | null; roles_posibles: RolPrestatario[];
+  usuario_id: number; fecha_inicio?: string;
+  rol_solicitante: RolPrestatario | null; roles_posibles: RolPrestatario[];
   modalidad?: string; dias_plazo?: number; fecha_limite?: string;
   max_items_simultaneos?: number; items_en_prestamo?: number; cupo_restante?: number;
+  reservas_activas?: number; cupo_ocupado?: number;
   tipos_permitidos?: string[];
 };
 export type PoliticaDTO = {
@@ -58,12 +61,14 @@ export type SancionDTO = {
   fecha_inicio: string; fecha_fin: string | null; estado: 'ACTIVA' | 'CERRADA';
   resolucion: string | null;
 };
-export type EstadoReserva = 'PENDIENTE' | 'CONFIRMADA' | 'EXPIRADA' | 'CANCELADA' | 'CONVERTIDA';
+export type EstadoReserva =
+  | 'PENDIENTE' | 'CONFIRMADA' | 'EXPIRADA' | 'CANCELADA' | 'CONVERTIDA' | 'RECHAZADA';
 export type ReservaDTO = {
   id: number; usuario_id: number; usuario: string; item_id: number;
   codigo: string; item: string; rol_solicitante: RolPrestatario;
-  fecha_solicitud: string; fecha_reserva: string;
-  estado: EstadoReserva;
+  modalidad_id: number | null; modalidad: string | null;
+  fecha_solicitud: string; fecha_inicio: string; fecha_fin: string;
+  fecha_reserva: string; estado: EstadoReserva; motivo_resolucion: string | null;
 };
 export type PaginaReservasDTO = {
   reservas: ReservaDTO[]; total: number; pagina: number; limite: number;
@@ -83,5 +88,20 @@ export const ETIQUETA_CONDICION: Record<CondicionDevolucion, string> = {
 };
 export const ETIQUETA_RESERVA: Record<EstadoReserva, string> = {
   PENDIENTE: 'Pendiente', CONFIRMADA: 'Confirmada', EXPIRADA: 'Expirada',
-  CANCELADA: 'Cancelada', CONVERTIDA: 'Convertida en préstamo',
+  CANCELADA: 'Cancelada', CONVERTIDA: 'Convertida en préstamo', RECHAZADA: 'Rechazada',
 };
+
+export type EstadoCalendario = 'DISPONIBLE' | 'RESERVADO' | 'NO_DISPONIBLE';
+export type CalendarioItemDTO = {
+  item_id: number; codigo: string; item: string;
+  dias: { fecha: string; estado: EstadoCalendario }[];
+};
+export type SolicitudCalendarioDTO = {
+  id: number; usuario_id: number; usuario: string; rol_solicitante: RolPrestatario;
+  fecha_inicio: string; fecha_fin: string; fecha_solicitud: string;
+};
+export type DiaNoLaborableDTO = {
+  id: number; fecha_inicio: string; fecha_fin: string;
+  tipo: 'FERIADO' | 'HUELGA' | 'OTRO'; motivo: string; activo: boolean;
+};
+export type FechaSistemaDTO = { fecha: string };

@@ -5,7 +5,7 @@ import Base from '../layouts/Base.astro';
 <Base titulo="Reservas">
   <div class="encabezado-pagina">
     <h1>Reservas</h1>
-    <p>Solicite un recurso para una fecha futura y consulte su confirmación o vencimiento.</p>
+    <p>Solicite un recurso para un rango permitido y consulte su disponibilidad.</p>
   </div>
 
   <section id="nueva" hidden>
@@ -13,13 +13,34 @@ import Base from '../layouts/Base.astro';
     <form id="formulario">
       <div class="barra">
         <div><label for="buscar-item">Buscar recurso</label><input id="buscar-item" type="search" maxlength="120" placeholder="Código o nombre" /></div>
-        <div><label for="item">Recurso</label><select id="item" required></select></div>
-        <div><label for="fecha">Fecha de reserva</label><input id="fecha" type="date" required /></div>
+        <div><label for="item">Recurso a reservar</label><select id="item" required></select></div>
+        <div><label for="modalidad">Modalidad</label><select id="modalidad" required></select></div>
+        <div><label for="fecha-inicio">Desde</label><input id="fecha-inicio" type="date" required /></div>
+        <div><label for="fecha-fin">Hasta</label><input id="fecha-fin" type="date" required /></div>
         <div id="zona-rol" hidden><label for="rol">Reservar como</label><select id="rol"></select></div>
         <button id="reservar" type="submit">Solicitar reserva</button>
       </div>
-      <p class="tenue pequeno">Los recursos prestados pueden solicitarse para una fecha futura; su renovación quedará bloqueada hasta resolver la reserva.</p>
+      <p id="regla-rango" class="tenue pequeno">El rango debe respetar la modalidad y la política de su perfil.</p>
     </form>
+  </section>
+
+  <section style="margin-top:2rem">
+    <h2>Calendario de disponibilidad</h2>
+    <div class="barra">
+      <div><label for="cal-item">Recurso del calendario</label><select id="cal-item"></select></div>
+      <div><label for="cal-mes">Mes</label><input id="cal-mes" type="month" /></div>
+      <button id="actualizar-calendario" type="button" class="secundario">Actualizar</button>
+    </div>
+    <div class="leyenda-calendario pequeno">
+      <span class="cal-disponible">Disponible</span>
+      <span class="cal-reservado">Reservado</span>
+      <span class="cal-no-disponible">No disponible</span>
+    </div>
+    <div id="calendario" class="calendario" aria-label="Disponibilidad mensual"></div>
+    <div id="solicitudes-calendario" hidden>
+      <h3>Solicitudes pendientes del recurso</h3>
+      <div id="solicitudes" class="tabla-envoltura"></div>
+    </div>
   </section>
 
   <h2 style="margin-top:2rem">Seguimiento</h2>
@@ -31,6 +52,7 @@ import Base from '../layouts/Base.astro';
       <option value="CONVERTIDA">Convertidas</option>
       <option value="CANCELADA">Canceladas</option>
       <option value="EXPIRADA">Expiradas</option>
+      <option value="RECHAZADA">Rechazadas</option>
     </select></div>
   </div>
   <ul id="lista" class="indice"></ul>

@@ -20,5 +20,23 @@ import Base from '../../layouts/Base.astro';
     <tbody id="politicas"></tbody>
   </table></div>
   <p class="tenue pequeno">Los cambios se aplican a las operaciones nuevas. Los préstamos existentes conservan el plazo que recibieron.</p>
+
+  <h2 style="margin-top:2rem">Días no laborables</h2>
+  <form id="formulario-cierre" class="barra">
+    <div><label for="cierre-inicio">Desde</label><input id="cierre-inicio" type="date" required /></div>
+    <div><label for="cierre-fin">Hasta</label><input id="cierre-fin" type="date" required /></div>
+    <div><label for="cierre-tipo">Tipo</label><select id="cierre-tipo">
+      <option value="FERIADO">Feriado</option><option value="HUELGA">Huelga</option>
+      <option value="OTRO">Otro</option>
+    </select></div>
+    <div><label for="cierre-motivo">Motivo</label><input id="cierre-motivo" maxlength="200" required /></div>
+    <button id="guardar-cierre" type="submit">Registrar cierre</button>
+    <button id="cancelar-edicion-cierre" type="button" class="secundario" hidden>Cancelar edición</button>
+  </form>
+  <p class="tenue pequeno">Los vencimientos afectados se aplazan y las reservas confirmadas pasan al siguiente rango libre. Desactivar un cierre no revierte fechas ya comunicadas.</p>
+  <div class="tabla-envoltura"><table>
+    <thead><tr><th>Rango</th><th>Tipo</th><th>Motivo</th><th>Estado</th><th>Acción</th></tr></thead>
+    <tbody id="cierres"></tbody>
+  </table></div>
   <script>import '../../funcionalidades/configuracion.ts';</script>
 </Base>

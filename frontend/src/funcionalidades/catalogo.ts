@@ -1,5 +1,8 @@
 import { api } from '../compartido/api';
-import { ETIQUETA_ESTADO, type Estado, type ItemDTO, type PaginaItemsDTO, type TipoDTO } from '../compartido/contratos';
+import {
+  ETIQUETA_ESTADO, type CalendarioItemDTO, type Estado, type ItemDTO,
+  type PaginaItemsDTO, type TipoDTO,
+} from '../compartido/contratos';
 import { $, avisar, el, mensajeDe, opciones, retardo } from '../compartido/ui';
 
 const LIMITE = 10;
@@ -25,6 +28,35 @@ function resumenAtributos(item: ItemDTO) {
   return Object.values(item.atributos).filter(Boolean).slice(0, 2).join(' · ');
 }
 
+function mesActual() {
+  const ahora = new Date();
+  return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function cargarDisponibilidad(item: ItemDTO, mes: string, zona: HTMLElement) {
+  const [anio, numeroMes] = mes.split('-').map(Number);
+  const ultimo = new Date(anio, numeroMes, 0).getDate();
+  const desde = `${mes}-01`;
+  const hasta = `${mes}-${ultimo}`;
+  const datos = await api.get<CalendarioItemDTO>(`/api/items/${item.id}/calendario`, {
+    desde, hasta,
+  });
+  const primerDia = new Date(`${datos.dias[0].fecha}T12:00:00`).getDay();
+  const cabeceras = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    .map((dia) => el('div', { class: 'cal-cabecera' }, dia));
+  const vacios = Array.from({ length: (primerDia + 6) % 7 }, () =>
+    el('div', { class: 'cal-vacio' }));
+  const dias = datos.dias.map((dia) => {
+    const clase = dia.estado.toLowerCase().replace('_', '-');
+    const etiqueta = dia.estado === 'NO_DISPONIBLE' ? 'No disponible'
+      : dia.estado === 'RESERVADO' ? 'Reservado' : 'Disponible';
+    return el('div', { class: `cal-${clase}`, title: etiqueta },
+      el('strong', {}, String(Number(dia.fecha.slice(-2)))),
+      el('span', { class: 'pequeno' }, etiqueta));
+  });
+  zona.replaceChildren(...cabeceras, ...vacios, ...dias);
+}
+
 function abrirDetalle(item: ItemDTO) {
   const tipo = tipos.find((t) => t.tipo === item.tipo)?.etiqueta ?? item.tipo;
   const filas: [string, string][] = [
@@ -34,9 +66,23 @@ function abrirDetalle(item: ItemDTO) {
   ];
   const cerrar = el('button', { type: 'button', class: 'secundario' }, 'Cerrar');
   cerrar.addEventListener('click', () => dialogo.close());
+  const mes = el('input', { type: 'month', value: mesActual(), 'aria-label': 'Mes de disponibilidad' });
+  const consultar = el('button', { type: 'button', class: 'secundario' }, 'Ver disponibilidad');
+  const calendario = el('div', { class: 'calendario', 'aria-label': 'Disponibilidad del recurso' });
+  consultar.addEventListener('click', async () => {
+    try { await cargarDisponibilidad(item, mes.value, calendario); }
+    catch (error) { avisar(mensajeDe(error), true); }
+  });
   $('#detalle-contenido').replaceChildren(
     el('h2', {}, item.nombre),
     el('dl', {}, ...filas.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])),
+    el('h3', {}, 'Calendario de disponibilidad'),
+    el('div', { class: 'barra' }, el('div', {}, el('label', {}, 'Mes', mes)), consultar),
+    el('div', { class: 'leyenda-calendario pequeno' },
+      el('span', { class: 'cal-disponible' }, 'Disponible'),
+      el('span', { class: 'cal-reservado' }, 'Reservado'),
+      el('span', { class: 'cal-no-disponible' }, 'No disponible')),
+    calendario,
     el('div', { class: 'pie' }, el('a', { href: '/login?siguiente=/prestamos' }, 'Consultar mis préstamos'), cerrar),
   );
   dialogo.showModal();

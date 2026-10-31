@@ -56,6 +56,7 @@ function filaDe(p: PrestamoDTO) {
     p.rol_solicitante ? `como ${ETIQUETA_ROL[p.rol_solicitante as Rol].toLowerCase()}` : null,
     `desde ${fechaLegible(p.fecha_prestamo)}`,
     p.fecha_limite ? `límite ${soloFecha(p.fecha_limite)}` : 'sin fecha límite',
+    p.dias_aplazados ? `aplazado ${plural(p.dias_aplazados, 'día', 'días')}` : null,
     p.fecha_devolucion ? `devuelto ${fechaLegible(p.fecha_devolucion)}` : null,
   ].filter(Boolean);
 
@@ -227,11 +228,16 @@ async function actualizarCondiciones() {
     if (c.rol_solicitante === null) { mostrarResumen('Elija con qué perfil presta el usuario.'); return; }
     if (roles.length > 1) selRol().value = c.rol_solicitante;
     condicionesOk = (c.cupo_restante ?? 0) > 0;
+    const fechaFin = $<HTMLInputElement>('#fecha-fin');
+    fechaFin.min = c.fecha_inicio ?? '';
+    fechaFin.max = c.fecha_limite ?? '';
+    fechaFin.value = c.fecha_limite ?? '';
+    fechaFin.disabled = (c.dias_plazo ?? 0) === 1;
     mostrarPlazoAplicado(c.dias_plazo ?? 0);
     mostrarResumen(
       `Prestará como ${ETIQUETA_ROL[c.rol_solicitante as Rol].toLowerCase()} · plazo de ${plural(c.dias_plazo ?? 0, 'día', 'días')}, ` +
       `vence el ${soloFecha(c.fecha_limite ?? null)} · cupo: ${c.cupo_restante} de ${c.max_items_simultaneos} ` +
-      `(tiene ${c.items_en_prestamo} en préstamo)` +
+      `(tiene ${c.items_en_prestamo} en préstamo y ${c.reservas_activas ?? 0} en reserva)` +
       (condicionesOk ? '.' : '. Sin cupo disponible: debe devolver recursos antes.'), !condicionesOk);
   } catch (error) {
     if (pedidoCondiciones.vigente(mio)) mostrarResumen(mensajeDe(error), true);
@@ -319,6 +325,7 @@ if (usuario) {
           modalidad_id: Number(selModalidad().value),
           item_ids: seleccion.map((i) => i.id),
           rol_solicitante: rolVisible ? selRol().value : undefined,
+          fecha_fin: $<HTMLInputElement>('#fecha-fin').value,
         });
         seleccion = [];
         dibujarSeleccion();

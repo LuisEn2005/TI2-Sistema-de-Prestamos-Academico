@@ -87,6 +87,16 @@ td select { padding: .3rem; font-size: .85rem; }
 .barra { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: 1rem; }
 .barra > div { flex: 1; min-width: 160px; }
 .barra > button { flex: none; }
+.calendario { display: grid; grid-template-columns: repeat(7, minmax(42px, 1fr)); gap: 4px; margin: 1rem 0; }
+.calendario > div { min-height: 54px; border: 1px solid var(--linea); padding: .4rem; border-radius: 4px; }
+.calendario .cal-cabecera { min-height: auto; text-align: center; font-weight: 700; background: var(--fondo); }
+.calendario .cal-vacio { border-color: transparent; }
+.cal-disponible { background: #eaf6ee; color: #21643a; }
+.cal-reservado { background: #fff1ce; color: #704d00; }
+.cal-no-disponible { background: #f8dddd; color: #7c2222; }
+.calendario .cal-disponible, .calendario .cal-reservado, .calendario .cal-no-disponible { display: flex; flex-direction: column; gap: .2rem; }
+.leyenda-calendario { display: flex; flex-wrap: wrap; gap: .5rem; }
+.leyenda-calendario span { padding: .3rem .55rem; border-radius: 3px; }
 
 dialog { border: 1px solid #9aa3b2; border-radius: 6px; padding: 0; width: min(640px, 94vw); max-height: 92vh; overflow: auto; }
 dialog::backdrop { background: rgba(20, 24, 33, .5); }
