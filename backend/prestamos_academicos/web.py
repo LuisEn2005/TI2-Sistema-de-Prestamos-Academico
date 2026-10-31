@@ -17,6 +17,7 @@ from .inventario.servicio import InventarioApplicationService
 from .prestamos.servicio import PrestamoApplicationService
 from .reservas.servicio import ReservaApplicationService
 from .sanciones.servicio import SancionApplicationService
+from .calendario_laboral.servicio import CalendarioLaboralApplicationService
 from .base_datos.conexion import crear_fabrica_sesiones
 from .base_datos.datos_demo import preparar_datos
 from .base_datos.aplicar_migraciones import aplicar_migraciones
@@ -47,6 +48,7 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
 
     reloj_aplicacion = reloj or Reloj(config.zona_horaria)
     identidad = IdentidadApplicationService(fabrica_uow, reloj_aplicacion)
+    calendario = CalendarioLaboralApplicationService(fabrica_uow, reloj_aplicacion)
     app.extensions["servicios"] = SimpleNamespace(
         identidad=identidad,
         inventario=InventarioApplicationService(fabrica_uow),
@@ -56,6 +58,7 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
             fabrica_uow, identidad, reloj_aplicacion),
         sanciones=SancionApplicationService(
             fabrica_uow, identidad, reloj_aplicacion),
+        calendario=calendario,
         configuracion=ConfiguracionApplicationService(fabrica_uow),
         tokens=EmisorTokens(clave),
         limitador=LimitadorIntentos(),
@@ -74,9 +77,10 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
     from .prestamos import rutas as rutas_prestamos
     from .reservas import rutas as rutas_reservas
     from .sanciones import rutas as rutas_sanciones
+    from .calendario_laboral import rutas as rutas_calendario
     for modulo in (
             rutas_identidad, rutas_inventario, rutas_prestamos, rutas_reservas,
-            rutas_configuracion, rutas_sanciones):
+            rutas_configuracion, rutas_sanciones, rutas_calendario):
         app.register_blueprint(modulo.bp)
 
     @app.get("/api/salud")

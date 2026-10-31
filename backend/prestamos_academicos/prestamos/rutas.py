@@ -1,5 +1,7 @@
 """Rutas del contexto Préstamos. Requieren autenticación (RNF04)."""
 
+from datetime import date
+
 from flask import Blueprint, g, jsonify
 
 from ..identidad import Permiso
@@ -62,7 +64,8 @@ def detalle(prestamo_id):
 @requiere_permiso(Permiso.REGISTRAR_ENTREGA_PRESTAMO)
 def prestar():
     datos = cuerpo_json()
-    v.campos(datos, {"usuario_id", "item_ids", "modalidad_id", "rol_solicitante"})
+    v.campos(datos, {
+        "usuario_id", "item_ids", "modalidad_id", "rol_solicitante", "fecha_fin"})
     usuario_id = id_positivo(datos.get("usuario_id"), "usuario_id")
     item_ids = datos.get("item_ids")
     if not isinstance(item_ids, list) or not item_ids:
@@ -74,7 +77,14 @@ def prestar():
     if len(set(item_ids)) != len(item_ids):
         raise ErrorAplicacion("«item_ids» no puede repetir ítems.", 400)
     modalidad_id, rol = _modalidad_y_rol(datos)
-    return jsonify(servicios().prestamos.registrar(usuario_id, item_ids, modalidad_id, rol)), 201
+    fecha_fin = datos.get("fecha_fin")
+    if fecha_fin is not None:
+        try:
+            fecha_fin = date.fromisoformat(fecha_fin)
+        except (TypeError, ValueError):
+            raise ErrorAplicacion("«fecha_fin» debe usar AAAA-MM-DD.", 400)
+    return jsonify(servicios().prestamos.registrar(
+        usuario_id, item_ids, modalidad_id, rol, fecha_fin)), 201
 
 
 @bp.post("/prestamos/<int:prestamo_id>/devolucion")

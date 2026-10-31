@@ -7,6 +7,7 @@ permitidos se aplican por perfil (RF03, RF13); la devolución registra la condic
 """
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Optional
 
 from ..configuracion_servicio import Modalidad, PoliticaServicio
@@ -19,6 +20,8 @@ from ..compartido import validacion as v
 from ..compartido import Conflicto, ErrorAplicacion, NoEncontrado, SinPermiso
 from ..compartido.reloj import Reloj
 from ..sanciones import Sancion
+from ..calendario_laboral.servicio import CalendarioLaboralApplicationService
+from ..configuracion_servicio.servicio import MODALIDAD_IN_SITU
 
 MAX_ITEMS_POR_PRESTAMO = 50
 MAX_OBSERVACION = 300
@@ -39,6 +42,7 @@ class ContextoPrestamo:
     politica: PoliticaServicio
     modalidad: Modalidad
     items_en_prestamo: int
+    reservas_activas: int
     dias_plazo: int
     fecha_limite: object
 
@@ -57,6 +61,7 @@ class PrestamoApplicationService:
         self._uow = fabrica_uow
         self._identidad = identidad
         self.reloj = reloj or Reloj()
+        self.calendario = CalendarioLaboralApplicationService(fabrica_uow, self.reloj)
 
     # -- reglas compartidas por la previsualización y la entrega ---------------------------
     def _resolver_contexto(self, uow, usuario_id, modalidad_id, rol_solicitante) -> ContextoPrestamo:
@@ -83,12 +88,14 @@ class PrestamoApplicationService:
 
         try:
             dias = politica.diasPrestamo
-            limite = Prestamo.calcularFechaLimite(hoy, dias)
+            limite_base = Prestamo.calcularFechaLimite(hoy, dias)
+            limite = self.calendario.siguiente_laborable(uow, limite_base)
         except ErrorDominio as e:
             raise ErrorAplicacion(str(e), 422)
         return ContextoPrestamo(
             usuario=usuario, rol=rol, politica=politica, modalidad=modalidad,
             items_en_prestamo=uow.prestamos.contar_items_activos(usuario_id),
+            reservas_activas=uow.reservas.contar_activas_usuario(usuario_id),
             dias_plazo=dias, fecha_limite=limite)
 
     @staticmethod
@@ -129,6 +136,7 @@ class PrestamoApplicationService:
             ctx = self._resolver_contexto(uow, usuario_id, modalidad_id, rol_solicitante)
             return {
                 "usuario_id": usuario_id,
+                "fecha_inicio": self.reloj.hoy().isoformat(),
                 "roles_posibles": [r.value for r in ctx.usuario.rolesPrestatarios()],
                 "rol_solicitante": ctx.rol.value,
                 "modalidad": ctx.modalidad.nombre,
@@ -136,7 +144,10 @@ class PrestamoApplicationService:
                 "fecha_limite": ctx.fecha_limite.isoformat(),
                 "max_items_simultaneos": ctx.politica.maxItemsSimultaneos,
                 "items_en_prestamo": ctx.items_en_prestamo,
-                "cupo_restante": ctx.politica.cupoRestante(ctx.items_en_prestamo),
+                "reservas_activas": ctx.reservas_activas,
+                "cupo_ocupado": ctx.items_en_prestamo + ctx.reservas_activas,
+                "cupo_restante": ctx.politica.cupoRestante(
+                    ctx.items_en_prestamo + ctx.reservas_activas),
                 "tipos_permitidos": ctx.politica.tiposPermitidos(),
             }
 
@@ -163,6 +174,7 @@ class PrestamoApplicationService:
             "rol_solicitante": p.rolSolicitante.value if p.rolSolicitante else None,
             "modalidad": p.modalidadNombre,
             "dias_plazo": p.diasPlazo,
+            "dias_aplazados": p.diasAplazados,
             "numero_renovaciones": p.numeroRenovaciones,
             "items": [{
                 "item_id": d.itemId.valor,
@@ -201,11 +213,31 @@ class PrestamoApplicationService:
             return self._vistas(uow, [prestamo])[0]
 
     # -- entrega (RF10) ------------------------------------------------------------------------
-    def registrar(self, usuario_id, item_ids, modalidad_id, rol_solicitante=None):
+    def _fecha_final(self, uow, ctx, fecha_fin):
+        hoy = self.reloj.hoy()
+        self.calendario.validar_laborable(uow, hoy, "fecha de entrega")
+        fin = fecha_fin or ctx.fecha_limite
+        self.calendario.validar_laborable(uow, fin, "fecha de devolución")
+        if ctx.modalidad.nombre == MODALIDAD_IN_SITU:
+            if fin != hoy:
+                raise ErrorAplicacion("El préstamo in situ termina el mismo día.", 422)
+            return fin, 1, 0
+        transcurridos = (fin - hoy).days
+        maximo_efectivo = (ctx.fecha_limite - hoy).days
+        if transcurridos < 1 or transcurridos > maximo_efectivo:
+            raise ErrorAplicacion(
+                f"La fecha final debe estar entre mañana y {ctx.fecha_limite.isoformat()}.", 422)
+        dias_base = min(transcurridos, ctx.politica.diasPrestamo)
+        return fin, dias_base, transcurridos - dias_base
+
+    def registrar(self, usuario_id, item_ids, modalidad_id, rol_solicitante=None,
+                  fecha_fin=None):
         with self._uow() as uow:
             ctx = self._resolver_contexto(uow, usuario_id, modalidad_id, rol_solicitante)
+            fin, dias_plazo, dias_aplazados = self._fecha_final(uow, ctx, fecha_fin)
             uow.usuarios.bloquear(usuario_id)  # dos entregas simultáneas no superan el cupo
             ctx.items_en_prestamo = uow.prestamos.contar_items_activos(usuario_id)
+            ctx.reservas_activas = uow.reservas.contar_activas_usuario(usuario_id)
 
             items = uow.items.find_by_ids(item_ids)
             faltan = [i for i in item_ids if i not in items]
@@ -218,17 +250,26 @@ class PrestamoApplicationService:
                     f"La política del perfil {ctx.rol.value} no permite prestar: "
                     f"{', '.join(sorted(no_permitidos))}.", 422)
 
-            cupo = ctx.politica.cupoRestante(ctx.items_en_prestamo)
+            ocupado = ctx.items_en_prestamo + ctx.reservas_activas
+            cupo = ctx.politica.cupoRestante(ocupado)
             if len(item_ids) > cupo:
                 raise ErrorAplicacion(
                     f"Supera el límite de la política: máximo {ctx.politica.maxItemsSimultaneos} "
-                    f"ítems simultáneos, tiene {ctx.items_en_prestamo} en préstamo y pide "
+                    f"recursos simultáneos; tiene {ctx.items_en_prestamo} prestados, "
+                    f"{ctx.reservas_activas} reservados y pide "
                     f"{len(item_ids)}.", 422)
 
             ocupados = [f"{i.codigo} ({i.estado.value})" for i in items.values()
                         if not i.estaDisponible()]
             if ocupados:
                 raise Conflicto(f"No están disponibles: {', '.join(sorted(ocupados))}.")
+
+            for item_id in item_ids:
+                if uow.reservas.find_confirmadas_solapadas(
+                        item_id, self.reloj.hoy(), fin):
+                    raise Conflicto(
+                        f"El recurso {items[item_id].codigo} tiene una reserva confirmada "
+                        "dentro del rango solicitado.")
 
             # Orden fijo por id: evita bloqueos cruzados entre entregas concurrentes en PostgreSQL.
             for item_id in sorted(item_ids):
@@ -241,9 +282,11 @@ class PrestamoApplicationService:
                 prestamo = Prestamo.entregar(
                     usuarioId=UsuarioId(usuario_id), politicaId=ctx.politica.id,
                     rol=ctx.rol, modalidadId=ctx.modalidad.id,
-                    modalidadNombre=ctx.modalidad.nombre, diasPlazo=ctx.politica.diasPrestamo,
+                    modalidadNombre=ctx.modalidad.nombre, diasPlazo=dias_plazo,
                     items=[ItemId(i) for i in item_ids], ahora=self.reloj.ahora(),
                     hoy=self.reloj.hoy())
+                prestamo.fechaDevolucionEsperada = fin
+                prestamo.diasAplazados = dias_aplazados
             except ErrorDominio as e:
                 raise ErrorAplicacion(str(e), 422)
             guardado = uow.prestamos.save(prestamo)
@@ -252,7 +295,7 @@ class PrestamoApplicationService:
         return vista
 
     # -- conversión de reserva (RF09) ----------------------------------------------------------
-    def registrar_desde_reserva(self, reserva_id, modalidad_id):
+    def registrar_desde_reserva(self, reserva_id, modalidad_id=None, fecha_fin=None):
         from ..reservas import EstadoReserva
 
         with self._uow() as uow:
@@ -261,33 +304,53 @@ class PrestamoApplicationService:
                 raise NoEncontrado("La reserva no existe.")
             if reserva.estado != EstadoReserva.CONFIRMADA:
                 raise Conflicto("Solo una reserva confirmada puede convertirse en préstamo.")
+            if reserva.fechaInicio != self.reloj.hoy():
+                raise Conflicto("La reserva solo puede entregarse en su fecha de inicio.")
 
             usuario_id = reserva.usuarioId.valor
             item_id = reserva.itemId.valor
-            ctx = self._resolver_contexto(
-                uow, usuario_id, modalidad_id, reserva.rolSolicitante.value)
+            modalidad_id = modalidad_id or (
+                reserva.modalidadId.valor if reserva.modalidadId else None)
+            if modalidad_id is None:
+                raise ErrorAplicacion(
+                    "La reserva heredada no tiene modalidad; indique una para la entrega.", 400)
+            if reserva.modalidadId and modalidad_id != reserva.modalidadId.valor:
+                raise ErrorAplicacion("La modalidad debe coincidir con la reserva.", 422)
+            ctx = self._resolver_contexto(uow, usuario_id, modalidad_id,
+                                          reserva.rolSolicitante.value)
             uow.usuarios.bloquear(usuario_id)
             items_en_prestamo = uow.prestamos.contar_items_activos(usuario_id)
-            if ctx.politica.cupoRestante(items_en_prestamo) < 1:
+            reservas_activas = uow.reservas.contar_activas_usuario(usuario_id)
+            if items_en_prestamo + reservas_activas > ctx.politica.maxItemsSimultaneos:
                 raise ErrorAplicacion(
-                    f"El usuario alcanzó el máximo de {ctx.politica.maxItemsSimultaneos} "
-                    "ítems simultáneos.", 422)
+                    f"El usuario supera el cupo compartido de "
+                    f"{ctx.politica.maxItemsSimultaneos} recursos.", 422)
             item = uow.items.find_by_id(item_id)
             if item is None:
                 raise NoEncontrado("El recurso de la reserva no existe.")
             if not ctx.politica.permiteTipo(item.TIPO):
                 raise ErrorAplicacion(
                     f"La política del perfil {ctx.rol.value} ya no permite {item.codigo}.", 422)
+            fin = fecha_fin or reserva.fechaFin
+            if fin > reserva.fechaFin or fin < reserva.fechaInicio:
+                raise ErrorAplicacion("La entrega solo puede mantener o acortar el rango.", 422)
+            self.calendario.validar_laborable(uow, fin, "fecha de devolución")
             if not uow.items.cambiar_estado_si(
-                    item_id, EstadoItem.RESERVADO, EstadoItem.PRESTADO):
-                raise Conflicto("El recurso de la reserva no figura como reservado.")
+                    item_id, EstadoItem.DISPONIBLE, EstadoItem.PRESTADO):
+                raise Conflicto("El recurso de la reserva no está disponible físicamente.")
 
             try:
+                dias_transcurridos = (1 if fin == self.reloj.hoy()
+                                      else (fin - self.reloj.hoy()).days)
+                dias_base = min(dias_transcurridos, ctx.politica.diasPrestamo)
                 prestamo = Prestamo.entregar(
                     usuarioId=UsuarioId(usuario_id), politicaId=ctx.politica.id,
                     rol=ctx.rol, modalidadId=ctx.modalidad.id,
-                    modalidadNombre=ctx.modalidad.nombre, diasPlazo=ctx.politica.diasPrestamo,
+                    modalidadNombre=ctx.modalidad.nombre,
+                    diasPlazo=dias_base,
                     items=[ItemId(item_id)], ahora=self.reloj.ahora(), hoy=self.reloj.hoy())
+                prestamo.fechaDevolucionEsperada = fin
+                prestamo.diasAplazados = dias_transcurridos - dias_base
                 prestamo.reservaId = ReservaId(reserva_id)
                 reserva.convertir()
             except ErrorDominio as error:
@@ -312,16 +375,26 @@ class PrestamoApplicationService:
             motivo = usuario.motivoNoHabilitado()
             if motivo:
                 raise ErrorAplicacion(motivo, 422)
+            if prestamo.fechaDevolucionEsperada is None or prestamo.diasPlazo is None:
+                raise Conflicto(
+                    "El préstamo heredado no tiene plazo y no puede renovarse automáticamente.")
             reservados = []
+            inicio_renovacion = prestamo.fechaDevolucionEsperada + timedelta(days=1)
             for detalle in prestamo.detalles:
-                reserva = uow.reservas.find_activa_por_item(detalle.itemId.valor)
-                if reserva:
+                nueva_fecha = prestamo.fechaDevolucionEsperada + timedelta(
+                    days=prestamo.diasPlazo)
+                nueva_fecha = self.calendario.siguiente_laborable(uow, nueva_fecha)
+                if uow.reservas.find_confirmadas_solapadas(
+                        detalle.itemId.valor, inicio_renovacion, nueva_fecha):
                     reservados.append(detalle.itemId.valor)
             if reservados:
                 raise Conflicto(
-                    "No puede renovarse: uno de los recursos tiene una reserva pendiente.")
+                    "No puede renovarse: uno de los recursos tiene una reserva confirmada.")
             try:
                 prestamo.renovar(self.reloj.hoy())
+                fecha_laborable = self.calendario.siguiente_laborable(
+                    uow, prestamo.fechaDevolucionEsperada)
+                prestamo.aplazarHasta(fecha_laborable)
             except ErrorDominio as error:
                 raise Conflicto(str(error))
             guardado = uow.prestamos.save(prestamo)
@@ -334,6 +407,8 @@ class PrestamoApplicationService:
         """`condiciones`: lista de {item_id, condicion, observacion?} que cubre todos los ítems."""
         pedidas, observaciones = self._leer_condiciones(condiciones)
         with self._uow() as uow:
+            self.calendario.validar_laborable(
+                uow, self.reloj.hoy(), "fecha de devolución")
             prestamo = uow.prestamos.find_by_id(prestamo_id)
             if prestamo is None:
                 raise NoEncontrado("El préstamo no existe.")

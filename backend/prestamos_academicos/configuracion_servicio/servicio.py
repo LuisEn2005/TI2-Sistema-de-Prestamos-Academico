@@ -9,9 +9,9 @@ from ..compartido import validacion as v
 POLITICAS_BASE = {
     RolUsuario.ESTUDIANTE: dict(max=3, externa=7,
                                 tipos=["LIBRO", "EQUIPO", "MATERIAL"]),
-    RolUsuario.DOCENTE: dict(max=5, externa=15,
+    RolUsuario.DOCENTE: dict(max=5, externa=14,
                              tipos=["LIBRO", "EQUIPO", "MATERIAL", "MOBILIARIO"]),
-    RolUsuario.ADMINISTRATIVO: dict(max=5, externa=15,
+    RolUsuario.ADMINISTRATIVO: dict(max=5, externa=14,
                                     tipos=["LIBRO", "EQUIPO", "MATERIAL", "MOBILIARIO"]),
 }
 

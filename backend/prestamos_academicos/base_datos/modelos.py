@@ -207,14 +207,13 @@ class ReservaDB(Base):
             "rol_solicitante IN ('ESTUDIANTE','DOCENTE','ADMINISTRATIVO')",
             name="ck_reserva_rol_valido"),
         CheckConstraint(
-            "estado IN ('PENDIENTE','CONFIRMADA','EXPIRADA','CANCELADA','CONVERTIDA')",
+            "estado IN ('PENDIENTE','CONFIRMADA','EXPIRADA','CANCELADA','CONVERTIDA',"
+            "'RECHAZADA')",
             name="ck_reserva_estado_valido"),
         Index("ix_reservas_usuario_estado", "usuario_id", "estado"),
         Index("ix_reservas_item_estado", "item_id", "estado"),
-        Index(
-            "ux_reserva_item_activa", "item_id", unique=True,
-            sqlite_where=text("estado IN ('PENDIENTE','CONFIRMADA')"),
-            postgresql_where=text("estado IN ('PENDIENTE','CONFIRMADA')")),
+        CheckConstraint("fecha_fin >= fecha_inicio", name="ck_reserva_fechas_ordenadas"),
+        Index("ix_reservas_item_fechas", "item_id", "fecha_inicio", "fecha_fin"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -223,7 +222,12 @@ class ReservaDB(Base):
     rol_solicitante: Mapped[str] = mapped_column(String(30), nullable=False)
     fecha_solicitud: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_ahora)
-    fecha_reserva: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_fin: Mapped[date] = mapped_column(Date, nullable=False)
+    modalidad_id: Mapped[int | None] = mapped_column(ForeignKey("modalidades.id"))
+    confirmada_por_usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    confirmada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    motivo_resolucion: Mapped[str | None] = mapped_column(String(300))
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDIENTE")
 
 
@@ -240,6 +244,8 @@ class PrestamoDB(Base):
                         name="ck_prestamo_dias_plazo_positivo"),
         CheckConstraint(
             "numero_renovaciones >= 0", name="ck_prestamo_renovaciones_no_negativas"),
+        CheckConstraint(
+            "dias_aplazados >= 0", name="ck_prestamo_aplazamiento_no_negativo"),
         Index("ix_prestamos_usuario", "usuario_id"),
     )
 
@@ -251,6 +257,7 @@ class PrestamoDB(Base):
         ForeignKey("politicas_servicio.id"))
     dias_plazo: Mapped[int | None] = mapped_column(Integer)
     numero_renovaciones: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    dias_aplazados: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fecha_prestamo: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_ahora
     )
@@ -280,6 +287,25 @@ class DetallePrestamoDB(Base):
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     condicion: Mapped[str | None] = mapped_column(String(20))
     observacion: Mapped[str | None] = mapped_column(String(300))
+
+
+class DiaNoLaborableDB(Base):
+    __tablename__ = "dias_no_laborables"
+    __table_args__ = (
+        CheckConstraint("fecha_fin >= fecha_inicio", name="ck_cierre_fechas_ordenadas"),
+        CheckConstraint(
+            "tipo IN ('FERIADO','HUELGA','OTRO')", name="ck_cierre_tipo_valido"),
+        Index("ix_dias_no_laborables_fechas", "fecha_inicio", "fecha_fin", "activo"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_fin: Mapped[date] = mapped_column(Date, nullable=False)
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False)
+    motivo: Mapped[str] = mapped_column(String(200), nullable=False)
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    creado_por_usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_ahora)
 
 
 class SancionDB(Base):

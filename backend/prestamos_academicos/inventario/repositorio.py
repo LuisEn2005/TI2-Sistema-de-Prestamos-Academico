@@ -80,3 +80,7 @@ class SqlAlchemyItemRepository(IItemRepository):
             .values(estado=hacia.value)
         )
         return resultado.rowcount == 1
+
+    def bloquear(self, item_id):
+        self.sesion.execute(
+            select(ItemDB.id).where(ItemDB.id == item_id).with_for_update())

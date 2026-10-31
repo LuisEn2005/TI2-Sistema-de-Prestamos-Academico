@@ -65,6 +65,7 @@ class Prestamo:
     modalidadId: Optional[ModalidadId] = None
     modalidadNombre: Optional[str] = None
     diasPlazo: Optional[int] = None
+    diasAplazados: int = 0
     numeroRenovaciones: int = 0
     fechaEntrega: Optional[datetime] = None
     fechaDevolucionEsperada: Optional[date] = None
@@ -108,6 +109,12 @@ class Prestamo:
         if self.fechaDevolucionEsperada is None:
             return 0
         return max(0, (hoy - self.fechaDevolucionEsperada).days)
+
+    def aplazarHasta(self, nueva_fecha: date) -> None:
+        if not self.fechaDevolucionEsperada or nueva_fecha <= self.fechaDevolucionEsperada:
+            return
+        self.diasAplazados += (nueva_fecha - self.fechaDevolucionEsperada).days
+        self.fechaDevolucionEsperada = nueva_fecha
 
     def estaVencido(self, hoy: date) -> bool:
         return self.estado == EstadoPrestamo.ACTIVO and self.diasAtraso(hoy) > 0
