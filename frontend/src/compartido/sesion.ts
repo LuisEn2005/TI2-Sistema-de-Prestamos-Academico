@@ -73,22 +73,6 @@ export async function dibujarNavegacion() {
   const nav = document.querySelector('#navegacion');
   if (!nav) return;
 
-  const botonMenu = document.querySelector<HTMLButtonElement>('#menu-navegacion');
-  const zonaNavegacion = document.querySelector<HTMLElement>('.zona-navegacion');
-  if (botonMenu && zonaNavegacion) {
-    const cerrar = () => {
-      zonaNavegacion.classList.remove('abierta');
-      botonMenu.setAttribute('aria-expanded', 'false');
-    };
-    botonMenu.addEventListener('click', () => {
-      const abrir = !zonaNavegacion.classList.contains('abierta');
-      zonaNavegacion.classList.toggle('abierta', abrir);
-      botonMenu.setAttribute('aria-expanded', String(abrir));
-    });
-    nav.addEventListener('click', cerrar);
-    window.matchMedia('(min-width: 761px)').addEventListener('change', cerrar);
-  }
-
   let usuario: UsuarioDTO | null;
   try {
     usuario = await usuarioActual();
@@ -98,24 +82,25 @@ export async function dibujarNavegacion() {
     zona?.replaceChildren(el('span', { class: 'meta' }, 'Servidor no disponible'));
     return;
   }
-  const enlaces: [string, string][] = [['/catalogo', 'Catálogo']];
-  if (usuario) enlaces.push(['/prestamos', 'Préstamos']);
-  if (usuario) enlaces.push(['/sanciones', 'Sanciones']);
+  const generales: [string, string][] = [['/catalogo', 'Catálogo']];
+  const gestion: [string, string][] = [];
+  if (usuario) generales.push(['/prestamos', 'Préstamos']);
+  if (usuario) generales.push(['/sanciones', 'Sanciones']);
   if (tienePermiso(usuario, 'RESERVAR_ITEM') || tienePermiso(usuario, 'CONFIRMAR_RESERVA')) {
-    enlaces.push(['/reservas', 'Reservas']);
+    generales.push(['/reservas', 'Reservas']);
   }
-  if (tienePermiso(usuario, 'REGISTRAR_ITEM_INVENTARIO')) enlaces.push(['/admin/inventario', 'Inventario']);
-  if (tienePermiso(usuario, 'GESTIONAR_USUARIOS_Y_ROLES')) enlaces.push(['/admin/usuarios', 'Usuarios']);
-  if (tienePermiso(usuario, 'CONFIGURAR_POLITICAS')) enlaces.push(['/admin/configuracion', 'Configuración']);
+  if (tienePermiso(usuario, 'REGISTRAR_ITEM_INVENTARIO')) gestion.push(['/admin/inventario', 'Inventario']);
+  if (tienePermiso(usuario, 'GESTIONAR_USUARIOS_Y_ROLES')) gestion.push(['/admin/usuarios', 'Usuarios']);
+  if (tienePermiso(usuario, 'CONFIGURAR_POLITICAS')) gestion.push(['/admin/configuracion', 'Configuración']);
 
-  nav.replaceChildren(
-    ...enlaces.map(([ruta, texto]) => {
+  const crearEnlaces = (enlaces: [string, string][]) => enlaces.map(([ruta, texto]) => {
       const activo = window.location.pathname.startsWith(ruta);
       const a = el('a', { href: ruta }, texto);
       if (activo) a.setAttribute('aria-current', 'page');
       return a;
-    }),
-  );
+    });
+  nav.replaceChildren(el('span', { class: 'grupo-navegacion' }, 'Principal'), ...crearEnlaces(generales));
+  if (gestion.length) nav.append(el('span', { class: 'grupo-navegacion' }, 'Gestión'), ...crearEnlaces(gestion));
 
   const zona = document.querySelector('#zona-sesion');
   if (!zona) return;

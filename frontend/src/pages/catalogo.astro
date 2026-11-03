@@ -4,12 +4,11 @@ import Base from '../layouts/Base.astro';
 
 <Base titulo="Catálogo">
   <div class="encabezado-pagina">
-    <p class="sobrelinea">Consulta pública</p>
     <h1>Catálogo de recursos</h1>
-    <p>Explore libros, equipos, materiales y mobiliario de la Escuela, y consulte su disponibilidad antes de solicitar una reserva.</p>
+    <p>Consulte los recursos y su disponibilidad.</p>
   </div>
 
-  <form id="filtros" class="filtros panel" role="search">
+  <form id="filtros" class="filtros" role="search">
     <div><label for="q">Buscar recurso</label><input id="q" type="search" maxlength="120" placeholder="Título, autor, código o marca" /></div>
     <div><label for="tipo">Tipo</label><select id="tipo"></select></div>
     <div><label for="categoria">Categoría</label><select id="categoria"></select></div>

@@ -16,38 +16,24 @@ const { titulo, acceso = false } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{titulo} · Préstamos Académicos</title>
   </head>
-  <body class:list={{ 'pagina-acceso': acceso }}>
-    <header class:list={['cabecera', { 'cabecera-acceso': acceso }]}>
-      <div class="cabecera-interior">
-        <a id="marca" class="marca" href={acceso ? '/' : '/catalogo'}>
-          <span class="marca-simbolo" aria-hidden="true">PA</span>
-          <span class="marca-texto">
-            <strong>Préstamos Académicos</strong>
-            <small>Escuela de Ciencia de la Computación · UNSA</small>
-          </span>
-        </a>
-        {acceso ? (
-          <a class="boton secundario acceso-catalogo" href="/catalogo">Consultar catálogo</a>
-        ) : (
-          <>
-            <button id="menu-navegacion" class="menu-navegacion" type="button"
-              aria-controls="navegacion" aria-expanded="false">Menú</button>
-            <div class="zona-navegacion">
-              <nav id="navegacion" aria-label="Principal"></nav>
-              <div id="zona-sesion" class="sesion"></div>
-            </div>
-          </>
-        )}
-      </div>
-    </header>
-    <main class:list={{ 'contenido-acceso': acceso }}>
+  <body class:list={{ 'pagina-acceso': acceso, 'pagina-aplicacion': !acceso }}>
+    {acceso ? (
+      <header class="cabecera-acceso">
+        <a class="marca marca-acceso" href="/">Préstamos Académicos</a>
+        <a class="enlace-catalogo" href="/catalogo">Consultar catálogo</a>
+      </header>
+    ) : (
+      <aside class="barra-lateral">
+        <a id="marca" class="marca" href="/catalogo">Préstamos Académicos</a>
+        <p class="institucion">Escuela de Ciencia de la Computación</p>
+        <nav id="navegacion" aria-label="Principal"></nav>
+        <div id="zona-sesion" class="sesion"></div>
+      </aside>
+    )}
+    <main class:list={{ 'contenido-acceso': acceso, 'contenido-aplicacion': !acceso }}>
       <p id="mensaje" class="mensaje" role="status" aria-live="polite"></p>
       <slot />
     </main>
-    <footer class="pie-pagina">
-      <span>Escuela de Ciencia de la Computación</span>
-      <span>Universidad Nacional de San Agustín de Arequipa</span>
-    </footer>
     <script>
       import '../compartido/sesion.ts';
     </script>
