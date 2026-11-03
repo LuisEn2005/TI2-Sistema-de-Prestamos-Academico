@@ -5,7 +5,7 @@ import Base from '../layouts/Base.astro';
 <Base titulo="Préstamos">
   <div class="encabezado-pagina"><h1 id="titulo">Préstamos</h1><p id="subtitulo"></p></div>
 
-  <section id="nuevo" hidden>
+  <section id="nuevo" class="seccion-operativa" hidden>
     <h2>Registrar entrega</h2>
     <form id="formulario">
       <div class="barra">
@@ -27,11 +27,11 @@ import Base from '../layouts/Base.astro';
         <p class="tenue pequeno">Se muestran hasta 50 coincidencias por búsqueda. Puede agregar varios recursos a la misma entrega.</p>
         <ul id="seleccion" class="seleccion indice" aria-label="Recursos seleccionados"></ul>
       </fieldset>
-      <p style="margin-top:1rem"><button id="prestar" type="submit">Registrar entrega</button></p>
+      <p class="accion-formulario"><button id="prestar" type="submit">Registrar entrega</button></p>
     </form>
   </section>
 
-  <h2 id="titulo-lista" style="margin-top:2rem">Préstamos</h2>
+  <h2 id="titulo-lista" class="seccion-separada">Préstamos</h2>
   <div class="barra">
     <div>
       <label for="filtro-estado">Mostrar</label>

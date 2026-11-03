@@ -1,7 +1,12 @@
 ---
 import '../styles/global.css';
-interface Props { titulo: string }
-const { titulo } = Astro.props;
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+
+interface Props { titulo: string; acceso?: boolean }
+const { titulo, acceso = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -11,18 +16,21 @@ const { titulo } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{titulo} · Préstamos Académicos</title>
   </head>
-  <body>
-    <header class="cabecera">
-      <div class="cabecera-interior">
-        <a class="marca" href="/">
-          <strong>Préstamos Académicos</strong>
-          <span>Escuela de Ciencia de la Computación · UNSA</span>
-        </a>
+  <body class:list={{ 'pagina-acceso': acceso, 'pagina-aplicacion': !acceso }}>
+    {acceso ? (
+      <header class="cabecera-acceso">
+        <a class="marca marca-acceso" href="/">Préstamos Académicos</a>
+        <a class="enlace-catalogo" href="/catalogo">Consultar catálogo</a>
+      </header>
+    ) : (
+      <aside class="barra-lateral">
+        <a id="marca" class="marca" href="/catalogo">Préstamos Académicos</a>
+        <p class="institucion">Escuela de Ciencia de la Computación</p>
         <nav id="navegacion" aria-label="Principal"></nav>
         <div id="zona-sesion" class="sesion"></div>
-      </div>
-    </header>
-    <main>
+      </aside>
+    )}
+    <main class:list={{ 'contenido-acceso': acceso, 'contenido-aplicacion': !acceso }}>
       <p id="mensaje" class="mensaje" role="status" aria-live="polite"></p>
       <slot />
     </main>

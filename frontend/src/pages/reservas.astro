@@ -8,42 +8,46 @@ import Base from '../layouts/Base.astro';
     <p>Solicite un recurso para un rango permitido y consulte su disponibilidad.</p>
   </div>
 
-  <section id="nueva" hidden>
-    <h2>Nueva reserva</h2>
-    <form id="formulario">
-      <div class="barra">
-        <div><label for="buscar-item">Buscar recurso</label><input id="buscar-item" type="search" maxlength="120" placeholder="Código o nombre" /></div>
-        <div><label for="item">Recurso a reservar</label><select id="item" required></select></div>
-        <div><label for="modalidad">Modalidad</label><select id="modalidad" required></select></div>
-        <div><label for="fecha-inicio">Desde</label><input id="fecha-inicio" type="date" required /></div>
-        <div><label for="fecha-fin">Hasta</label><input id="fecha-fin" type="date" required /></div>
-        <div id="zona-rol" hidden><label for="rol">Reservar como</label><select id="rol"></select></div>
-        <button id="reservar" type="submit">Solicitar reserva</button>
+  <div class="distribucion-reservas">
+    <section id="nueva" class="seccion-operativa" hidden>
+      <h2>Nueva reserva</h2>
+      <form id="formulario">
+        <div class="campos-apilados">
+          <div><label for="buscar-item">Buscar recurso</label><input id="buscar-item" type="search" maxlength="120" placeholder="Código o nombre" /></div>
+          <div><label for="item">Recurso a reservar</label><select id="item" required></select></div>
+          <div><label for="modalidad">Modalidad</label><select id="modalidad" required></select></div>
+          <div class="dos-columnas">
+            <div><label for="fecha-inicio">Desde</label><input id="fecha-inicio" type="date" required /></div>
+            <div><label for="fecha-fin">Hasta</label><input id="fecha-fin" type="date" required /></div>
+          </div>
+          <div id="zona-rol" hidden><label for="rol">Reservar como</label><select id="rol"></select></div>
+          <button id="reservar" type="submit">Solicitar reserva</button>
+        </div>
+        <p id="regla-rango" class="tenue pequeno">El rango debe respetar la modalidad y la política de su perfil.</p>
+      </form>
+    </section>
+
+    <section class="seccion-calendario">
+      <h2>Calendario de disponibilidad</h2>
+      <div class="barra barra-calendario">
+        <div><label for="cal-item">Recurso</label><select id="cal-item"></select></div>
+        <div><label for="cal-mes">Mes</label><input id="cal-mes" type="month" /></div>
+        <button id="actualizar-calendario" type="button" class="secundario">Actualizar</button>
       </div>
-      <p id="regla-rango" class="tenue pequeno">El rango debe respetar la modalidad y la política de su perfil.</p>
-    </form>
-  </section>
+      <div class="leyenda-calendario pequeno">
+        <span class="cal-disponible">Disponible</span>
+        <span class="cal-reservado">Reservado</span>
+        <span class="cal-no-disponible">No disponible</span>
+      </div>
+      <div id="calendario" class="calendario" aria-label="Disponibilidad mensual"></div>
+      <div id="solicitudes-calendario" hidden>
+        <h3>Solicitudes pendientes del recurso</h3>
+        <div id="solicitudes" class="tabla-envoltura"></div>
+      </div>
+    </section>
+  </div>
 
-  <section style="margin-top:2rem">
-    <h2>Calendario de disponibilidad</h2>
-    <div class="barra">
-      <div><label for="cal-item">Recurso del calendario</label><select id="cal-item"></select></div>
-      <div><label for="cal-mes">Mes</label><input id="cal-mes" type="month" /></div>
-      <button id="actualizar-calendario" type="button" class="secundario">Actualizar</button>
-    </div>
-    <div class="leyenda-calendario pequeno">
-      <span class="cal-disponible">Disponible</span>
-      <span class="cal-reservado">Reservado</span>
-      <span class="cal-no-disponible">No disponible</span>
-    </div>
-    <div id="calendario" class="calendario" aria-label="Disponibilidad mensual"></div>
-    <div id="solicitudes-calendario" hidden>
-      <h3>Solicitudes pendientes del recurso</h3>
-      <div id="solicitudes" class="tabla-envoltura"></div>
-    </div>
-  </section>
-
-  <h2 style="margin-top:2rem">Seguimiento</h2>
+  <h2 class="seccion-separada">Seguimiento</h2>
   <div class="barra">
     <div><label for="estado">Mostrar</label><select id="estado">
       <option value="">Activas</option>

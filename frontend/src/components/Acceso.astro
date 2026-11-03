@@ -1,0 +1,22 @@
+<section class="acceso-contenedor">
+  <div class="formulario-contenedor">
+    <h1>Iniciar sesión</h1>
+
+    <form id="formulario" class="formulario-acceso">
+      <label for="correo">Correo institucional</label>
+      <input id="correo" type="email" autocomplete="username"
+        placeholder="nombre@escuela.edu" required autofocus />
+
+      <label for="password">Contraseña</label>
+      <div class="campo-password">
+        <input id="password" type="password" autocomplete="current-password" required />
+        <button id="mostrar-password" type="button" class="boton-campo"
+          aria-pressed="false">Mostrar</button>
+      </div>
+
+      <button type="submit" id="entrar">Iniciar sesión</button>
+    </form>
+  </div>
+</section>
+
+<script>import '../funcionalidades/login.ts';</script>

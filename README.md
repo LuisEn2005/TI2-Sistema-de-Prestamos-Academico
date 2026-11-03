@@ -28,7 +28,7 @@ backend/
 frontend/
   package.json                      Dependencia y scripts de Astro
   astro.config.mjs                  Proxy de /api para desarrollo
-  src/pages/                        Catálogo, login, préstamos, cuenta y administración
+  src/pages/                        Acceso, catálogo, préstamos, cuenta y administración
   src/compartido/                   Cliente API, sesión, contratos y utilidades
   src/funcionalidades/              Lógica de identidad, catálogo y préstamos
   tests/e2e/                        Recorridos automatizados con Playwright
@@ -114,7 +114,7 @@ npm run dev
 
 Para comprobar tipos y generar el frontend: `npm run build` (ejecuta `astro check` y `astro build`).
 
-Astro sirve la aplicación en `http://localhost:4321` y redirige `/api` a Flask. Pruebas del backend:
+Astro sirve la aplicación en `http://localhost:4321` y redirige `/api` a Flask. La ruta `/` muestra el acceso institucional; el catálogo público está disponible en `/catalogo` sin iniciar sesión. Pruebas del backend:
 
 ```bash
 cd backend
@@ -129,7 +129,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y siete recorridos Playwright. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
+La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y ocho recorridos Playwright. La interfaz está optimizada para equipos de escritorio. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
 
 ## Documentación de referencia
 
@@ -146,7 +146,7 @@ La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) eje
 
 ## Recorridos disponibles
 
-- **Visitante:** consultar el catálogo con búsqueda y filtros, ver el detalle y revisar el calendario de disponibilidad de cada recurso, sin iniciar sesión.
+- **Visitante:** acceder primero al inicio de sesión o abrir el catálogo público, buscar y filtrar recursos, ver su detalle y revisar su calendario de disponibilidad.
 - **Estudiante, docente o administrativo:** iniciar sesión, solicitar o retirar reservas, consultar sus préstamos e historial, revisar sus sanciones y cambiar su contraseña.
 - **Gestor de inventario:** administrar recursos, reservas, entregas y devoluciones; también puede registrar sanciones por daño o pérdida.
 - **Administrador del sistema:** gestionar usuarios, cerrar sanciones, configurar políticas y administrar feriados, huelgas u otros cierres, además de las operaciones del gestor.
