@@ -13,7 +13,6 @@ from ..compartido import ErrorDominio, ItemId, TransicionInvalida
 class EstadoItem(str, Enum):
     DISPONIBLE = "DISPONIBLE"
     PRESTADO = "PRESTADO"
-    RESERVADO = "RESERVADO"
     EN_MANTENIMIENTO = "EN_MANTENIMIENTO"
     DADO_DE_BAJA = "DADO_DE_BAJA"
     EXTRAVIADO = "EXTRAVIADO"
@@ -21,11 +20,7 @@ class EstadoItem(str, Enum):
 
 TRANSICIONES = {
     EstadoItem.DISPONIBLE: {
-        EstadoItem.PRESTADO, EstadoItem.RESERVADO, EstadoItem.EN_MANTENIMIENTO,
-        EstadoItem.DADO_DE_BAJA, EstadoItem.EXTRAVIADO,
-    },
-    EstadoItem.RESERVADO: {
-        EstadoItem.PRESTADO, EstadoItem.DISPONIBLE, EstadoItem.EN_MANTENIMIENTO,
+        EstadoItem.PRESTADO, EstadoItem.EN_MANTENIMIENTO,
         EstadoItem.DADO_DE_BAJA, EstadoItem.EXTRAVIADO,
     },
     EstadoItem.PRESTADO: {
@@ -39,7 +34,7 @@ TRANSICIONES = {
     EstadoItem.DADO_DE_BAJA: set(),
 }
 
-ESTADOS_DE_FLUJO = {EstadoItem.PRESTADO, EstadoItem.RESERVADO}
+ESTADOS_DE_FLUJO = {EstadoItem.PRESTADO}
 
 
 def transicion_permitida(desde: EstadoItem, hacia: EstadoItem) -> bool:
@@ -71,9 +66,6 @@ class Item:
 
     def marcarDisponible(self):
         self._cambiar_estado(EstadoItem.DISPONIBLE)
-
-    def marcarReservado(self):
-        self._cambiar_estado(EstadoItem.RESERVADO)
 
     def marcarExtraviado(self):
         self._cambiar_estado(EstadoItem.EXTRAVIADO)
@@ -218,6 +210,9 @@ class IItemRepository(ABC):
 
     @abstractmethod
     def categorias(self) -> List[str]: ...
+
+    @abstractmethod
+    def bloquear(self, item_id: int) -> None: ...
 
     @abstractmethod
     def cambiar_estado_si(self, item_id: int, desde: EstadoItem, hacia: EstadoItem) -> bool: ...

@@ -9,9 +9,9 @@ from ..compartido import validacion as v
 POLITICAS_BASE = {
     RolUsuario.ESTUDIANTE: dict(max=3, externa=7,
                                 tipos=["LIBRO", "EQUIPO", "MATERIAL"]),
-    RolUsuario.DOCENTE: dict(max=5, externa=15,
+    RolUsuario.DOCENTE: dict(max=5, externa=14,
                              tipos=["LIBRO", "EQUIPO", "MATERIAL", "MOBILIARIO"]),
-    RolUsuario.ADMINISTRATIVO: dict(max=5, externa=15,
+    RolUsuario.ADMINISTRATIVO: dict(max=5, externa=14,
                                     tipos=["LIBRO", "EQUIPO", "MATERIAL", "MOBILIARIO"]),
 }
 
@@ -56,6 +56,14 @@ class ConfiguracionApplicationService:
         with self._uow() as uow:
             return uow.politicas.listar()
 
+    def listar_reglas_rol(self):
+        with self._uow() as uow:
+            return [{
+                "rol": fila.rol,
+                "max_items_simultaneos": fila.max_items_simultaneos,
+                "dias_sancion_por_dia_atraso": fila.dias_sancion_por_dia_atraso,
+            } for fila in uow.politicas.listar_reglas_rol()]
+
     @staticmethod
     def _entero(datos, clave, minimo, maximo):
         valor = datos.get(clave)
@@ -66,25 +74,49 @@ class ConfiguracionApplicationService:
 
     def actualizar_politica(self, politica_id, datos):
         datos = v.objeto(datos)
-        v.campos(datos, {
-            "max_items_simultaneos", "dias_prestamo", "dias_sancion_por_dia_atraso"})
+        v.campos(datos, {"dias_prestamo"})
         if not datos:
             raise ErrorAplicacion("Indique al menos una regla para actualizar.", 400)
         with self._uow() as uow:
             politica = uow.politicas.find_by_id(politica_id)
             if politica is None:
                 raise NoEncontrado("La política no existe.")
-            if "max_items_simultaneos" in datos:
-                politica.maxItemsSimultaneos = self._entero(
-                    datos, "max_items_simultaneos", 1, 50)
             if "dias_prestamo" in datos:
+                if politica.modalidadNombre == MODALIDAD_IN_SITU:
+                    raise ErrorAplicacion(
+                        "El préstamo in situ siempre termina al final del mismo día.", 422)
                 politica.diasPrestamo = self._entero(datos, "dias_prestamo", 1, 365)
-            if "dias_sancion_por_dia_atraso" in datos:
-                politica.diasSancionPorDiaAtraso = self._entero(
-                    datos, "dias_sancion_por_dia_atraso", 1, 30)
             guardada = uow.politicas.save(politica)
             uow.commit()
         return guardada
+
+    def actualizar_regla_rol(self, rol_texto, datos):
+        datos = v.objeto(datos)
+        v.campos(datos, {"max_items_simultaneos", "dias_sancion_por_dia_atraso"})
+        if not datos:
+            raise ErrorAplicacion("Indique al menos una regla para actualizar.", 400)
+        try:
+            rol = RolUsuario(rol_texto.upper())
+        except ValueError:
+            raise ErrorAplicacion("El perfil indicado no tiene políticas de préstamo.", 400)
+        if rol not in POLITICAS_BASE:
+            raise ErrorAplicacion("El perfil indicado no tiene políticas de préstamo.", 400)
+        maximo = (self._entero(datos, "max_items_simultaneos", 1, 50)
+                  if "max_items_simultaneos" in datos else None)
+        sancion = (self._entero(datos, "dias_sancion_por_dia_atraso", 1, 30)
+                   if "dias_sancion_por_dia_atraso" in datos else None)
+        with self._uow() as uow:
+            guardada = uow.politicas.actualizar_regla_rol(
+                rol, max_items=maximo, dias_sancion=sancion)
+            if guardada is None:
+                raise NoEncontrado("La política del perfil no existe.")
+            vista = {
+                "rol": guardada.rol,
+                "max_items_simultaneos": guardada.max_items_simultaneos,
+                "dias_sancion_por_dia_atraso": guardada.dias_sancion_por_dia_atraso,
+            }
+            uow.commit()
+        return vista
 
     def actualizar_modalidad(self, modalidad_id, activo):
         if activo is None:

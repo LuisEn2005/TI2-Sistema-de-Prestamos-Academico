@@ -4,7 +4,7 @@ Sistema para administrar recursos de la Escuela de Computación: catálogo, rese
 
 ## Estado actual
 
-Los **Sprints 1–5 están terminados**. El Sprint 1 entregó el MVP de préstamo y devolución. El [Sprint 2](docs/sprints/sprint-02.md) incorporó identidad e inventario administrables, el [Sprint 3](docs/sprints/sprint-03.md) completó préstamos y devoluciones y el [Sprint 4](docs/sprints/sprint-04.md) añadió reservas y renovaciones. El [Sprint 5](docs/sprints/sprint-05.md) incorpora **sanciones y políticas editables**: generación automática por atraso, registro por daño o pérdida, bloqueo de operaciones, cierre y configuración administrativa. Están implementados **17 de los 18 requisitos funcionales**; el Sprint 6 continúa planificado para auditoría, historial y validación integral.
+Los **Sprints 1–6 están terminados**. El Sprint 1 entregó el MVP de préstamo y devolución. El [Sprint 2](docs/sprints/sprint-02.md) incorporó identidad e inventario administrables, el [Sprint 3](docs/sprints/sprint-03.md) completó préstamos y devoluciones, el [Sprint 4](docs/sprints/sprint-04.md) añadió reservas y el [Sprint 5](docs/sprints/sprint-05.md) incorporó sanciones y políticas editables. El [Sprint 6](docs/sprints/sprint-06.md) cierra el sistema con calendario, disponibilidad por fecha, selección manual, cupo compartido, cierres institucionales y trazabilidad. La renovación fue descartada por decisión funcional para mantener un flujo simple y evitar extensiones indefinidas.
 
 ## Estructura del repositorio
 
@@ -19,8 +19,8 @@ backend/
     prestamos/                      Dominio, servicio, repositorio y rutas de préstamos
     configuracion_servicio/         Políticas y modalidades
     reservas/                       Dominio, servicio, repositorio y rutas de reservas
+    calendario_laboral/             Disponibilidad y cierres institucionales
     sanciones/                      Dominio, servicio, repositorio y rutas de sanciones
-    auditoria/                      Dominio planificado para el Sprint 6
     compartido/                     Autenticación, validación, errores y reloj
     base_datos/                     SQLAlchemy, unidad de trabajo y migraciones
   alembic.ini                       Configuración de la CLI de migraciones
@@ -47,11 +47,11 @@ La secuencia parte del [Sprint 1 implementado](docs/sprints/sprint-01.md) y term
 | **1 · MVP — terminado** | Catálogo, usuarios de prueba, préstamo y devolución básicos. RF01, RF04–RF06, RF10–RF11 y RF13 **parciales**. | API JSON, tres tablas SQLAlchemy, datos de demostración y control de disponibilidad. | Una página para consultar, prestar y devolver. |
 | **2 · Identidad e inventario — terminado** | Usuarios, roles, vinculación, políticas por perfil e inventario administrable. Cierre de RF01, RF03, RF04 y RF06; avance de RF02 y RF05. | Autenticación, permisos, modelos completos, migraciones y PostgreSQL; catálogo filtrable. | Gestión de usuarios y recursos, filtros y vistas por rol. |
 | **3 · Préstamos completos — terminado** | Modalidades, varios ítems, plazos, devolución con condición y límites por perfil. Cierre de RF10–RF11; avance de RF13. | Reglas y transacciones de préstamos; cálculo de fecha límite. | Flujo de entrega, devolución y consulta de préstamos. |
-| **4 · Reservas y renovaciones — terminado** | Reservar, cancelar, expirar, convertir reserva en préstamo y renovar. Cierre de RF05, RF08–RF09; avance de RF07 y RF12. | Estados, expiración al final del día reservado, prioridad, plazo efectivo y normalización (`0008`–`0012`). | Solicitud, seguimiento, gestión y renovación. |
-| **5 · Sanciones y configuración — terminado** | Sanciones automáticas y manuales, cierre, bloqueo y políticas administrables. Cierre de RF02, RF07, RF12–RF16 y RF18. | Reglas de sanción, elegibilidad y configuración persistente. | Gestión de sanciones y panel de políticas. |
-| **6 · Auditoría y entrega integral — planificado** | Historial y validación de todos los flujos. Cierre de RF17 y verificación conjunta de RF01–RF18 y RNF01–RNF06. | Auditoría, pruebas integradas, migraciones y despliegue con PostgreSQL. | Historial consultable y revisión de todos los recorridos por rol. |
+| **4 · Reservas — terminado** | Solicitar, retirar, confirmar, rechazar, cancelar, expirar y convertir una reserva en préstamo. Cierre de RF05 y RF07–RF09. | Estados explícitos, expiración al final del día inicial y vínculo con el préstamo resultante. | Solicitud, seguimiento, gestión y entrega. |
+| **5 · Sanciones y configuración — terminado** | Sanciones automáticas y manuales, cierre, bloqueo y políticas administrables. Cierre de RF02 y RF13–RF16, RF18. | Reglas de sanción, elegibilidad y configuración persistente. | Gestión de sanciones y panel de políticas. |
+| **6 · Calendario, trazabilidad y entrega — terminado** | Rangos, selección manual, cierres, reprogramación e historial operativo. Verificación conjunta de RF01–RF18 y RNF01–RNF06. | Disponibilidad derivada, eventos de reserva y aplazamientos de préstamo (`0014`–`0015`). | Calendario público, inventario por fecha, gestión de solicitudes e historial. |
 
-El Sprint 6 solo se considerará terminado cuando **todas las funcionalidades RF01–RF18 operen de extremo a extremo** en Astro, Flask y PostgreSQL, con permisos, trazabilidad y pruebas de los casos principales. La planificación de tareas en Jira se realizará después.
+El alcance final se valida de extremo a extremo en Astro, Flask, SQLite y PostgreSQL, con permisos por rol, trazabilidad de reservas y aplazamientos, pruebas de API y recorridos Playwright. La planificación de tareas en Jira se mantiene fuera del repositorio.
 
 ## Puesta en marcha
 
@@ -97,6 +97,13 @@ El primer acceso se hace con ese administrador; desde **Usuarios** e **Inventari
 
 Para ejecutar las migraciones manualmente: `DATABASE_URL=... alembic upgrade head` desde `backend/`.
 
+La expiración de reservas también se comprueba al iniciar la aplicación. En una instalación que permanezca encendida debe programarse diariamente, a las 00:01 de `America/Lima`, el comando:
+
+```bash
+cd backend
+.venv/bin/python -m flask --app prestamos_academicos.web expirar-reservas
+```
+
 **Frontend** (en otra terminal):
 
 ```bash
@@ -132,15 +139,16 @@ La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) eje
 - [Implementación y alcance del primer MVP](docs/sprints/sprint-01.md)
 - [Sprint 2: identidad e inventario](docs/sprints/sprint-02.md)
 - [Sprint 3: préstamos completos](docs/sprints/sprint-03.md)
-- [Sprint 4: reservas y renovaciones](docs/sprints/sprint-04.md)
+- [Sprint 4: reservas](docs/sprints/sprint-04.md)
 - [Sprint 5: sanciones y políticas configurables](docs/sprints/sprint-05.md)
+- [Sprint 6: calendario, trazabilidad y cierre integral](docs/sprints/sprint-06.md)
 - [Plan y cierre de requisitos por sprint](docs/sprints/plan.md)
 
 ## Recorridos disponibles
 
-- **Visitante:** consultar el catálogo con búsqueda, filtros por tipo, categoría y estado, y ver el detalle de cada recurso, sin iniciar sesión.
-- **Estudiante, docente o administrativo:** iniciar sesión, reservar recursos, consultar y renovar sus préstamos, revisar sus sanciones y cambiar su contraseña.
+- **Visitante:** consultar el catálogo con búsqueda y filtros, ver el detalle y revisar el calendario de disponibilidad de cada recurso, sin iniciar sesión.
+- **Estudiante, docente o administrativo:** iniciar sesión, solicitar o retirar reservas, consultar sus préstamos e historial, revisar sus sanciones y cambiar su contraseña.
 - **Gestor de inventario:** administrar recursos, reservas, entregas y devoluciones; también puede registrar sanciones por daño o pérdida.
-- **Administrador del sistema:** gestionar usuarios, cerrar sanciones y configurar cupos, plazos, factores de atraso y modalidades, además de las operaciones del gestor.
+- **Administrador del sistema:** gestionar usuarios, cerrar sanciones, configurar políticas y administrar feriados, huelgas u otros cierres, además de las operaciones del gestor.
 
 Detalle de endpoints, reglas y límites en los documentos de cada sprint; el [Sprint 1](docs/sprints/sprint-01.md) conserva la evidencia del MVP original.

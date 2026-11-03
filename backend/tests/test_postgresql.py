@@ -2,13 +2,14 @@
 
 import os
 import unittest
-from datetime import timedelta
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
 from prestamos_academicos.web import create_app
+from .ayudas import RelojFijo
 
 
 URL = os.environ.get("TEST_POSTGRES_URL")
@@ -32,7 +33,10 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
             "ADMIN_CORREO": "admin-ci@escuela.edu",
             "ADMIN_PASSWORD": "clave-ci-segura",
         }):
-            app = create_app(URL, datos_demo=False, secret_key="ci")
+            reloj = RelojFijo(datetime(2026, 10, 19, 20, 0, tzinfo=timezone.utc))
+            app = create_app(
+                URL, datos_demo=False, secret_key="ci",
+                reloj=reloj)
         cliente = app.test_client()
 
         acceso = cliente.post("/api/auth/login", json={
@@ -86,32 +90,31 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         acceso_estudiante = cliente.post("/api/auth/login", json={
             "correo": "estudiante-ci@escuela.edu", "password": "clave-ci-estudiante"})
         token_estudiante = {"Authorization": f"Bearer {acceso_estudiante.json['token']}"}
-        fecha_reserva = (
-            app.extensions["servicios"].reservas.reloj.hoy() + timedelta(days=1)
-        ).isoformat()
         reserva = cliente.post("/api/reservas", headers=token_estudiante, json={
-            "item_id": item.json["id"], "fecha_reserva": fecha_reserva})
+            "item_id": item.json["id"], "modalidad_id": externa["id"],
+            "fecha_inicio": "2026-10-20", "fecha_fin": "2026-10-27"})
         self.assertEqual(reserva.status_code, 201, reserva.json)
         confirmada = cliente.post(
             f"/api/reservas/{reserva.json['id']}/confirmacion", headers=cabeceras, json={})
         self.assertEqual(confirmada.status_code, 200, confirmada.json)
+        reloj.instante = datetime(2026, 10, 20, 20, 0, tzinfo=timezone.utc)
         convertido = cliente.post(
             f"/api/reservas/{reserva.json['id']}/prestamo", headers=cabeceras,
-            json={"modalidad_id": externa["id"]})
+            json={})
         self.assertEqual(convertido.status_code, 201, convertido.json)
         self.assertEqual(convertido.json["dias_plazo"], 7)
 
         motor = create_engine(URL)
         with motor.connect() as conexion:
             self.assertEqual(conexion.execute(text(
-                "SELECT version_num FROM alembic_version")).scalar_one(), "0013")
+                "SELECT version_num FROM alembic_version")).scalar_one(), "0015")
             columnas = set(conexion.execute(text("""
                 SELECT column_name FROM information_schema.columns
                 WHERE table_schema='public' AND table_name='prestamos'
             """)).scalars())
             self.assertEqual(columnas, {
                 "id", "usuario_id", "reserva_id", "modalidad_id",
-                "politica_servicio_id", "dias_plazo", "numero_renovaciones",
+                "politica_servicio_id", "dias_plazo",
                 "fecha_prestamo", "fecha_devolucion_esperada", "fecha_devolucion",
             })
             self.assertEqual(conexion.execute(text("""
@@ -120,9 +123,9 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
                 ORDER BY p.rol_aplicable, m.id
             """)).all(), [
                 ("ADMINISTRATIVO", "In situ (en sala)", 1),
-                ("ADMINISTRATIVO", "Externa (a domicilio)", 15),
+                ("ADMINISTRATIVO", "Externa (a domicilio)", 14),
                 ("DOCENTE", "In situ (en sala)", 1),
-                ("DOCENTE", "Externa (a domicilio)", 15),
+                ("DOCENTE", "Externa (a domicilio)", 14),
                 ("ESTUDIANTE", "In situ (en sala)", 1),
                 ("ESTUDIANTE", "Externa (a domicilio)", 7),
             ])

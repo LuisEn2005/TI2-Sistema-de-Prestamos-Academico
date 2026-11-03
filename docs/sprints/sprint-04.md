@@ -1,117 +1,53 @@
-# Sprint 4 — Reservas y renovaciones
+# Sprint 4 — Reservas
 
-## Objetivo y resultado
+## Objetivo y estado
 
-El **Sprint 4 está terminado**. El sistema permite que un estudiante o docente
-reserve un recurso para una fecha futura, que un gestor confirme o cancele la
-solicitud y que una reserva confirmada se convierta en préstamo. También permite
-renovar un préstamo cuando el usuario continúa habilitado y ningún tercero espera
-el recurso.
+El Sprint 4 está **terminado**. Introdujo el ciclo de reservas sobre el catálogo:
+solicitud, confirmación manual, cancelación, expiración y conversión en préstamo.
+Las reglas de calendario, competencia y trazabilidad fueron consolidadas después
+en el Sprint 6.
 
-Antes de ampliar el flujo se corrigió el cálculo del plazo. El préstamo guarda por
-separado el plazo realmente aplicado: **1 día in situ para estudiantes y docentes,
-con vencimiento al final de la fecha de entrega; 7 días externos para estudiantes
-y 15 días externos para docentes**. El valor coincide en la interfaz, la API y la
-base de datos.
+## Alcance funcional
 
-## Requisitos cubiertos
-
-| Requisito | Estado al cerrar el Sprint 4 | Trabajo posterior |
-| --- | --- | --- |
-| RF05 · Estado reservado y liberación del recurso | **Completo** | — |
-| RF07 · Solicitud de reserva | Funcional: usuario habilitado, fecha y política | El bloqueo por sanción se integra en el Sprint 5. |
-| RF08 · Cancelación y expiración | **Completo** | — |
-| RF09 · Conversión en préstamo | **Completo** | — |
-| RF12 · Renovación condicionada | Funcional: estado, plazo, habilitación y reservas | El bloqueo por sanción se integra en el Sprint 5. |
-| RNF01–02 · Persistencia y API separada | **Completo** en SQLite y PostgreSQL | — |
-
-## Reglas aplicadas
-
-- La fecha de reserva debe estar entre el día actual y los siguientes 365 días.
-- El préstamo in situ vence al final del mismo día para cualquier perfil. La
-  modalidad externa aplica 7 días al estudiante y 15 al docente.
-- El perfil elegido debe estar vigente y su política debe permitir el tipo de
-  recurso y una reserva activa adicional.
-- Un ítem solo admite una reserva activa. La base de datos refuerza esta regla con
-  un índice único parcial.
-- Si el ítem está disponible pasa a `RESERVADO`. Un recurso actualmente prestado
-  puede reservarse para una fecha futura, pero permanece `PRESTADO` y la reserva
-  impide renovarlo.
-- El gestor confirma la reserva. Si el recurso continúa prestado, la confirmación
-  se rechaza hasta que se registre la devolución.
-- Cancelar o expirar una reserva libera el recurso cuando este estaba reservado.
-- Una reserva permanece activa durante la fecha reservada y expira al comenzar el
-  día siguiente. La expiración se ejecuta al consultar u operar con reservas, sin
-  un proceso permanente en segundo plano.
-- La conversión de una reserva confirmada en préstamo es atómica: vuelve a validar
-  usuario, política, modalidad y recurso, registra la relación con la reserva y
-  cambia el ítem a `PRESTADO`.
-- Cada renovación amplía la fecha límite por el plazo efectivo original. Se rechaza
-  si el préstamo fue devuelto, está vencido, proviene del formato anterior sin
-  fecha, el usuario dejó de estar habilitado o existe una reserva pendiente.
-
-## Persistencia y migraciones
-
-| Migración | Cambio |
+| Requisito | Resultado |
 | --- | --- |
-| `0008_plazo_efectivo` | Agrega `dias_plazo_aplicado`, reconstruye su valor en préstamos existentes y ajusta el máximo inicial de la modalidad in situ a 15 días. |
-| `0009_reservas_renovaciones` | Crea `reservas`, sus restricciones e índice de exclusividad; agrega `reserva_id` y `numero_renovaciones` a `prestamos`. |
-| `0010_plazo_in_situ` | Fija la modalidad in situ en 1 día y hace que venza al final de la misma fecha de entrega. |
-| `0011_normalizacion_politicas` | Convierte modalidades en un catálogo puro, define una política por rol y modalidad, normaliza los tipos permitidos y elimina datos descriptivos duplicados de `prestamos`. |
-| `0012_expiracion_reserva_mismo_dia` | Elimina los días de gracia y la fecha de expiración redundante; una reserva vence al terminar su propia fecha. |
+| RF05 | La reserva no modifica el estado físico del ítem; su disponibilidad se calcula por fecha. |
+| RF07 | Un usuario habilitado solicita un recurso bajo un rol, modalidad y rango. |
+| RF08 | El ciclo distingue retiro, rechazo, cancelación y expiración. |
+| RF09 | Una reserva confirmada se convierte en préstamo al registrar la entrega física. |
+| RF12 | Descartado posteriormente: el sistema final no permite renovaciones. |
 
-En el modelo final, `prestamos` conserva las FKs de usuario, modalidad y política,
-además del único dato histórico necesario: `dias_plazo`. El rol y el nombre de la
-modalidad se recuperan por `JOIN`; los tipos permitidos se almacenan en
-`politica_tipos_recurso`. El detalle técnico está en
-[el modelo normalizado](../base-de-datos-normalizada.md).
+## Flujo vigente
 
-Las reservas usan los estados `PENDIENTE`, `CONFIRMADA`, `EXPIRADA`, `CANCELADA`
-y `CONVERTIDA`. El préstamo conserva una referencia opcional a la reserva que lo
-originó, lo que permite seguir el recorrido completo sin duplicar información.
+1. El usuario selecciona recurso, perfil, modalidad y rango futuro.
+2. La API valida habilitación, tipos permitidos, cupo, días laborables y conflictos.
+3. La solicitud queda `PENDIENTE`; otras personas pueden competir por el mismo rango.
+4. El gestor confirma una solicitud o la rechaza con un motivo.
+5. En la fecha inicial, el gestor registra la entrega y la reserva queda
+   `CONVERTIDA`, vinculada al préstamo creado.
+6. Si no se recoge, expira al terminar el día inicial.
 
-## Contrato HTTP
+Los estados finales son `PENDIENTE`, `CONFIRMADA`, `RETIRADA`, `RECHAZADA`,
+`CANCELADA`, `EXPIRADA` y `CONVERTIDA`. El listado normal muestra solo estados
+activos; el filtro de historial incluye los estados terminales y su bitácora.
 
-| Método y ruta | Acceso | Propósito |
-| --- | --- | --- |
-| `GET /api/reservas` | Sesión | Lista las reservas propias; un gestor puede consultar todas. |
-| `POST /api/reservas` | Prestatario | Solicita una reserva indicando recurso, fecha y perfil cuando corresponda. |
-| `POST /api/reservas/{id}/confirmacion` | Gestor | Confirma una reserva pendiente cuyo recurso ya puede separarse. |
-| `POST /api/reservas/{id}/cancelacion` | Propietario o gestor | Cancela la reserva y libera el recurso. |
-| `POST /api/reservas/{id}/prestamo` | Gestor | Convierte una reserva confirmada en préstamo con la modalidad indicada. |
-| `POST /api/prestamos/{id}/renovacion` | Propietario o gestor | Renueva un préstamo elegible. |
+## Decisiones posteriores que sustituyen el diseño inicial
 
-## Interfaz Astro
+La primera versión del sprint contenía una acción de renovación y trataba
+`RESERVADO` como estado persistido. Las pruebas del equipo mostraron que ambas
+decisiones generaban ambigüedad. El sistema final:
 
-La página **Reservas** permite buscar recursos, elegir la fecha y el perfil de la
-solicitud, revisar estados y cancelar reservas propias. Los gestores ven todas las
-solicitudes y disponen de las acciones de confirmación, cancelación y conversión.
-La página **Préstamos** incorpora la renovación y muestra el nuevo plazo o el motivo
-concreto por el que no puede aplicarse. Al registrar una entrega, la modalidad se
-presenta como lugar de uso y muestra el plazo efectivo calculado para el usuario;
-no expone como si fuera aplicable el máximo interno de la modalidad.
+- no renueva préstamos;
+- conserva únicamente estados físicos en `items`;
+- deriva la disponibilidad reservada según la fecha;
+- permite retirar una solicitud pendiente y cancelar únicamente una confirmada;
+- registra cada transición con actor y fecha.
 
-## Calidad y automatización
+Esta sección preserva la evolución del sprint sin presentar reglas obsoletas como
+funcionalidad actual.
 
-- **119 pruebas backend** cubren dominio, API, persistencia, migraciones y el
-  recorrido de PostgreSQL; la prueba de PostgreSQL se omite localmente si no existe
-  `TEST_POSTGRES_URL`.
-- El frontend genera siete páginas con `astro check` sin errores.
-- **Seis recorridos Playwright** incluyen el nuevo flujo: el estudiante reserva
-  *Clean Code* y el administrador confirma y convierte la reserva en préstamo.
-- La CI valida por separado SQLite, PostgreSQL, compilación Astro y navegador.
+## Calidad
 
-## Límites conocidos
-
-- La reserva usa una fecha, no una franja horaria.
-- Existe una sola reserva activa por recurso; no se implementa una cola de espera.
-- La expiración es oportunista al usar la API, no un trabajo programado.
-- Las sanciones y las políticas editables corresponden al Sprint 5; la bitácora de
-  auditoría y el cierre integral corresponden al Sprint 6.
-
-## Avance del proyecto
-
-Al finalizar este incremento, aproximadamente **11,4 de los 18 requisitos
-funcionales (63 %)** cuentan con un recorrido utilizable. La cifra representa
-alcance funcional, no esfuerzo: RF02, RF07, RF12 y RF13 se completarán con
-sanciones; RF18 con la administración de políticas, y RF17 con la auditoría final.
+Las pruebas de dominio, API y navegador cubren solicitud, decisión manual,
+conversión, expiración, visibilidad por rol y ausencia del endpoint de renovación.
+El detalle de las reglas consolidadas está en [Sprint 6](sprint-06.md).

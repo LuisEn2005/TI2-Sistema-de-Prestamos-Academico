@@ -24,14 +24,11 @@ class SancionesBase(ApiBase):
 class SancionAutomaticaTest(SancionesBase):
     def test_atraso_genera_sancion_y_bloquea_operaciones(self):
         admin = self.ingresar(ADMIN)
-        politica = next(
-            p for p in self.cliente.get("/api/politicas", headers=admin).json
-            if p["rol"] == "ESTUDIANTE" and p["modalidad"] == IN_SITU)
         respuesta = self.cliente.patch(
-            f"/api/politicas/{politica['id']}", headers=admin,
+            "/api/politicas-rol/ESTUDIANTE", headers=admin,
             json={"dias_sancion_por_dia_atraso": 2})
         self.assertEqual(respuesta.status_code, 200, respuesta.json)
-        renovable = self.prestar(admin, "EQ-META", EXTERNA).json
+        self.prestar(admin, "EQ-META", EXTERNA)
         vencera_hoy = self.prestar(admin, "LIB-CLRS", IN_SITU).json
 
         self.reloj.instante += timedelta(days=2)
@@ -55,9 +52,6 @@ class SancionAutomaticaTest(SancionesBase):
         reserva = self.cliente.post("/api/reservas", headers=estudiante, json={
             "item_id": self.item_id("LIB-CLEAN"), "fecha_reserva": "2026-10-22"})
         self.assertEqual(reserva.status_code, 422)
-        renovacion = self.cliente.post(
-            f"/api/prestamos/{renovable['id']}/renovacion", headers=estudiante, json={})
-        self.assertEqual(renovacion.status_code, 422)
 
     def test_sancion_caduca_y_habilita_nuevamente(self):
         admin = self.ingresar()
@@ -128,14 +122,16 @@ class PoliticasConfigurablesTest(SancionesBase):
         politica = next(p for p in politicas
                          if p["rol"] == "ESTUDIANTE" and p["modalidad"] == EXTERNA)
         actualizada = self.cliente.patch(
-            f"/api/politicas/{politica['id']}", headers=admin, json={
-                "max_items_simultaneos": 4, "dias_prestamo": 9,
-                "dias_sancion_por_dia_atraso": 2,
-            })
+            f"/api/politicas/{politica['id']}", headers=admin,
+            json={"dias_prestamo": 9})
         self.assertEqual(actualizada.status_code, 200, actualizada.json)
-        self.assertEqual((actualizada.json["max_items_simultaneos"],
+        regla = self.cliente.patch(
+            "/api/politicas-rol/ESTUDIANTE", headers=admin, json={
+                "max_items_simultaneos": 4, "dias_sancion_por_dia_atraso": 2})
+        self.assertEqual(regla.status_code, 200, regla.json)
+        self.assertEqual((regla.json["max_items_simultaneos"],
                           actualizada.json["dias_prestamo"],
-                          actualizada.json["dias_sancion_por_dia_atraso"]), (4, 9, 2))
+                          regla.json["dias_sancion_por_dia_atraso"]), (4, 9, 2))
         condiciones = self.cliente.get("/api/prestamos/condiciones", headers=admin, query_string={
             "usuario_id": self.usuario_id(ESTUDIANTE, admin),
             "modalidad_id": politica["modalidad_id"],
@@ -152,7 +148,9 @@ class PoliticasConfigurablesTest(SancionesBase):
 
     def test_solo_administrador_y_con_limites_validos(self):
         admin = self.ingresar()
-        politica_id = self.cliente.get("/api/politicas", headers=admin).json[0]["id"]
+        politica_id = next(
+            p["id"] for p in self.cliente.get("/api/politicas", headers=admin).json
+            if p["modalidad"] == EXTERNA)
         estudiante = self.ingresar(ESTUDIANTE)
         self.assertEqual(self.cliente.patch(
             f"/api/politicas/{politica_id}", headers=estudiante,
@@ -161,3 +159,7 @@ class PoliticasConfigurablesTest(SancionesBase):
                        {"dias_sancion_por_dia_atraso": 31}, {"desconocido": 1}):
             self.assertEqual(self.cliente.patch(
                 f"/api/politicas/{politica_id}", headers=admin, json=cuerpo).status_code, 400)
+        for cuerpo in ({}, {"max_items_simultaneos": 51},
+                       {"dias_sancion_por_dia_atraso": 31}, {"desconocido": 1}):
+            self.assertEqual(self.cliente.patch(
+                "/api/politicas-rol/ESTUDIANTE", headers=admin, json=cuerpo).status_code, 400)

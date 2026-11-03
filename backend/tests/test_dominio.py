@@ -138,16 +138,12 @@ class PrestamoTest(unittest.TestCase):
         self.assertEqual((p.diasAtraso(date(2026, 10, 29)), p.estaVencido(date(2026, 10, 29))), (3, True))
         self.assertEqual(Prestamo().diasAtraso(self.HOY), 0)  # préstamo anterior: sin fecha límite
 
-    def test_renovacion_extiende_el_plazo_efectivo(self):
+    def test_aplazamiento_solo_mueve_la_fecha_esperada(self):
         p = self._prestamo()
-        p.renovar(self.HOY)
-        self.assertEqual((p.fechaDevolucionEsperada, p.numeroRenovaciones),
-                         (date(2026, 11, 2), 1))
-        with self.assertRaisesRegex(ErrorDominio, "vencido"):
-            p.renovar(date(2026, 11, 3))
-        p.estado = EstadoPrestamo.DEVUELTO
-        with self.assertRaisesRegex(ErrorDominio, "activo"):
-            p.renovar(self.HOY)
+        p.aplazarHasta(date(2026, 10, 27))
+        self.assertEqual(p.fechaDevolucionEsperada, date(2026, 10, 27))
+        p.aplazarHasta(date(2026, 10, 26))
+        self.assertEqual(p.fechaDevolucionEsperada, date(2026, 10, 27))
 
     def test_devolucion_registra_condicion_por_item_y_eventos(self):
         p = self._prestamo()
@@ -186,12 +182,14 @@ class ReservaTest(unittest.TestCase):
     def test_ciclo_y_expiracion(self):
         reserva = Reserva.solicitar(
             usuario_id=UsuarioId(1), item_id=ItemId(2), rol=RolUsuario.ESTUDIANTE,
+            modalidad_id=ModalidadId(2),
             fecha_solicitud=datetime(2026, 10, 19, tzinfo=timezone.utc),
-            fecha_reserva=date(2026, 10, 20), hoy=date(2026, 10, 19))
+            fecha_inicio=date(2026, 10, 20), fecha_fin=date(2026, 10, 26),
+            hoy=date(2026, 10, 19))
         self.assertEqual(reserva.estado, EstadoReserva.PENDIENTE)
         self.assertFalse(reserva.estaVencida(date(2026, 10, 20)))
         self.assertTrue(reserva.estaVencida(date(2026, 10, 21)))
-        reserva.confirmar()
+        reserva.confirmar(UsuarioId(3), datetime(2026, 10, 19, tzinfo=timezone.utc))
         self.assertEqual(reserva.estado, EstadoReserva.CONFIRMADA)
         reserva.convertir()
         self.assertEqual(reserva.estado, EstadoReserva.CONVERTIDA)
@@ -202,12 +200,14 @@ class ReservaTest(unittest.TestCase):
         with self.assertRaises(ErrorDominio):
             Reserva.solicitar(
                 usuario_id=UsuarioId(1), item_id=ItemId(2), rol=RolUsuario.ESTUDIANTE,
-                fecha_solicitud=datetime.now(timezone.utc), fecha_reserva=date(2026, 10, 18),
+                modalidad_id=ModalidadId(2), fecha_solicitud=datetime.now(timezone.utc),
+                fecha_inicio=date(2026, 10, 18), fecha_fin=date(2026, 10, 20),
                 hoy=date(2026, 10, 19))
         reserva = Reserva(estado=EstadoReserva.PENDIENTE)
-        reserva.cancelar()
+        reserva.retirar()
+        self.assertEqual(reserva.estado, EstadoReserva.RETIRADA)
         with self.assertRaises(ErrorDominio):
-            reserva.confirmar()
+            reserva.confirmar(UsuarioId(3), datetime.now(timezone.utc))
 
 
 class ReglasDePrestamoTest(unittest.TestCase):

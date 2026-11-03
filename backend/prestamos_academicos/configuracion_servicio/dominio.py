@@ -54,6 +54,13 @@ class IPoliticaRepository(ABC):
     @abstractmethod
     def listar(self) -> List[PoliticaServicio]: ...
 
+    @abstractmethod
+    def actualizar_regla_rol(self, rol: RolUsuario, *, max_items=None,
+                             dias_sancion=None): ...
+
+    @abstractmethod
+    def listar_reglas_rol(self): ...
+
 
 class IModalidadRepository(ABC):
     @abstractmethod

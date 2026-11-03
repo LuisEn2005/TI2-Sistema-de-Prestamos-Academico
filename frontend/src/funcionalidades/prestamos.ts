@@ -10,7 +10,6 @@ import { $, avisar, el, fechaLegible, mensajeDe, opciones, retardo, soloFecha } 
 const LIMITE = 15;
 const usuario = await exigirSesion();
 const gestiona = tienePermiso(usuario, 'REGISTRAR_ENTREGA_PRESTAMO');
-const puedeRenovar = tienePermiso(usuario, 'RENOVAR_PRESTAMO');
 let pagina = 1;
 let seleccion: ItemDTO[] = [];
 let condicionesOk = false;
@@ -54,25 +53,13 @@ function filaDe(p: PrestamoDTO) {
     gestiona ? p.usuario : null,
     p.modalidad ?? 'Sin modalidad (préstamo anterior)',
     p.rol_solicitante ? `como ${ETIQUETA_ROL[p.rol_solicitante as Rol].toLowerCase()}` : null,
+    p.reserva_id ? `originado por reserva #${p.reserva_id}` : null,
     `desde ${fechaLegible(p.fecha_prestamo)}`,
     p.fecha_limite ? `límite ${soloFecha(p.fecha_limite)}` : 'sin fecha límite',
     p.fecha_devolucion ? `devuelto ${fechaLegible(p.fecha_devolucion)}` : null,
   ].filter(Boolean);
 
   const acciones = el('div', {}, el('div', { class: `estado ${claseEstado}` }, textoEstado));
-  if (p.estado === 'activo' && (gestiona || (puedeRenovar && p.usuario_id === usuario?.id))) {
-    const renovar = el('button', { type: 'button', class: 'pequeno secundario' }, 'Renovar préstamo');
-    renovar.addEventListener('click', async () => {
-      try {
-        const renovado = await api.post<PrestamoDTO>(`/api/prestamos/${p.id}/renovacion`);
-        avisar(`Préstamo renovado. Nueva fecha límite: ${soloFecha(renovado.fecha_limite)}.`);
-        await cargarLista();
-      } catch (error) {
-        avisar(mensajeDe(error), true);
-      }
-    });
-    acciones.append(renovar);
-  }
   if (gestiona && p.estado === 'activo') {
     const boton = el('button', { type: 'button', class: 'pequeno secundario' }, 'Registrar devolución');
     boton.addEventListener('click', () => abrirDevolucion(p));
@@ -227,11 +214,16 @@ async function actualizarCondiciones() {
     if (c.rol_solicitante === null) { mostrarResumen('Elija con qué perfil presta el usuario.'); return; }
     if (roles.length > 1) selRol().value = c.rol_solicitante;
     condicionesOk = (c.cupo_restante ?? 0) > 0;
+    const fechaFin = $<HTMLInputElement>('#fecha-fin');
+    fechaFin.min = c.fecha_inicio ?? '';
+    fechaFin.max = c.fecha_limite ?? '';
+    fechaFin.value = c.fecha_limite ?? '';
+    fechaFin.disabled = (c.dias_plazo ?? 0) === 1;
     mostrarPlazoAplicado(c.dias_plazo ?? 0);
     mostrarResumen(
       `Prestará como ${ETIQUETA_ROL[c.rol_solicitante as Rol].toLowerCase()} · plazo de ${plural(c.dias_plazo ?? 0, 'día', 'días')}, ` +
       `vence el ${soloFecha(c.fecha_limite ?? null)} · cupo: ${c.cupo_restante} de ${c.max_items_simultaneos} ` +
-      `(tiene ${c.items_en_prestamo} en préstamo)` +
+      `(tiene ${c.items_en_prestamo} en préstamo y ${c.reservas_activas ?? 0} en reserva)` +
       (condicionesOk ? '.' : '. Sin cupo disponible: debe devolver recursos antes.'), !condicionesOk);
   } catch (error) {
     if (pedidoCondiciones.vigente(mio)) mostrarResumen(mensajeDe(error), true);
@@ -319,6 +311,7 @@ if (usuario) {
           modalidad_id: Number(selModalidad().value),
           item_ids: seleccion.map((i) => i.id),
           rol_solicitante: rolVisible ? selRol().value : undefined,
+          fecha_fin: $<HTMLInputElement>('#fecha-fin').value,
         });
         seleccion = [];
         dibujarSeleccion();

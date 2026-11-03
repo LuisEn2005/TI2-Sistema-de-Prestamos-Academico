@@ -41,11 +41,11 @@ WHERE m.nombre IN ('In situ (en sala)', 'Externa (a domicilio)')
       WHERE p.rol_aplicable = 'ESTUDIANTE' AND p.modalidad_id = m.id
   );
 
--- Docente y administrativo: 1 día en sala y 15 días fuera; hasta 5 recursos.
+-- Docente y administrativo: 1 día en sala y 14 días fuera; hasta 5 recursos.
 INSERT INTO politicas_servicio
     (rol_aplicable, modalidad_id, max_items_simultaneos, dias_prestamo)
 SELECT roles.rol, m.id, 5,
-       CASE WHEN m.nombre = 'In situ (en sala)' THEN 1 ELSE 15 END
+       CASE WHEN m.nombre = 'In situ (en sala)' THEN 1 ELSE 14 END
 FROM modalidades AS m
 CROSS JOIN (
     SELECT 'DOCENTE' AS rol

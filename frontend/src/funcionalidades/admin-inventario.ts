@@ -1,5 +1,8 @@
 import { api } from '../compartido/api';
-import { ETIQUETA_ESTADO, type Estado, type ItemDTO, type PaginaItemsDTO, type TipoDTO } from '../compartido/contratos';
+import {
+  ETIQUETA_ESTADO, type Estado, type FechaSistemaDTO, type ItemDTO,
+  type ItemInventarioDTO, type PaginaInventarioDTO, type TipoDTO,
+} from '../compartido/contratos';
 import { exigirSesion } from '../compartido/sesion';
 import { $, avisar, el, mensajeDe, opciones, retardo } from '../compartido/ui';
 
@@ -38,16 +41,28 @@ function abrirFormulario(item: ItemDTO | null) {
   dialogo.showModal();
 }
 
-function filaDe(item: ItemDTO) {
-  const editar = el('button', { type: 'button', class: 'pequeno secundario' }, 'Editar');
-  editar.addEventListener('click', () => abrirFormulario(item));
+const ETIQUETA_FECHA = {
+  DISPONIBLE: 'Disponible', RESERVADO: 'Reservado', PRESTADO: 'Prestado',
+  NO_DISPONIBLE: 'No disponible',
+};
 
-  const bloqueado = item.estado === 'PRESTADO' || item.estado === 'RESERVADO';
+function itemFisico(item: ItemInventarioDTO): ItemDTO {
+  return { ...item, estado: item.estado_fisico,
+    disponible: item.estado_fisico === 'DISPONIBLE' };
+}
+
+function filaDe(item: ItemInventarioDTO) {
+  const fisico = itemFisico(item);
+  const editar = el('button', { type: 'button', class: 'pequeno secundario' }, 'Editar');
+  editar.addEventListener('click', () => abrirFormulario(fisico));
+
+  const bloqueado = item.estado_fisico === 'PRESTADO';
   const selector = el('select', { 'aria-label': `Estado de ${item.codigo}` });
-  opciones(selector, (bloqueado ? [item.estado] : MANUALES).map((e) => [e, ETIQUETA_ESTADO[e]]));
-  selector.value = item.estado;
-  selector.disabled = bloqueado || item.estado === 'DADO_DE_BAJA';
-  selector.title = bloqueado ? 'Registre la devolución o cancele la reserva primero.' : '';
+  opciones(selector, (bloqueado ? [item.estado_fisico] : MANUALES)
+    .map((e) => [e, ETIQUETA_ESTADO[e]]));
+  selector.value = item.estado_fisico;
+  selector.disabled = bloqueado || item.estado_fisico === 'DADO_DE_BAJA';
+  selector.title = bloqueado ? 'Registre la devolución antes de cambiar el estado.' : '';
   selector.addEventListener('change', async () => {
     try {
       await api.post(`/api/items/${item.id}/estado`, { estado: selector.value });
@@ -58,10 +73,19 @@ function filaDe(item: ItemDTO) {
     await cargar();
   });
 
+  const asignacion = item.asignacion
+    ? `${item.asignacion.usuario} · ${item.asignacion.fecha_inicio} al ${item.asignacion.fecha_fin}`
+    : '—';
+  const pendientes = item.solicitudes_pendientes
+    ? el('a', { href: '/reservas' }, `${item.solicitudes_pendientes} pendiente${item.solicitudes_pendientes === 1 ? '' : 's'}`)
+    : el('span', {}, '0');
   return el('tr', {},
     el('td', {}, el('span', { class: 'codigo' }, item.codigo)),
     el('td', {}, item.nombre),
     el('td', {}, tipos.find((t) => t.tipo === item.tipo)?.etiqueta ?? item.tipo),
+    el('td', {}, ETIQUETA_FECHA[item.estado_fecha]),
+    el('td', {}, asignacion),
+    el('td', {}, pendientes),
     el('td', {}, selector),
     el('td', {}, el('div', { class: 'acciones' }, editar)));
 }
@@ -69,16 +93,17 @@ function filaDe(item: ItemDTO) {
 async function cargar() {
   const carga = ++ultimaCarga;
   try {
-    const datos = await api.get<PaginaItemsDTO>('/api/items', {
+    const datos = await api.get<PaginaInventarioDTO>('/api/inventario', {
       q: $<HTMLInputElement>('#q').value.trim(), tipo: $<HTMLSelectElement>('#tipo').value,
-      estado: $<HTMLSelectElement>('#estado').value, pagina, limite: LIMITE,
+      estado: $<HTMLSelectElement>('#estado').value,
+      fecha: $<HTMLInputElement>('#fecha').value, pagina, limite: LIMITE,
     });
     // Una respuesta anterior no debe reemplazar resultados de filtros más recientes.
     if (carga !== ultimaCarga) return;
     const cuerpo = $('#filas');
     cuerpo.replaceChildren(...datos.items.map(filaDe));
     if (datos.items.length === 0) {
-      cuerpo.append(el('tr', {}, el('td', { colspan: '5', class: 'vacio' }, 'No hay recursos con estos filtros.')));
+      cuerpo.append(el('tr', {}, el('td', { colspan: '8', class: 'vacio' }, 'No hay recursos con estos filtros.')));
     }
     const paginas = Math.max(1, Math.ceil(datos.total / datos.limite));
     $('#pagina').textContent = `Página ${datos.pagina} de ${paginas} · ${datos.total} recursos`;
@@ -102,12 +127,15 @@ if (usuario) {
   if (tipos.length > 0) {
     opciones(campoTipo, tipos.map((t) => [t.tipo, t.etiqueta]));
     opciones($('#tipo'), tipos.map((t) => [t.tipo, t.etiqueta]), 'Todos');
-    opciones($('#estado'), Object.entries(ETIQUETA_ESTADO), 'Cualquiera');
+    opciones($('#estado'), Object.entries(ETIQUETA_FECHA), 'Cualquiera');
+    const fechas = await api.get<FechaSistemaDTO>('/api/calendario/hoy');
+    $<HTMLInputElement>('#fecha').value = fechas.fecha;
 
     const reiniciar = () => { pagina = 1; cargar(); };
     $('#q').addEventListener('input', retardo(reiniciar));
     $('#tipo').addEventListener('change', reiniciar);
     $('#estado').addEventListener('change', reiniciar);
+    $('#fecha').addEventListener('change', reiniciar);
     $('#anterior').addEventListener('click', () => { pagina -= 1; cargar(); });
     $('#siguiente').addEventListener('click', () => { pagina += 1; cargar(); });
     $('#nuevo').addEventListener('click', () => abrirFormulario(null));
