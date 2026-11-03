@@ -1,7 +1,7 @@
 import { api } from '../compartido/api';
 import {
   ETIQUETA_RESERVA, ETIQUETA_ROL, type CalendarioItemDTO, type ItemDTO,
-  type FechaSistemaDTO, type ModalidadDTO, type PaginaItemsDTO,
+  type DetalleReservaDTO, type FechaSistemaDTO, type ModalidadDTO, type PaginaItemsDTO,
   type PaginaReservasDTO, type PoliticaDTO,
   type ReservaDTO, type RolPrestatario, type SolicitudCalendarioDTO,
 } from '../compartido/contratos';
@@ -19,6 +19,7 @@ let pagina = 1;
 let items: ItemDTO[] = [];
 let modalidades: ModalidadDTO[] = [];
 let politicas: PoliticaDTO[] = [];
+let hoySistema = '';
 
 function fechaLocal(fecha = new Date()) {
   return [fecha.getFullYear(), String(fecha.getMonth() + 1).padStart(2, '0'),
@@ -85,12 +86,27 @@ async function rechazar(id: number) {
 
 function accionesDe(reserva: ReservaDTO) {
   const acciones = el('div', { class: 'acciones' });
-  const activa = reserva.estado === 'PENDIENTE' || reserva.estado === 'CONFIRMADA';
-  if (activa && (gestiona || reserva.usuario_id === usuario?.id)) {
+  if (reserva.estado === 'PENDIENTE' && reserva.usuario_id === usuario?.id) {
+    const retirar = el('button', { type: 'button', class: 'pequeno secundario' }, 'Retirar solicitud');
+    retirar.addEventListener('click', async () => {
+      const motivo = window.prompt('Motivo del retiro (opcional):', '') ?? '';
+      try {
+        await api.post(`/api/reservas/${reserva.id}/retiro`, { motivo });
+        avisar('Solicitud retirada.');
+        await cargar();
+      } catch (error) { avisar(mensajeDe(error), true); }
+    });
+    acciones.append(retirar);
+  }
+  if (reserva.estado === 'CONFIRMADA' && (gestiona || reserva.usuario_id === usuario?.id)) {
     const cancelar = el('button', { type: 'button', class: 'pequeno secundario' }, 'Cancelar');
     cancelar.addEventListener('click', async () => {
+      const motivo = window.prompt(
+        gestiona ? 'Motivo obligatorio de la cancelación:' : 'Motivo de la cancelación (opcional):',
+        '') ?? '';
+      if (gestiona && !motivo.trim()) return;
       try {
-        await api.post(`/api/reservas/${reserva.id}/cancelacion`);
+        await api.post(`/api/reservas/${reserva.id}/cancelacion`, { motivo });
         avisar('Reserva cancelada.');
         await cargar();
       } catch (error) { avisar(mensajeDe(error), true); }
@@ -111,7 +127,9 @@ function accionesDe(reserva: ReservaDTO) {
       type: 'date', value: reserva.fecha_fin, min: reserva.fecha_inicio,
       max: reserva.fecha_fin, 'aria-label': `Fecha final para ${reserva.codigo}`,
     });
-    const convertir = el('button', { type: 'button', class: 'pequeno' }, 'Registrar entrega');
+    const convertir = el('button', { type: 'button', class: 'pequeno' }, 'Entregar y crear préstamo');
+    convertir.disabled = hoySistema !== reserva.fecha_inicio;
+    if (convertir.disabled) convertir.title = `Disponible para entregar el ${soloFecha(reserva.fecha_inicio)}.`;
     convertir.addEventListener('click', async () => {
       try {
         const prestamo = await api.post<{ fecha_limite: string }>(
@@ -124,6 +142,21 @@ function accionesDe(reserva: ReservaDTO) {
     });
     acciones.append(fin, convertir);
   }
+  const historial = el('button', { type: 'button', class: 'pequeno secundario' }, 'Ver historial');
+  historial.addEventListener('click', async () => {
+    try {
+      const detalle = await api.get<DetalleReservaDTO>(`/api/reservas/${reserva.id}`);
+      const lineas = detalle.eventos.map((evento) => {
+        const rango = evento.fecha_inicio_nueva
+          ? ` · ${soloFecha(evento.fecha_inicio_nueva)} al ${soloFecha(evento.fecha_fin_nueva)}` : '';
+        return `${fechaLegible(evento.creado_en)} · ${evento.tipo} · ${evento.actor}${rango}`
+          + (evento.motivo ? ` · ${evento.motivo}` : '');
+      });
+      if (detalle.prestamo_id) lineas.push(`Préstamo resultante: #${detalle.prestamo_id}`);
+      window.alert(lineas.join('\n') || 'No hay eventos registrados.');
+    } catch (error) { avisar(mensajeDe(error), true); }
+  });
+  acciones.append(historial);
   return acciones;
 }
 
@@ -147,8 +180,11 @@ function filaDe(reserva: ReservaDTO) {
 }
 
 async function cargarLista() {
+  const filtro = $<HTMLSelectElement>('#estado').value;
   const respuesta = await api.get<PaginaReservasDTO>('/api/reservas', {
-    estado: $<HTMLSelectElement>('#estado').value, pagina, limite: LIMITE,
+    estado: filtro === 'HISTORIAL' ? undefined : filtro,
+    historial: filtro === 'HISTORIAL' ? 1 : undefined,
+    pagina, limite: LIMITE,
   });
   const lista = $('#lista');
   lista.replaceChildren(...respuesta.reservas.map(filaDe));
@@ -238,13 +274,16 @@ if (usuario) {
   modalidades = modalidadesRespuesta.filter((m) => m.activo);
   politicas = politicasRespuesta;
   const hoy = fechaSistema.fecha;
+  hoySistema = hoy;
   $<HTMLInputElement>('#cal-mes').value = hoy.slice(0, 7);
   $('#solicitudes-calendario').hidden = !gestiona;
   if (puedeSolicitar) {
     $('#nueva').hidden = false;
     opciones($<HTMLSelectElement>('#modalidad'), modalidades.map((m) => [String(m.id), m.nombre]));
     const inicio = $<HTMLInputElement>('#fecha-inicio');
-    inicio.min = hoy; inicio.value = hoy;
+    inicio.min = fechaSistema.siguiente_laborable;
+    inicio.max = sumarDias(hoy, 90);
+    inicio.value = fechaSistema.siguiente_laborable;
     if (roles.length > 1) {
       $('#zona-rol').hidden = false;
       opciones($<HTMLSelectElement>('#rol'), roles.map((r) => [r, ETIQUETA_ROL[r]]));

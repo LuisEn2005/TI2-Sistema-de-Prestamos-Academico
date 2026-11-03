@@ -1,7 +1,7 @@
 import { api } from '../compartido/api';
 import {
   ETIQUETA_ROL, type DiaNoLaborableDTO, type FechaSistemaDTO,
-  type ModalidadDTO, type PoliticaDTO,
+  type ModalidadDTO, type PoliticaDTO, type PoliticaRolDTO,
 } from '../compartido/contratos';
 import { exigirSesion } from '../compartido/sesion';
 import { $, avisar, el, mensajeDe } from '../compartido/ui';
@@ -15,23 +15,43 @@ function entradaNumero(valor: number, etiqueta: string, maximo: number) {
 
 function filaPolitica(p: PoliticaDTO) {
   const nombre = `${ETIQUETA_ROL[p.rol]} · ${p.modalidad}`;
-  const cupo = entradaNumero(p.max_items_simultaneos, `Cupo de ${nombre}`, 50);
   const plazo = entradaNumero(p.dias_prestamo, `Días de préstamo de ${nombre}`, 365);
-  const sancion = entradaNumero(
-    p.dias_sancion_por_dia_atraso, `Sanción por atraso de ${nombre}`, 30);
   const guardar = el('button', { type: 'button', class: 'pequeno' }, 'Guardar');
+  const inSitu = p.modalidad.startsWith('In situ');
+  plazo.disabled = inSitu;
+  guardar.disabled = inSitu;
+  if (inSitu) guardar.title = 'El préstamo in situ siempre termina el mismo día.';
   guardar.setAttribute('aria-label', `Guardar política de ${nombre}`);
   guardar.addEventListener('click', async () => {
     try {
       await api.patch(`/api/politicas/${p.id}`, {
-        max_items_simultaneos: Number(cupo.value), dias_prestamo: Number(plazo.value),
-        dias_sancion_por_dia_atraso: Number(sancion.value),
+        dias_prestamo: Number(plazo.value),
       });
       avisar(`Política de ${nombre} actualizada.`);
     } catch (error) { avisar(mensajeDe(error), true); }
   });
   return el('tr', {}, el('td', {}, ETIQUETA_ROL[p.rol]), el('td', {}, p.modalidad),
-    el('td', {}, cupo), el('td', {}, plazo), el('td', {}, sancion), el('td', {}, guardar));
+    el('td', {}, plazo), el('td', {}, guardar));
+}
+
+function filaPoliticaRol(p: PoliticaRolDTO) {
+  const nombre = ETIQUETA_ROL[p.rol];
+  const cupo = entradaNumero(p.max_items_simultaneos, `Cupo de ${nombre}`, 50);
+  const sancion = entradaNumero(
+    p.dias_sancion_por_dia_atraso, `Sanción por atraso de ${nombre}`, 30);
+  const guardar = el('button', { type: 'button', class: 'pequeno' }, 'Guardar');
+  guardar.setAttribute('aria-label', `Guardar reglas de ${nombre}`);
+  guardar.addEventListener('click', async () => {
+    try {
+      await api.patch(`/api/politicas-rol/${p.rol}`, {
+        max_items_simultaneos: Number(cupo.value),
+        dias_sancion_por_dia_atraso: Number(sancion.value),
+      });
+      avisar(`Reglas de ${nombre.toLowerCase()} actualizadas.`);
+    } catch (error) { avisar(mensajeDe(error), true); }
+  });
+  return el('tr', {}, el('td', {}, nombre), el('td', {}, cupo),
+    el('td', {}, sancion), el('td', {}, guardar));
 }
 
 function filaModalidad(m: ModalidadDTO) {
@@ -97,10 +117,13 @@ async function cargarCierres() {
 const sesion = await exigirSesion('CONFIGURAR_POLITICAS');
 if (sesion) {
   try {
-    const [politicas, modalidades] = await Promise.all([
-      api.get<PoliticaDTO[]>('/api/politicas'), api.get<ModalidadDTO[]>('/api/modalidades'),
+    const [politicas, reglasRol, modalidades] = await Promise.all([
+      api.get<PoliticaDTO[]>('/api/politicas'),
+      api.get<PoliticaRolDTO[]>('/api/politicas-rol'),
+      api.get<ModalidadDTO[]>('/api/modalidades'),
     ]);
     $('#politicas').replaceChildren(...politicas.map(filaPolitica));
+    $('#politicas-rol').replaceChildren(...reglasRol.map(filaPoliticaRol));
     $('#modalidades').replaceChildren(...modalidades.map(filaModalidad));
     await cargarCierres();
   } catch (error) { avisar(mensajeDe(error), true); }

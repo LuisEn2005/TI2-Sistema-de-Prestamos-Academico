@@ -17,7 +17,7 @@ const lista = $<HTMLUListElement>('#resultados');
 const dialogo = $<HTMLDialogElement>('#detalle');
 
 export const claseEstado = (e: Estado) =>
-  e === 'DISPONIBLE' ? 'ok' : e === 'PRESTADO' || e === 'RESERVADO' ? 'aviso' : 'malo';
+  e === 'DISPONIBLE' ? 'ok' : e === 'PRESTADO' ? 'aviso' : 'malo';
 
 function etiquetaAtributo(item: ItemDTO, clave: string) {
   const campo = tipos.find((t) => t.tipo === item.tipo)?.campos.find((c) => c.clave === clave);
@@ -83,7 +83,7 @@ function abrirDetalle(item: ItemDTO) {
       el('span', { class: 'cal-reservado' }, 'Reservado'),
       el('span', { class: 'cal-no-disponible' }, 'No disponible')),
     calendario,
-    el('div', { class: 'pie' }, el('a', { href: '/login?siguiente=/prestamos' }, 'Consultar mis préstamos'), cerrar),
+    el('div', { class: 'pie' }, cerrar),
   );
   dialogo.showModal();
 }

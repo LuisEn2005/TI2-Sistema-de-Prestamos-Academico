@@ -39,7 +39,9 @@ export function opciones(select: HTMLSelectElement, valores: [string, string][],
 
 export function fechaLegible(iso: string | null) {
   if (!iso) return '';
-  return new Date(iso).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short' });
+  return new Date(iso).toLocaleString('es-PE', {
+    dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Lima', hour12: false,
+  });
 }
 
 /** Fecha sin hora (AAAA-MM-DD) tal como se calculó en la escuela, sin desplazarla por zona horaria. */
