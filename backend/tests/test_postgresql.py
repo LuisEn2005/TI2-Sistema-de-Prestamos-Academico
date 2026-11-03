@@ -44,6 +44,10 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         self.assertEqual(acceso.status_code, 200, acceso.json)
         self.assertEqual(acceso.json["usuario"]["roles"], ["ADMINISTRADOR_SISTEMA"])
         cabeceras = {"Authorization": f"Bearer {acceso.json['token']}"}
+        acceso_inv = cliente.post("/api/auth/login", json={
+            "correo": "admin-ci@escuela.edu", "password": "clave-ci-segura",
+            "espacio": "INVENTARIO"})
+        cabeceras_inv = {"Authorization": f"Bearer {acceso_inv.json['token']}"}
 
         usuario = cliente.post("/api/usuarios", headers=cabeceras, json={
             "nombre": "Estudiante CI", "correo": "estudiante-ci@escuela.edu",
@@ -51,7 +55,7 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
             "perfiles": {"ESTUDIANTE": {"codigo_estudiante": "EST-CI-001"}},
         })
         self.assertEqual(usuario.status_code, 201, usuario.json)
-        item = cliente.post("/api/items", headers=cabeceras, json={
+        item = cliente.post("/api/items", headers=cabeceras_inv, json={
             "tipo": "LIBRO", "codigo": "lib-ci", "nombre": "Libro CI",
             "categoria": "Pruebas", "atributos": {
                 "isbn": "978-0000000002", "autor": "Autor CI", "editorial": "Editorial CI"},
@@ -63,21 +67,21 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         in_situ = next(m for m in modalidades if m["nombre"].startswith("In situ"))
         externa = next(m for m in modalidades if m["nombre"].startswith("Externa"))
         self.assertNotIn("dias_plazo_default", in_situ)
-        segundo = cliente.post("/api/items", headers=cabeceras, json={
+        segundo = cliente.post("/api/items", headers=cabeceras_inv, json={
             "tipo": "LIBRO", "codigo": "lib-ci-2", "nombre": "Libro CI 2",
             "categoria": "Pruebas", "atributos": {"isbn": "978-0000000004", "autor": "Autor CI"}})
-        prestamo = cliente.post("/api/prestamos", headers=cabeceras, json={
+        prestamo = cliente.post("/api/prestamos", headers=cabeceras_inv, json={
             "usuario_id": usuario.json["id"], "modalidad_id": externa["id"],
             "item_ids": [item.json["id"], segundo.json["id"]]})
         self.assertEqual(prestamo.status_code, 201, prestamo.json)
         self.assertEqual(len(prestamo.json["items"]), 2)
         self.assertIsNotNone(prestamo.json["fecha_limite"])
-        repetido = cliente.post("/api/prestamos", headers=cabeceras, json={
+        repetido = cliente.post("/api/prestamos", headers=cabeceras_inv, json={
             "usuario_id": usuario.json["id"], "modalidad_id": externa["id"],
             "item_ids": [item.json["id"]]})
         self.assertEqual(repetido.status_code, 409)
         devolucion = cliente.post(
-            f"/api/prestamos/{prestamo.json['id']}/devolucion", headers=cabeceras, json={
+            f"/api/prestamos/{prestamo.json['id']}/devolucion", headers=cabeceras_inv, json={
                 "condiciones": [
                     {"item_id": item.json["id"], "condicion": "BUEN_ESTADO"},
                     {"item_id": segundo.json["id"], "condicion": "DANADO"}]})
@@ -95,11 +99,11 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
             "fecha_inicio": "2026-10-20", "fecha_fin": "2026-10-27"})
         self.assertEqual(reserva.status_code, 201, reserva.json)
         confirmada = cliente.post(
-            f"/api/reservas/{reserva.json['id']}/confirmacion", headers=cabeceras, json={})
+            f"/api/reservas/{reserva.json['id']}/confirmacion", headers=cabeceras_inv, json={})
         self.assertEqual(confirmada.status_code, 200, confirmada.json)
         reloj.instante = datetime(2026, 10, 20, 20, 0, tzinfo=timezone.utc)
         convertido = cliente.post(
-            f"/api/reservas/{reserva.json['id']}/prestamo", headers=cabeceras,
+            f"/api/reservas/{reserva.json['id']}/prestamo", headers=cabeceras_inv,
             json={})
         self.assertEqual(convertido.status_code, 201, convertido.json)
         self.assertEqual(convertido.json["dias_plazo"], 7)

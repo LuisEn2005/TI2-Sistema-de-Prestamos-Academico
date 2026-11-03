@@ -28,10 +28,11 @@ class CalendarioRangosTest(ApiBase):
         primera = self._reserva(
             estudiante, "LIB-CLRS", "2026-10-20", "2026-10-26")
         docente = self._reserva(
-            self.ingresar(GESTOR_DOCENTE), "LIB-CLRS", "2026-10-22", "2026-10-29")
+            self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL"),
+            "LIB-CLRS", "2026-10-22", "2026-10-29")
         self.assertEqual((primera.status_code, docente.status_code), (201, 201))
 
-        admin = self.ingresar(ADMIN)
+        admin = self.ingresar(ADMIN, espacio="INVENTARIO")
         confirmada = self.cliente.post(
             f"/api/reservas/{docente.json['id']}/confirmacion", headers=admin, json={})
         self.assertEqual(confirmada.status_code, 200, confirmada.json)
@@ -45,7 +46,7 @@ class CalendarioRangosTest(ApiBase):
         estudiante = self.ingresar(ESTUDIANTE)
         reserva = self._reserva(
             estudiante, "LIB-CLRS", "2026-10-20", "2026-10-26").json
-        admin = self.ingresar(ADMIN)
+        admin = self.ingresar(ADMIN, espacio="INVENTARIO")
         solicitudes = self.cliente.get(
             "/api/reservas/calendario", headers=admin,
             query_string={"item_id": self.item_id("LIB-CLRS"),
@@ -75,7 +76,7 @@ class CalendarioRangosTest(ApiBase):
             respuesta = self._reserva(
                 estudiante, codigo, "2026-10-20", "2026-10-26")
             self.assertEqual(respuesta.status_code, 201, respuesta.json)
-        admin = self.ingresar(ADMIN)
+        admin = self.ingresar(ADMIN, espacio="INVENTARIO")
         primero = self._prestamo(admin, "EQ-META")
         self.assertEqual(primero.status_code, 201, primero.json)
         creado = self.cliente.post("/api/items", headers=admin, json={
@@ -88,22 +89,23 @@ class CalendarioRangosTest(ApiBase):
         self.assertIn("2 reservados", segundo.json["error"])
 
     def test_cierre_aplaza_devolucion_y_evitar_sancion(self):
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
         admin = self.ingresar(ADMIN)
-        prestamo = self._prestamo(admin).json
+        prestamo = self._prestamo(inventario).json
         cierre = self.cliente.post("/api/dias-no-laborables", headers=admin, json={
             "fecha_inicio": "2026-10-26", "fecha_fin": "2026-10-26",
             "tipo": "FERIADO", "motivo": "Aniversario institucional",
         })
         self.assertEqual(cierre.status_code, 201, cierre.json)
         actualizado = self.cliente.get(
-            f"/api/prestamos/{prestamo['id']}", headers=admin).json
+            f"/api/prestamos/{prestamo['id']}", headers=inventario).json
         self.assertEqual(actualizado["fecha_limite"], "2026-10-27")
         self.assertEqual(actualizado["aplazamientos"][0]["fecha_anterior"], "2026-10-26")
 
         self.reloj.instante += timedelta(days=8)
         item = actualizado["items"][0]
         devuelto = self.cliente.post(
-            f"/api/prestamos/{prestamo['id']}/devolucion", headers=admin,
+            f"/api/prestamos/{prestamo['id']}/devolucion", headers=inventario,
             json={"condiciones": [{"item_id": item["item_id"],
                                     "condicion": "BUEN_ESTADO"}]})
         self.assertEqual(devuelto.status_code, 200, devuelto.json)
@@ -111,7 +113,7 @@ class CalendarioRangosTest(ApiBase):
         self.assertNotIn("sancion_generada_id", devuelto.json)
 
     def test_docente_y_administrativo_tienen_catorce_dias(self):
-        admin = self.ingresar(ADMIN)
+        admin = self.ingresar(ADMIN, espacio="INVENTARIO")
         condiciones = self.cliente.get("/api/prestamos/condiciones", headers=admin,
             query_string={"usuario_id": self.usuario_id(GESTOR_DOCENTE, admin),
                           "modalidad_id": self.modalidad_id(EXTERNA)}).json
@@ -120,7 +122,8 @@ class CalendarioRangosTest(ApiBase):
 
     def test_fin_de_semana_no_admite_entrega(self):
         self.reloj.instante += timedelta(days=5)  # sábado 24 de octubre
-        respuesta = self._prestamo(self.ingresar(ADMIN), fin="2026-10-31")
+        respuesta = self._prestamo(
+            self.ingresar(ADMIN, espacio="INVENTARIO"), fin="2026-10-31")
         self.assertEqual(respuesta.status_code, 422, respuesta.json)
         self.assertIn("fecha de entrega no es laborable", respuesta.json["error"])
 
@@ -128,9 +131,10 @@ class CalendarioRangosTest(ApiBase):
         estudiante = self.ingresar(ESTUDIANTE)
         reserva = self._reserva(
             estudiante, "LIB-CLRS", "2026-10-26", "2026-11-02").json
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
         admin = self.ingresar(ADMIN)
         confirmada = self.cliente.post(
-            f"/api/reservas/{reserva['id']}/confirmacion", headers=admin, json={})
+            f"/api/reservas/{reserva['id']}/confirmacion", headers=inventario, json={})
         self.assertEqual(confirmada.status_code, 200, confirmada.json)
 
         cierre = self.cliente.post("/api/dias-no-laborables", headers=admin, json={
@@ -139,7 +143,7 @@ class CalendarioRangosTest(ApiBase):
         })
         self.assertEqual(cierre.status_code, 201, cierre.json)
         actualizada = self.cliente.get(
-            "/api/reservas", headers=admin).json["reservas"][0]
+            "/api/reservas", headers=inventario).json["reservas"][0]
         self.assertEqual(
             (actualizada["fecha_inicio"], actualizada["fecha_fin"]),
             ("2026-10-27", "2026-11-02"))
@@ -160,7 +164,7 @@ class CalendarioRangosTest(ApiBase):
         estudiante = self.ingresar(ESTUDIANTE)
         reserva = self._reserva(
             estudiante, "LIB-CLRS", "2026-10-20", "2026-10-26").json
-        admin = self.ingresar(ADMIN)
+        admin = self.ingresar(ADMIN, espacio="INVENTARIO")
         self.cliente.post(
             f"/api/reservas/{reserva['id']}/confirmacion", headers=admin, json={})
         vista = self.cliente.get(
@@ -207,28 +211,31 @@ class CalendarioRangosTest(ApiBase):
         pendiente = self._reserva(
             estudiante, "LIB-CLRS", "2026-10-20", "2026-10-26")
         self.assertEqual(pendiente.status_code, 201, pendiente.json)
-        directo = self._prestamo(self.ingresar(ADMIN), "LIB-CLRS")
+        directo = self._prestamo(
+            self.ingresar(ADMIN, espacio="INVENTARIO"), "LIB-CLRS")
         self.assertEqual(directo.status_code, 409)
         self.assertIn("solicitudes pendientes", directo.json["error"])
 
     def test_cierre_desplaza_reservas_confirmadas_sin_reutilizar_el_mismo_dia(self):
         estudiante = self.ingresar(ESTUDIANTE)
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
         admin = self.ingresar(ADMIN)
         primera = self._reserva(
             estudiante, "LIB-CLRS", "2026-11-09", "2026-11-13").json
         self.cliente.post(
-            f"/api/reservas/{primera['id']}/confirmacion", headers=admin, json={})
+            f"/api/reservas/{primera['id']}/confirmacion", headers=inventario, json={})
         segunda = self._reserva(
-            self.ingresar(GESTOR_DOCENTE), "LIB-CLRS", "2026-11-16", "2026-11-18").json
+            self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL"),
+            "LIB-CLRS", "2026-11-16", "2026-11-18").json
         self.cliente.post(
-            f"/api/reservas/{segunda['id']}/confirmacion", headers=admin, json={})
+            f"/api/reservas/{segunda['id']}/confirmacion", headers=inventario, json={})
         cierre = self.cliente.post("/api/dias-no-laborables", headers=admin, json={
             "fecha_inicio": "2026-11-13", "fecha_fin": "2026-11-13",
             "tipo": "FERIADO", "motivo": "Cierre extraordinario",
         })
         self.assertEqual(cierre.status_code, 201, cierre.json)
         reservas = self.cliente.get(
-            "/api/reservas?historial=1", headers=admin).json["reservas"]
+            "/api/reservas?historial=1", headers=inventario).json["reservas"]
         por_id = {r["id"]: r for r in reservas}
         self.assertEqual(
             (por_id[primera["id"]]["fecha_fin"],

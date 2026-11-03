@@ -16,10 +16,14 @@ class EmisorTokens:
         self._serializador = URLSafeTimedSerializer(clave_secreta, salt="prestamos-auth")
         self.duracion = duracion
 
-    def emitir(self, usuario):
-        return self._serializador.dumps({
+    def emitir(self, usuario, espacio=None):
+        datos = {
             "uid": usuario.id.valor, "version_sesion": usuario.versionSesion,
-        })
+        }
+        espacio = espacio or getattr(usuario, "espacioActivo", None)
+        if espacio is not None:
+            datos["espacio"] = espacio.value
+        return self._serializador.dumps(datos)
 
     def verificar(self, token):
         try:
@@ -28,7 +32,10 @@ class EmisorTokens:
             version = datos["version_sesion"]
             if type(usuario_id) is not int or type(version) is not int:
                 return None
-            return usuario_id, version
+            espacio = datos.get("espacio")
+            if espacio is not None and not isinstance(espacio, str):
+                return None
+            return usuario_id, version, espacio
         except (BadSignature, SignatureExpired, KeyError, TypeError):
             return None
 
@@ -72,10 +79,14 @@ def requiere_autenticacion(vista):
     def envoltura(*args, **kwargs):
         token = _token_de_la_peticion()
         sesion = servicios().tokens.verificar(token) if token else None
-        usuario = servicios().identidad.usuario_de_sesion(*sesion) if sesion else None
+        usuario = (servicios().identidad.usuario_de_sesion(*sesion[:2])
+                   if sesion else None)
         if usuario is None:
             raise NoAutenticado("Inicie sesión para continuar.")
+        servicios().identidad.activar_espacio(usuario, sesion[2])
         g.usuario = usuario
+        g.espacio = usuario.espacioActivo
+        g.permisos = servicios().identidad.permisos_de(usuario)
         return vista(*args, **kwargs)
 
     return envoltura
@@ -86,7 +97,7 @@ def requiere_permiso(permiso):
         @wraps(vista)
         @requiere_autenticacion
         def envoltura(*args, **kwargs):
-            if permiso not in servicios().identidad.permisos_de(g.usuario):
+            if permiso not in g.permisos:
                 raise SinPermiso()
             return vista(*args, **kwargs)
 

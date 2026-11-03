@@ -36,14 +36,27 @@ class ApiBase(unittest.TestCase):
                               secret_key="prueba", reloj=self.reloj)
         self.cliente = self.app.test_client()
 
-    def ingresar(self, correo=ADMIN, password=CLAVE):
-        r = self.cliente.post("/api/auth/login", json={"correo": correo, "password": password})
+    def ingresar(self, correo=ADMIN, password=CLAVE, espacio=None):
+        if espacio is None:
+            espacio = {
+                ADMIN: "ADMINISTRACION",
+                ESTUDIANTE: "PERSONAL",
+                GESTOR_DOCENTE: "INVENTARIO",
+            }.get(correo)
+        cuerpo = {"correo": correo, "password": password}
+        if espacio:
+            cuerpo["espacio"] = espacio
+        r = self.cliente.post("/api/auth/login", json=cuerpo)
         self.assertEqual(r.status_code, 200, r.json)
         return {"Authorization": f"Bearer {r.json['token']}"}
 
     def usuario_id(self, correo, cabeceras=None):
         cabeceras = cabeceras or self.ingresar()
-        lista = self.cliente.get("/api/usuarios", headers=cabeceras).json
+        respuesta = self.cliente.get("/api/usuarios", headers=cabeceras)
+        if respuesta.status_code == 403:
+            respuesta = self.cliente.get("/api/usuarios/prestatarios", headers=cabeceras)
+        self.assertEqual(respuesta.status_code, 200, respuesta.json)
+        lista = respuesta.json
         return next(u["id"] for u in lista if u["correo"] == correo)
 
     def item_id(self, codigo):

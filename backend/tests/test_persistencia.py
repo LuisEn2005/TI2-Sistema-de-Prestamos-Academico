@@ -119,6 +119,10 @@ class MigracionTest(unittest.TestCase):
             token = c.post("/api/auth/login", json={
                 "correo": "admin@escuela.edu", "password": CLAVE}).json["token"]
             h = {"Authorization": f"Bearer {token}"}
+            token_inv = c.post("/api/auth/login", json={
+                "correo": "admin@escuela.edu", "password": CLAVE,
+                "espacio": "INVENTARIO"}).json["token"]
+            h_inv = {"Authorization": f"Bearer {token_inv}"}
 
             usuarios = c.get("/api/usuarios", headers=h).json
             nombres = {u["nombre"] for u in usuarios}
@@ -139,14 +143,14 @@ class MigracionTest(unittest.TestCase):
             self.assertEqual(items["LIB-CLRS"]["tipo"], "LIBRO")
             self.assertEqual(items["EQ-META"]["estado"], "DISPONIBLE")
 
-            prestamos = c.get("/api/prestamos", headers=h).json["prestamos"]
+            prestamos = c.get("/api/prestamos", headers=h_inv).json["prestamos"]
             self.assertEqual([(p["id"], p["estado"]) for p in prestamos], [(1, "activo")])
-            heredado_p = c.get("/api/prestamos/1", headers=h).json
+            heredado_p = c.get("/api/prestamos/1", headers=h_inv).json
             self.assertEqual([i["codigo"] for i in heredado_p["items"]], ["LIB-CLRS"])
             self.assertIsNone(heredado_p["modalidad"])          # el MVP no registraba modalidad
             self.assertIsNone(heredado_p["fecha_limite"])
             self.assertFalse(heredado_p["vencido"])
-            d = c.post("/api/prestamos/1/devolucion", headers=h, json={"condiciones": [
+            d = c.post("/api/prestamos/1/devolucion", headers=h_inv, json={"condiciones": [
                 {"item_id": heredado_p["items"][0]["item_id"], "condicion": "BUEN_ESTADO"}]})
             self.assertEqual(d.status_code, 200, d.json)
 
@@ -161,7 +165,8 @@ class MigracionTest(unittest.TestCase):
             c1 = create_app(url, datos_demo=True, secret_key="k",
                             reloj=RELOJ_LABORABLE).test_client()
             h = {"Authorization": "Bearer " + c1.post("/api/auth/login", json={
-                "correo": "admin@escuela.edu", "password": CLAVE}).json["token"]}
+                "correo": "admin@escuela.edu", "password": CLAVE,
+                "espacio": "INVENTARIO"}).json["token"]}
             modalidad = c1.get("/api/modalidades", headers=h).json[1]["id"]
             entrega = c1.post("/api/prestamos", headers=h, json={
                 "usuario_id": 2, "item_ids": [1], "modalidad_id": modalidad})
@@ -303,16 +308,19 @@ class MigracionDelSprint2Test(unittest.TestCase):
                            reloj=RELOJ_LABORABLE).test_client()
             h = {"Authorization": "Bearer " + c.post("/api/auth/login", json={
                 "correo": "admin@escuela.edu", "password": CLAVE}).json["token"]}
-            lista = c.get("/api/prestamos", headers=h).json["prestamos"]
+            h_inv = {"Authorization": "Bearer " + c.post("/api/auth/login", json={
+                "correo": "admin@escuela.edu", "password": CLAVE,
+                "espacio": "INVENTARIO"}).json["token"]}
+            lista = c.get("/api/prestamos", headers=h_inv).json["prestamos"]
             por_usuario = {p["usuario"]: p for p in lista}
             self.assertEqual(por_usuario["Ana"]["estado"], "activo")
             self.assertEqual([i["codigo"] for i in por_usuario["Ana"]["items"]], ["L1"])
             self.assertEqual(por_usuario["Beto"]["estado"], "devuelto")
             self.assertIsNone(por_usuario["Beto"]["items"][0]["condicion"])   # no se registraba
             self.assertIsNone(por_usuario["Ana"]["fecha_limite"])
-            self.assertEqual(c.get("/api/prestamos?estado=vencido", headers=h).json["total"], 0)
+            self.assertEqual(c.get("/api/prestamos?estado=vencido", headers=h_inv).json["total"], 0)
             # la devolución del préstamo heredado exige la condición y libera el ítem
-            r = c.post(f"/api/prestamos/{por_usuario['Ana']['id']}/devolucion", headers=h, json={
+            r = c.post(f"/api/prestamos/{por_usuario['Ana']['id']}/devolucion", headers=h_inv, json={
                 "condiciones": [{"item_id": por_usuario["Ana"]["items"][0]["item_id"],
                                  "condicion": "BUEN_ESTADO"}]})
             self.assertEqual(r.status_code, 200, r.json)
@@ -383,6 +391,10 @@ class SinDatosDemoTest(unittest.TestCase):
                 "correo": "gestor@escuela.edu", "password": "clave-inicial-segura"})
             self.assertEqual(acceso.status_code, 200)
             cabeceras = {"Authorization": f"Bearer {acceso.json['token']}"}
+            acceso_inv = cliente.post("/api/auth/login", json={
+                "correo": "gestor@escuela.edu", "password": "clave-inicial-segura",
+                "espacio": "INVENTARIO"})
+            cabeceras_inv = {"Authorization": f"Bearer {acceso_inv.json['token']}"}
             usuarios = cliente.get("/api/usuarios", headers=cabeceras).json
             self.assertEqual([u["correo"] for u in usuarios], ["gestor@escuela.edu"])
             self.assertEqual(usuarios[0]["roles"], ["ADMINISTRADOR_SISTEMA"])
@@ -392,7 +404,7 @@ class SinDatosDemoTest(unittest.TestCase):
                 "perfiles": {"ESTUDIANTE": {"codigo_estudiante": "EST-PRUEBA"}},
             })
             self.assertEqual(nuevo_usuario.status_code, 201, nuevo_usuario.json)
-            nuevo_item = cliente.post("/api/items", headers=cabeceras, json={
+            nuevo_item = cliente.post("/api/items", headers=cabeceras_inv, json={
                 "tipo": "LIBRO", "codigo": "LIB-PRUEBA", "nombre": "Libro de prueba",
                 "categoria": "Pruebas", "atributos": {
                     "isbn": "978-0000000001", "autor": "Autor ficticio",

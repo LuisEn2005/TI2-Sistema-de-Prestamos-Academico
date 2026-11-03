@@ -8,7 +8,7 @@ from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, IN_SITU, ApiBase
 class SancionesBase(ApiBase):
     def prestar(self, h, codigo="LIB-CLRS", modalidad=EXTERNA):
         return self.cliente.post("/api/prestamos", headers=h, json={
-            "usuario_id": self.usuario_id(ESTUDIANTE, h),
+            "usuario_id": self.usuario_id(ESTUDIANTE),
             "item_ids": [self.item_id(codigo)],
             "modalidad_id": self.modalidad_id(modalidad),
         })
@@ -28,15 +28,17 @@ class SancionAutomaticaTest(SancionesBase):
             "/api/politicas-rol/ESTUDIANTE", headers=admin,
             json={"dias_sancion_por_dia_atraso": 2})
         self.assertEqual(respuesta.status_code, 200, respuesta.json)
-        self.prestar(admin, "EQ-META", EXTERNA)
-        vencera_hoy = self.prestar(admin, "LIB-CLRS", IN_SITU).json
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
+        self.prestar(inventario, "EQ-META", EXTERNA)
+        vencera_hoy = self.prestar(inventario, "LIB-CLRS", IN_SITU).json
 
         self.reloj.instante += timedelta(days=2)
-        devolucion = self.devolver(admin, vencera_hoy)
+        devolucion = self.devolver(inventario, vencera_hoy)
         self.assertEqual(devolucion.status_code, 200, devolucion.json)
         self.assertIsNotNone(devolucion.json["sancion_generada_id"])
 
-        sanciones = self.cliente.get("/api/sanciones?estado=ACTIVA", headers=admin).json
+        sanciones = self.cliente.get(
+            "/api/sanciones?estado=ACTIVA", headers=inventario).json
         self.assertEqual(len(sanciones), 1)
         self.assertEqual((sanciones[0]["origen"], sanciones[0]["prestamo_id"]),
                          ("RETRASO", vencera_hoy["id"]))
@@ -46,7 +48,7 @@ class SancionAutomaticaTest(SancionesBase):
         estudiante = self.ingresar(ESTUDIANTE)
         propias = self.cliente.get("/api/sanciones", headers=estudiante).json
         self.assertEqual([s["id"] for s in propias], [sanciones[0]["id"]])
-        bloqueado = self.prestar(admin, "LIB-CLEAN")
+        bloqueado = self.prestar(inventario, "LIB-CLEAN")
         self.assertEqual(bloqueado.status_code, 422)
         self.assertIn("sanción activa", bloqueado.json["error"])
         reserva = self.cliente.post("/api/reservas", headers=estudiante, json={
@@ -54,17 +56,17 @@ class SancionAutomaticaTest(SancionesBase):
         self.assertEqual(reserva.status_code, 422)
 
     def test_sancion_caduca_y_habilita_nuevamente(self):
-        admin = self.ingresar()
-        prestamo = self.prestar(admin, modalidad=IN_SITU).json
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
+        prestamo = self.prestar(inventario, modalidad=IN_SITU).json
         self.reloj.instante += timedelta(days=1)
-        self.devolver(admin, prestamo)
+        self.devolver(inventario, prestamo)
         self.reloj.instante += timedelta(days=2)
 
         estudiante = self.ingresar(ESTUDIANTE)
         sancion = self.cliente.get("/api/sanciones", headers=estudiante).json[0]
         self.assertEqual(sancion["estado"], "CERRADA")
         self.assertIn("cumplimiento", sancion["resolucion"])
-        self.assertEqual(self.prestar(admin, "LIB-CLEAN").status_code, 201)
+        self.assertEqual(self.prestar(inventario, "LIB-CLEAN").status_code, 201)
 
 
 class SancionManualTest(SancionesBase):
@@ -88,11 +90,13 @@ class SancionManualTest(SancionesBase):
             json={"resolucion": "El usuario repuso el equipo."})
         self.assertEqual(cerrada.status_code, 200, cerrada.json)
         self.assertEqual(cerrada.json["estado"], "CERRADA")
-        self.assertEqual(self.prestar(admin).status_code, 201)
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
+        self.assertEqual(self.prestar(inventario).status_code, 201)
 
     def test_valida_sanciones_y_visibilidad(self):
-        admin = self.ingresar()
-        uid = self.usuario_id(ESTUDIANTE, admin)
+        administracion = self.ingresar()
+        uid = self.usuario_id(ESTUDIANTE, administracion)
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
         base = {"usuario_id": uid, "origen": "PERDIDA", "motivo": "No devuelto"}
         for cuerpo in (
                 base,
@@ -103,13 +107,13 @@ class SancionManualTest(SancionesBase):
                 {**base, "dias": 2, "otro": True}):
             with self.subTest(cuerpo=cuerpo):
                 respuesta = self.cliente.post(
-                    "/api/sanciones", headers=admin, json=cuerpo)
+                    "/api/sanciones", headers=inventario, json=cuerpo)
                 invalido = ("otro" in cuerpo or cuerpo.get("dias") == 0
                             or cuerpo.get("monto") in (-1, "NaN"))
                 self.assertEqual(respuesta.status_code, 400 if invalido else 422)
         self.assertEqual(self.cliente.get("/api/sanciones").status_code, 401)
         self.assertEqual(self.cliente.get(
-            "/api/sanciones?estado=OTRA", headers=admin).status_code, 400)
+            "/api/sanciones?estado=OTRA", headers=inventario).status_code, 400)
         self.assertEqual(self.cliente.post(
             "/api/sanciones", headers=self.ingresar(ESTUDIANTE), json={**base, "dias": 2}
         ).status_code, 403)
@@ -135,7 +139,14 @@ class PoliticasConfigurablesTest(SancionesBase):
         condiciones = self.cliente.get("/api/prestamos/condiciones", headers=admin, query_string={
             "usuario_id": self.usuario_id(ESTUDIANTE, admin),
             "modalidad_id": politica["modalidad_id"],
-        }).json
+        })
+        self.assertEqual(condiciones.status_code, 403)
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
+        condiciones = self.cliente.get(
+            "/api/prestamos/condiciones", headers=inventario, query_string={
+                "usuario_id": self.usuario_id(ESTUDIANTE, admin),
+                "modalidad_id": politica["modalidad_id"],
+            }).json
         self.assertEqual((condiciones["max_items_simultaneos"], condiciones["dias_plazo"]),
                          (4, 9))
 
@@ -144,7 +155,7 @@ class PoliticasConfigurablesTest(SancionesBase):
             json={"activo": False})
         self.assertEqual(modalidad.status_code, 200, modalidad.json)
         self.assertFalse(modalidad.json["activo"])
-        self.assertEqual(self.prestar(admin).status_code, 422)
+        self.assertEqual(self.prestar(inventario).status_code, 422)
 
     def test_solo_administrador_y_con_limites_validos(self):
         admin = self.ingresar()

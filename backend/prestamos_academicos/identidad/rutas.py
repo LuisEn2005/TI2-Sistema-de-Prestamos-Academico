@@ -79,13 +79,17 @@ def prestatario_a_json(usuario):
 
 
 def _usuario_json(usuario):
-    return usuario_a_json(usuario, servicios().identidad.permisos_de(usuario))
+    datos = usuario_a_json(usuario, servicios().identidad.permisos_de(usuario))
+    datos["espacio_activo"] = usuario.espacioActivo.value
+    datos["espacios_disponibles"] = [
+        espacio.value for espacio in servicios().identidad.espacios_de(usuario)]
+    return datos
 
 
 @bp.post("/auth/login")
 def iniciar_sesion():
     datos = cuerpo_json()
-    v.campos(datos, {"correo", "password"})
+    v.campos(datos, {"correo", "password", "espacio"})
     clave = (request.remote_addr or "?", str(datos.get("correo", "")).strip().lower())
     limitador = servicios().limitador
     limitador.verificar(clave)
@@ -95,6 +99,7 @@ def iniciar_sesion():
         limitador.registrar_fallo(clave)
         raise
     limitador.limpiar(clave)
+    servicios().identidad.activar_espacio(usuario, datos.get("espacio"))
     return jsonify({
         "token": servicios().tokens.emitir(usuario),
         "usuario": _usuario_json(usuario),
@@ -105,6 +110,19 @@ def iniciar_sesion():
 @requiere_autenticacion
 def mi_perfil():
     return jsonify(_usuario_json(g.usuario))
+
+
+@bp.post("/auth/espacio")
+@requiere_autenticacion
+def cambiar_espacio():
+    datos = cuerpo_json()
+    v.campos(datos, {"espacio"})
+    espacio = v.texto(datos, "espacio", maximo=30)
+    servicios().identidad.activar_espacio(g.usuario, espacio, estricto=True)
+    return jsonify({
+        "token": servicios().tokens.emitir(g.usuario),
+        "usuario": _usuario_json(g.usuario),
+    })
 
 
 @bp.post("/auth/cambiar-password")

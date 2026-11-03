@@ -79,6 +79,85 @@ class AutenticacionTest(ApiBase):
         self.assertEqual(r.status_code, 401)
 
 
+class EspaciosDeTrabajoTest(ApiBase):
+    """Separación por espacio de trabajo: contexto activo, cambio y límites de permiso."""
+
+    def _login(self, correo=ADMIN, password=CLAVE, **extra):
+        return self.cliente.post(
+            "/api/auth/login", json={"correo": correo, "password": password, **extra})
+
+    def test_login_expone_espacios_y_limita_permisos_al_activo(self):
+        u = self._login(ESTUDIANTE).json["usuario"]
+        self.assertEqual(u["espacios_disponibles"], ["PERSONAL"])
+        self.assertEqual(u["espacio_activo"], "PERSONAL")
+        self.assertIn("SOLICITAR_PRESTAMO", u["permisos"])
+        self.assertNotIn("REGISTRAR_ENTREGA_PRESTAMO", u["permisos"])
+
+    def test_administrador_usa_inventario_y_administracion_sin_rol_gestor(self):
+        u = self._login(ADMIN).json["usuario"]
+        self.assertEqual(u["roles"], ["ADMINISTRADOR_SISTEMA"])
+        self.assertEqual(set(u["espacios_disponibles"]), {"INVENTARIO", "ADMINISTRACION"})
+        self.assertEqual(u["espacio_activo"], "ADMINISTRACION")   # predeterminado del administrador
+        self.assertIn("GESTIONAR_USUARIOS_Y_ROLES", u["permisos"])
+        self.assertNotIn("REGISTRAR_ENTREGA_PRESTAMO", u["permisos"])
+
+    def test_login_recuerda_el_espacio_valido_y_descarta_el_invalido(self):
+        inventario = self._login(ADMIN, espacio="INVENTARIO").json["usuario"]
+        self.assertEqual(inventario["espacio_activo"], "INVENTARIO")
+        self.assertIn("REGISTRAR_ENTREGA_PRESTAMO", inventario["permisos"])
+        self.assertNotIn("GESTIONAR_USUARIOS_Y_ROLES", inventario["permisos"])
+        # un espacio inexistente o no disponible cae al predeterminado, sin error
+        self.assertEqual(
+            self._login(ADMIN, espacio="LUNA").json["usuario"]["espacio_activo"], "ADMINISTRACION")
+        self.assertEqual(
+            self._login(ESTUDIANTE, espacio="INVENTARIO").json["usuario"]["espacio_activo"], "PERSONAL")
+
+    def test_el_estudiante_gestor_alterna_entre_personal_e_inventario(self):
+        personal = self._login(GESTOR_DOCENTE).json["usuario"]
+        self.assertEqual(personal["espacio_activo"], "PERSONAL")   # prioriza el perfil prestatario
+        self.assertEqual(set(personal["espacios_disponibles"]), {"PERSONAL", "INVENTARIO"})
+        h = self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL")
+        cambio = self.cliente.post("/api/auth/espacio", headers=h, json={"espacio": "INVENTARIO"})
+        self.assertEqual(cambio.status_code, 200, cambio.json)
+        self.assertEqual(cambio.json["usuario"]["espacio_activo"], "INVENTARIO")
+        inventario = {"Authorization": f"Bearer {cambio.json['token']}"}
+        self.assertEqual(
+            self.cliente.get("/api/auth/yo", headers=inventario).json["espacio_activo"], "INVENTARIO")
+
+    def test_cambiar_a_un_espacio_no_disponible_devuelve_403(self):
+        gestor = self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL")
+        negado = self.cliente.post(
+            "/api/auth/espacio", headers=gestor, json={"espacio": "ADMINISTRACION"})
+        self.assertEqual(negado.status_code, 403, negado.json)
+        invalido = self.cliente.post(
+            "/api/auth/espacio", headers=gestor, json={"espacio": "LUNA"})
+        self.assertEqual(invalido.status_code, 400, invalido.json)
+
+    def test_el_espacio_activo_restringe_las_operaciones_del_rol(self):
+        libro = {"tipo": "LIBRO", "codigo": "LIB-ESP", "nombre": "Espacios de trabajo",
+                 "categoria": "Pruebas", "atributos": {"isbn": "9", "autor": "Autoría"}}
+        personal = self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL")
+        # en Personal no puede operar inventario aunque su rol de gestor lo permita
+        self.assertEqual(
+            self.cliente.post("/api/items", headers=personal, json=libro).status_code, 403)
+        inventario = self.ingresar(GESTOR_DOCENTE, espacio="INVENTARIO")
+        self.assertEqual(
+            self.cliente.post("/api/items", headers=inventario, json=libro).status_code, 201)
+
+    def test_token_heredado_sin_espacio_recibe_contexto_seguro(self):
+        anterior = self.ingresar(ESTUDIANTE)["Authorization"].split()[1]
+        with self.app.app_context():
+            servicios = self.app.extensions["servicios"]
+            uid, version, _ = servicios.tokens.verificar(anterior)
+            usuario = servicios.identidad.usuario_de_sesion(uid, version)
+            usuario.espacioActivo = None                 # token anterior, sin el nuevo campo
+            heredado = servicios.tokens.emitir(usuario)
+        yo = self.cliente.get("/api/auth/yo", headers={"Authorization": f"Bearer {heredado}"})
+        self.assertEqual(yo.status_code, 200, yo.json)
+        self.assertEqual(yo.json["espacio_activo"], "PERSONAL")
+        self.assertIn("SOLICITAR_PRESTAMO", yo.json["permisos"])
+
+
 class GestionUsuariosTest(ApiBase):
     NUEVO = {
         "nombre": "Ana Quispe", "correo": "Ana.Quispe@escuela.edu", "password": "clave-segura-1",

@@ -2,17 +2,32 @@ import { expect, test, type Page } from '@playwright/test';
 
 const CLAVE = 'demo1234';
 
-async function ingresar(page: Page, correo = 'admin@escuela.edu') {
+type Espacio = 'PERSONAL' | 'INVENTARIO' | 'ADMINISTRACION';
+const INICIO: Record<Espacio, string> = {
+  PERSONAL: '/prestamos',
+  INVENTARIO: '/admin/inventario',
+  ADMINISTRACION: '/admin/usuarios',
+};
+
+async function ingresar(page: Page, correo = 'admin@escuela.edu', espacio?: Espacio) {
   await page.goto('/catalogo');
-  await page.evaluate(() => {
+  await page.evaluate((esp) => {
     localStorage.clear();
     sessionStorage.clear();
-  });
+    if (esp) localStorage.setItem('prestamos.espacio', esp);
+  }, espacio ?? null);
   await page.goto('/');
   await page.getByLabel('Correo institucional').fill(correo);
   await page.getByLabel('Contraseña').fill(CLAVE);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
-  await expect(page).toHaveURL('/prestamos');
+  if (espacio) await expect(page).toHaveURL(INICIO[espacio]);
+  else await expect(page).not.toHaveURL('/');
+}
+
+// Cambia de espacio desde el selector de la barra lateral y espera el destino.
+async function seleccionarEspacio(page: Page, espacio: Espacio) {
+  await page.getByLabel('Espacio de trabajo').selectOption(espacio);
+  await expect(page).toHaveURL(INICIO[espacio]);
 }
 
 test('la portada ofrece acceso institucional y entrada al catálogo público', async ({ page }) => {
@@ -44,7 +59,8 @@ test('el login descarta destinos externos escritos con barras invertidas', async
   await page.getByLabel('Correo institucional').fill('admin@escuela.edu');
   await page.getByLabel('Contraseña').fill(CLAVE);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
-  await expect(page).toHaveURL('http://127.0.0.1:44321/prestamos');
+  // El administrador inicia en su espacio predeterminado (Administración).
+  await expect(page).toHaveURL('http://127.0.0.1:44321/admin/usuarios');
 });
 
 test('el administrador registra usuario, recurso, entrega y devolución', async ({ page }, testInfo) => {
@@ -56,9 +72,8 @@ test('el administrador registra usuario, recurso, entrega y devolución', async 
   const codigoItem = `LIB-E2E-${marca}`;
   const nombreItem = `Libro de navegador ${marca}`;
 
-  await ingresar(page);
-
-  await page.goto('/admin/usuarios');
+  // La gestión de usuarios vive en Administración.
+  await ingresar(page, 'admin@escuela.edu', 'ADMINISTRACION');
   await page.getByRole('button', { name: 'Nuevo usuario' }).click();
   await page.getByLabel('Nombre completo').fill(nombreUsuario);
   await page.getByLabel('Correo').fill(correoUsuario);
@@ -68,7 +83,8 @@ test('el administrador registra usuario, recurso, entrega y devolución', async 
   await expect(page.locator('#mensaje')).toContainText('Usuario registrado.');
   await expect(page.getByRole('cell', { name: new RegExp(nombreUsuario) })).toBeVisible();
 
-  await page.goto('/admin/inventario');
+  // El inventario y las entregas viven en el espacio de Inventario.
+  await seleccionarEspacio(page, 'INVENTARIO');
   await page.getByRole('button', { name: 'Nuevo recurso' }).click();
   await page.getByLabel('Tipo de recurso').selectOption('LIBRO');
   await page.getByLabel('Código').fill(codigoItem.toLowerCase());
@@ -108,7 +124,7 @@ test('el administrador registra usuario, recurso, entrega y devolución', async 
 });
 
 test('el gestor entrega varios recursos y devuelve cada uno con su condición', async ({ page }) => {
-  await ingresar(page, 'luis.ramos@escuela.edu');
+  await ingresar(page, 'luis.ramos@escuela.edu', 'INVENTARIO');
   await page.goto('/prestamos');
   await page.getByLabel('Usuario habilitado').selectOption({
     label: 'Jesus Perez (jesus.perez@escuela.edu)',
@@ -155,15 +171,31 @@ test('el gestor entrega varios recursos y devuelve cada uno con su condición', 
 });
 
 test('el gestor opera inventario y no accede a la administración de usuarios', async ({ page }) => {
-  await ingresar(page, 'luis.ramos@escuela.edu');
+  await ingresar(page, 'luis.ramos@escuela.edu', 'INVENTARIO');
   await expect(page.getByRole('navigation', { name: 'Principal' })).toContainText('Inventario');
   await expect(page.getByRole('navigation', { name: 'Principal' })).not.toContainText('Usuarios');
   await page.goto('/admin/usuarios');
   await expect(page.getByRole('heading', { name: 'Acceso restringido' })).toBeVisible();
 });
 
+test('el estudiante–gestor alterna entre su espacio personal y el de inventario', async ({ page }) => {
+  await ingresar(page, 'luis.ramos@escuela.edu', 'PERSONAL');
+  const navegacion = page.getByRole('navigation', { name: 'Principal' });
+  // En Personal solo ve sus propias secciones, nunca la operación de inventario.
+  await expect(navegacion).toContainText('Mis préstamos');
+  await expect(navegacion).not.toContainText('Inventario');
+  await expect(page.getByLabel('Usuario habilitado')).toBeHidden();
+
+  // Al cambiar a Inventario aparecen las entregas y desaparecen las vistas personales.
+  await seleccionarEspacio(page, 'INVENTARIO');
+  await expect(navegacion).toContainText('Inventario');
+  await expect(navegacion).not.toContainText('Mis préstamos');
+  await page.goto('/prestamos');
+  await expect(page.getByLabel('Usuario habilitado')).toBeVisible();
+});
+
 test('el estudiante reserva y el administrador convierte la reserva en préstamo', async ({ page }) => {
-  await ingresar(page, 'jesus.perez@escuela.edu');
+  await ingresar(page, 'jesus.perez@escuela.edu', 'PERSONAL');
   await page.goto('/reservas');
   await page.getByLabel('Buscar recurso').fill('clean code');
   const selectorRecurso = page.getByLabel('Recurso a reservar');
@@ -178,7 +210,8 @@ test('el estudiante reserva y el administrador convierte la reserva en préstamo
   const propia = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
   await expect(propia).toContainText('Pendiente');
 
-  await ingresar(page);
+  // La aprobación y la conversión en préstamo viven en el espacio de Inventario.
+  await ingresar(page, 'admin@escuela.edu', 'INVENTARIO');
   await page.goto('/reservas');
   const gestion = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
   await gestion.getByRole('button', { name: 'Confirmar' }).click();
@@ -196,7 +229,8 @@ test('el estudiante reserva y el administrador convierte la reserva en préstamo
 });
 
 test('el administrador configura una política y gestiona una sanción', async ({ page }) => {
-  await ingresar(page);
+  // La configuración de políticas pertenece a Administración.
+  await ingresar(page, 'admin@escuela.edu', 'ADMINISTRACION');
   await page.goto('/admin/configuracion');
   const factor = page.getByLabel('Sanción por atraso de Estudiante');
   await factor.fill('2');
@@ -210,6 +244,8 @@ test('el administrador configura una política y gestiona una sanción', async (
     name: 'Guardar reglas de Estudiante',
   }).click();
 
+  // El registro operativo de una sanción vive en Inventario.
+  await seleccionarEspacio(page, 'INVENTARIO');
   await page.goto('/sanciones');
   await page.getByLabel('Usuario').selectOption({
     label: 'Jesus Perez (jesus.perez@escuela.edu)',
@@ -220,8 +256,13 @@ test('el administrador configura una política y gestiona una sanción', async (
   await expect(page.locator('#mensaje')).toContainText('Sanción registrada');
   const sancion = page.getByRole('row').filter({ hasText: 'Daño de prueba E2E' });
   await expect(sancion).toContainText('Activa');
+
+  // El cierre de la sanción pertenece a Administración.
+  await seleccionarEspacio(page, 'ADMINISTRACION');
+  await page.goto('/sanciones');
+  const porCerrar = page.getByRole('row').filter({ hasText: 'Daño de prueba E2E' });
   page.once('dialog', (dialogo) => dialogo.accept('Prueba finalizada'));
-  await sancion.getByRole('button', { name: 'Cerrar' }).click();
+  await porCerrar.getByRole('button', { name: 'Cerrar' }).click();
   await expect(page.locator('#mensaje')).toContainText('Sanción cerrada');
-  await expect(sancion).toContainText('Cerrada');
+  await expect(porCerrar).toContainText('Cerrada');
 });

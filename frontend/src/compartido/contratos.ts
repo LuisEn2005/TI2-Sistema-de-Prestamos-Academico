@@ -5,6 +5,7 @@ export type Estado =
 export type Rol =
   | 'ESTUDIANTE' | 'DOCENTE' | 'ADMINISTRATIVO'
   | 'GESTOR_INVENTARIO' | 'ADMINISTRADOR_SISTEMA';
+export type EspacioTrabajo = 'PERSONAL' | 'INVENTARIO' | 'ADMINISTRACION';
 
 export type ItemDTO = {
   id: number; codigo: string; nombre: string; categoria: string; tipo: string;
@@ -21,6 +22,7 @@ export type UsuarioDTO = {
   id: number; nombre: string; correo: string; activo: boolean; roles: Rol[];
   perfiles: Partial<Record<Rol, PerfilDTO>>; tiene_sancion_activa: boolean;
   habilitado: boolean; motivo_no_habilitado: string | null; permisos?: string[];
+  espacio_activo: EspacioTrabajo; espacios_disponibles: EspacioTrabajo[];
 };
 export type CondicionDevolucion = 'BUEN_ESTADO' | 'DANADO' | 'PERDIDO';
 export type RolPrestatario = 'ESTUDIANTE' | 'DOCENTE' | 'ADMINISTRATIVO';
@@ -86,6 +88,9 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
   ESTUDIANTE: 'Estudiante', DOCENTE: 'Docente', ADMINISTRATIVO: 'Administrativo',
   GESTOR_INVENTARIO: 'Gestor de inventario',
   ADMINISTRADOR_SISTEMA: 'Administrador del sistema',
+};
+export const ETIQUETA_ESPACIO: Record<EspacioTrabajo, string> = {
+  PERSONAL: 'Personal', INVENTARIO: 'Inventario', ADMINISTRACION: 'Administración',
 };
 export const ETIQUETA_CONDICION: Record<CondicionDevolucion, string> = {
   BUEN_ESTADO: 'Buen estado', DANADO: 'Dañado', PERDIDO: 'Perdido',

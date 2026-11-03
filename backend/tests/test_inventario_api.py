@@ -71,14 +71,14 @@ class AdministracionInventarioTest(ApiBase):
         self.assertEqual(self.cliente.post("/api/items", json=LIBRO).status_code, 401)
 
     def test_registrar_item_con_atributos_del_tipo(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         r = self.cliente.post("/api/items", headers=h, json=LIBRO)
         self.assertEqual(r.status_code, 201, r.json)
         self.assertEqual(r.json["estado"], "DISPONIBLE")
         self.assertEqual(self.cliente.get("/api/items?q=evans").json["total"], 1)
 
     def test_registrar_material_y_mobiliario_sin_datos_demo_adicionales(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         ejemplos = (
             {"tipo": "MATERIAL", "codigo": "MAT-001", "nombre": "Cable HDMI",
              "categoria": "Accesorios", "atributos": {
@@ -93,7 +93,7 @@ class AdministracionInventarioTest(ApiBase):
             self.assertEqual(respuesta.json["atributos"], ejemplo["atributos"])
 
     def test_validaciones_de_registro(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         sin_isbn = dict(LIBRO, atributos={"autor": "X"})
         extra = dict(LIBRO, atributos=dict(LIBRO["atributos"], color="rojo"))
         casos = {
@@ -109,25 +109,25 @@ class AdministracionInventarioTest(ApiBase):
                              400, nombre)
 
     def test_codigo_duplicado_sin_distinguir_mayusculas(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         self.assertEqual(self.cliente.post("/api/items", headers=h, json=LIBRO).status_code, 201)
         r = self.cliente.post("/api/items", headers=h, json=dict(LIBRO, codigo="lib-ddd"))
         self.assertEqual(r.status_code, 409)
 
     def test_codigo_se_guarda_en_formato_canonico(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         r = self.cliente.post("/api/items", headers=h, json=dict(LIBRO, codigo=" lib-ddd "))
         self.assertEqual(r.status_code, 201, r.json)
         self.assertEqual(r.json["codigo"], "LIB-DDD")
 
     def test_el_estado_inicial_no_se_puede_forzar(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         r = self.cliente.post("/api/items", headers=h, json=dict(LIBRO, estado="PRESTADO"))
         self.assertEqual(r.status_code, 400)
         self.assertIn("estado", r.json["error"])
 
     def test_rechaza_campos_desconocidos(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         self.assertEqual(self.cliente.post(
             "/api/items", headers=h, json=dict(LIBRO, nombre_item="otro")).status_code, 400)
         iid = self.item_id("LIB-CLRS")
@@ -136,7 +136,7 @@ class AdministracionInventarioTest(ApiBase):
             json={"estado": "EN_MANTENIMIENTO", "forzar": True}).status_code, 400)
 
     def test_actualizar_item(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         iid = self.item_id("LIB-CLRS")
         r = self.cliente.patch(f"/api/items/{iid}", headers=h, json={
             "nombre": "CLRS 4.ª ed.", "atributos": {"editorial": "MIT"}})
@@ -153,7 +153,7 @@ class AdministracionInventarioTest(ApiBase):
         self.assertEqual(self.cliente.patch("/api/items/999", headers=h, json={}).status_code, 404)
 
     def test_cambios_de_estado_manuales(self):
-        h = self.ingresar()
+        h = self.ingresar(espacio="INVENTARIO")
         iid = self.item_id("EQ-META")
         cambiar = lambda e: self.cliente.post(f"/api/items/{iid}/estado", headers=h, json={"estado": e})  # noqa: E731
         self.assertEqual(cambiar("EN_MANTENIMIENTO").json["estado"], "EN_MANTENIMIENTO")
@@ -183,7 +183,7 @@ class AdministracionInventarioTest(ApiBase):
 
         t.registrar_tipo(t.TipoItem("DRON", "Dron", Dron, (t.Campo("modelo", "Modelo", True),)))
         try:
-            h = self.ingresar()
+            h = self.ingresar(espacio="INVENTARIO")
             r = self.cliente.post("/api/items", headers=h, json={
                 "tipo": "DRON", "codigo": "DR-1", "nombre": "Dron de mapeo",
                 "categoria": "Topografía", "atributos": {"modelo": "Mavic 3"}})

@@ -2,9 +2,13 @@
 import {
   api, ApiError, EVENTO_SESION_INVALIDADA, guardarToken, olvidarToken, token,
 } from './api';
-import type { UsuarioDTO } from './contratos';
+import { ETIQUETA_ESPACIO, type EspacioTrabajo, type UsuarioDTO } from './contratos';
 import { el } from './ui';
 
+const CLAVE_ESPACIO = 'prestamos.espacio';
+const INICIO_ESPACIO: Record<EspacioTrabajo, string> = {
+  PERSONAL: '/prestamos', INVENTARIO: '/admin/inventario', ADMINISTRACION: '/admin/usuarios',
+};
 let actual: UsuarioDTO | null | undefined;
 window.addEventListener(EVENTO_SESION_INVALIDADA, () => { actual = null; });
 
@@ -13,6 +17,7 @@ export async function usuarioActual(): Promise<UsuarioDTO | null> {
   if (!token()) return (actual = null);
   try {
     actual = await api.get<UsuarioDTO>('/api/auth/yo');
+    localStorage.setItem(CLAVE_ESPACIO, actual.espacio_activo);
   } catch (error) {
     if (error instanceof ApiError && error.estado === 401) {
       olvidarToken();
@@ -28,10 +33,21 @@ export const tienePermiso = (u: UsuarioDTO | null, permiso: string) =>
   !!u && (u.permisos ?? []).includes(permiso);
 
 export async function iniciarSesion(correo: string, password: string) {
-  const r = await api.post<{ token: string; usuario: UsuarioDTO }>('/api/auth/login', { correo, password });
+  const r = await api.post<{ token: string; usuario: UsuarioDTO }>('/api/auth/login', {
+    correo, password, espacio: localStorage.getItem(CLAVE_ESPACIO) ?? undefined,
+  });
   guardarToken(r.token);
   actual = r.usuario;
+  localStorage.setItem(CLAVE_ESPACIO, r.usuario.espacio_activo);
   return r.usuario;
+}
+
+export async function cambiarEspacio(espacio: EspacioTrabajo) {
+  const r = await api.post<{ token: string; usuario: UsuarioDTO }>('/api/auth/espacio', { espacio });
+  guardarToken(r.token);
+  actual = r.usuario;
+  localStorage.setItem(CLAVE_ESPACIO, espacio);
+  window.location.href = INICIO_ESPACIO[espacio];
 }
 
 export function cerrarSesion() {
@@ -83,15 +99,18 @@ export async function dibujarNavegacion() {
     return;
   }
   const generales: [string, string][] = [['/catalogo', 'Catálogo']];
-  const gestion: [string, string][] = [];
-  if (usuario) generales.push(['/prestamos', 'Préstamos']);
-  if (usuario) generales.push(['/sanciones', 'Sanciones']);
-  if (tienePermiso(usuario, 'RESERVAR_ITEM') || tienePermiso(usuario, 'CONFIRMAR_RESERVA')) {
-    generales.push(['/reservas', 'Reservas']);
+  if (usuario?.espacio_activo === 'PERSONAL') {
+    generales.push(['/prestamos', 'Mis préstamos'], ['/reservas', 'Mis reservas'],
+      ['/sanciones', 'Mis sanciones']);
   }
-  if (tienePermiso(usuario, 'REGISTRAR_ITEM_INVENTARIO')) gestion.push(['/admin/inventario', 'Inventario']);
-  if (tienePermiso(usuario, 'GESTIONAR_USUARIOS_Y_ROLES')) gestion.push(['/admin/usuarios', 'Usuarios']);
-  if (tienePermiso(usuario, 'CONFIGURAR_POLITICAS')) gestion.push(['/admin/configuracion', 'Configuración']);
+  if (usuario?.espacio_activo === 'INVENTARIO') {
+    generales.push(['/admin/inventario', 'Inventario'], ['/prestamos', 'Préstamos'],
+      ['/reservas', 'Reservas'], ['/sanciones', 'Sanciones']);
+  }
+  if (usuario?.espacio_activo === 'ADMINISTRACION') {
+    generales.push(['/admin/usuarios', 'Usuarios'], ['/admin/configuracion', 'Configuración'],
+      ['/sanciones', 'Sanciones']);
+  }
 
   const crearEnlaces = (enlaces: [string, string][]) => enlaces.map(([ruta, texto]) => {
       const activo = window.location.pathname.startsWith(ruta);
@@ -100,7 +119,25 @@ export async function dibujarNavegacion() {
       return a;
     });
   nav.replaceChildren(el('span', { class: 'grupo-navegacion' }, 'Principal'), ...crearEnlaces(generales));
-  if (gestion.length) nav.append(el('span', { class: 'grupo-navegacion' }, 'Gestión'), ...crearEnlaces(gestion));
+
+  const zonaEspacio = document.querySelector('#zona-espacio');
+  if (zonaEspacio && usuario) {
+    if (usuario.espacios_disponibles.length > 1) {
+      const selector = el('select', { 'aria-label': 'Espacio de trabajo' });
+      selector.replaceChildren(...usuario.espacios_disponibles.map((espacio) =>
+        el('option', { value: espacio }, ETIQUETA_ESPACIO[espacio])));
+      selector.value = usuario.espacio_activo;
+      selector.addEventListener('change', () => {
+        selector.disabled = true;
+        void cambiarEspacio(selector.value as EspacioTrabajo).catch(() => { selector.disabled = false; });
+      });
+      zonaEspacio.replaceChildren(el('label', { for: 'selector-espacio' }, 'Espacio de trabajo'), selector);
+      selector.id = 'selector-espacio';
+    } else {
+      zonaEspacio.replaceChildren(
+        el('span', { class: 'etiqueta-espacio' }, ETIQUETA_ESPACIO[usuario.espacio_activo]));
+    }
+  }
 
   const zona = document.querySelector('#zona-sesion');
   if (!zona) return;
