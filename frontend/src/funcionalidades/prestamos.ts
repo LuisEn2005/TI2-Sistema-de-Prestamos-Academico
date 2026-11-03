@@ -246,14 +246,19 @@ async function cargarUsuarios() {
 
 async function cargarItems() {
   const mio = pedidoItems.nueva();
+  const selector = $<HTMLSelectElement>('#item');
+  const botonAgregar = $<HTMLButtonElement>('#agregar');
+  selector.disabled = true;
+  botonAgregar.disabled = true;
   const r = await api.get<PaginaItemsDTO>('/api/items', {
     estado: 'DISPONIBLE', limite: 50, q: $<HTMLInputElement>('#buscar-item').value.trim(),
   });
   if (!pedidoItems.vigente(mio)) return;
   const elegidos = new Set(seleccion.map((i) => i.id));
   const libres = r.items.filter((i) => !elegidos.has(i.id));
-  opciones($('#item'), libres.map((i: ItemDTO) => [String(i.id), `${i.nombre} (${i.codigo})`]));
-  $<HTMLButtonElement>('#agregar').disabled = libres.length === 0;
+  opciones(selector, libres.map((i: ItemDTO) => [String(i.id), `${i.nombre} (${i.codigo})`]));
+  selector.disabled = libres.length === 0;
+  botonAgregar.disabled = libres.length === 0;
   itemsDisponibles = libres;
 }
 let itemsDisponibles: ItemDTO[] = [];

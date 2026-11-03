@@ -121,9 +121,21 @@ test('el gestor entrega varios recursos y devuelve cada uno con su condición', 
   await expect(modalidad.locator('option:checked')).not.toContainText('15 días');
   await expect(page.getByText('plazo de 7 días')).toBeVisible();
 
-  for (const etiqueta of ['Meta Quest (EQ-META)', 'Introduction to Algorithms (CLRS) (LIB-CLRS)']) {
-    await page.getByLabel('Recurso disponible').selectOption({ label: etiqueta });
+  const selectorRecurso = page.getByLabel('Recurso disponible');
+  const recursosSeleccionados = page.locator('#seleccion');
+  const recursos = [
+    { etiqueta: 'Meta Quest (EQ-META)', nombre: 'Meta Quest', codigo: 'EQ-META' },
+    {
+      etiqueta: 'Introduction to Algorithms (CLRS) (LIB-CLRS)',
+      nombre: 'Introduction to Algorithms (CLRS)', codigo: 'LIB-CLRS',
+    },
+  ];
+  for (const { etiqueta, nombre, codigo } of recursos) {
+    await selectorRecurso.selectOption({ label: etiqueta });
     await page.getByRole('button', { name: 'Agregar' }).click();
+    await expect(recursosSeleccionados).toContainText(nombre);
+    await expect(recursosSeleccionados).toContainText(codigo);
+    await expect(selectorRecurso.locator('option', { hasText: etiqueta })).toHaveCount(0);
   }
   await page.getByRole('button', { name: 'Registrar entrega' }).click();
   await expect(page.locator('#mensaje')).toContainText('Entrega registrada. Fecha límite:');
