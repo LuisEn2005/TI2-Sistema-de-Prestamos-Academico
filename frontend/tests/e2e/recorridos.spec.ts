@@ -114,11 +114,11 @@ test('el gestor entrega varios recursos y devuelve cada uno con su condición', 
     label: 'Jesus Perez (jesus.perez@escuela.edu)',
   });
   const modalidad = page.getByLabel('Modalidad / lugar de uso');
-  await expect(modalidad.locator('option:checked')).toHaveText('In situ (en sala) · 1 día');
+  await expect(modalidad.locator('option:checked')).toHaveText('In situ (en sala)');
   await expect(page.getByText('plazo de 1 día')).toBeVisible();
   await modalidad.selectOption({ index: 1 }); // externa
-  await expect(modalidad.locator('option:checked')).toHaveText('Externa (a domicilio) · 7 días');
-  await expect(modalidad.locator('option:checked')).not.toContainText('15 días');
+  await expect(modalidad.locator('option:checked')).toHaveText('Externa (a domicilio)');
+  await expect(modalidad.locator('option:checked')).not.toContainText('días');
   await expect(page.getByText('plazo de 7 días')).toBeVisible();
 
   const selectorRecurso = page.getByLabel('Recurso disponible');

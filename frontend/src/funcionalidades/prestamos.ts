@@ -179,25 +179,9 @@ function mostrarResumen(texto: string, error = false) {
   zona.classList.toggle('error', error);
 }
 
-function restaurarEtiquetasModalidad() {
-  for (const opcion of Array.from(selModalidad().options)) {
-    const modalidad = modalidades.find((m) => String(m.id) === opcion.value);
-    if (modalidad) opcion.textContent = modalidad.nombre;
-  }
-}
-
-function mostrarPlazoAplicado(dias: number) {
-  const opcion = selModalidad().selectedOptions[0];
-  const modalidad = modalidades.find((m) => String(m.id) === opcion?.value);
-  if (opcion && modalidad) {
-    opcion.textContent = `${modalidad.nombre} · ${plural(dias, 'día', 'días')}`;
-  }
-}
-
 async function actualizarCondiciones() {
   const mio = pedidoCondiciones.nueva();
   condicionesOk = false;
-  restaurarEtiquetasModalidad();
   validarEntrega();
   if (!selUsuario().value || !selModalidad().value) { mostrarResumen(''); return; }
   try {
@@ -219,7 +203,6 @@ async function actualizarCondiciones() {
     fechaFin.max = c.fecha_limite ?? '';
     fechaFin.value = c.fecha_limite ?? '';
     fechaFin.disabled = (c.dias_plazo ?? 0) === 1;
-    mostrarPlazoAplicado(c.dias_plazo ?? 0);
     mostrarResumen(
       `Prestará como ${ETIQUETA_ROL[c.rol_solicitante as Rol].toLowerCase()} · plazo de ${plural(c.dias_plazo ?? 0, 'día', 'días')}, ` +
       `vence el ${soloFecha(c.fecha_limite ?? null)} · cupo: ${c.cupo_restante} de ${c.max_items_simultaneos} ` +
