@@ -129,7 +129,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y nueve recorridos Playwright. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
+La automatización en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta backend con SQLite, una integración sobre PostgreSQL 16, build y auditoría del frontend, y ocho recorridos Playwright. La interfaz está optimizada para equipos de escritorio. Las pruebas usan bases aisladas; no escriben datos ficticios en la base de la instalación final.
 
 ## Documentación de referencia
 

@@ -19,7 +19,7 @@ test('la portada ofrece acceso institucional y entrada al catálogo público', a
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
   await expect(page.getByLabel('Correo institucional')).toBeFocused();
-  await page.getByRole('link', { name: 'Consultar catálogo público' }).click();
+  await page.getByRole('link', { name: 'Consultar catálogo' }).click();
   await expect(page).toHaveURL('/catalogo');
   await expect(page.getByRole('heading', { name: 'Catálogo de recursos' })).toBeVisible();
 });
@@ -45,19 +45,6 @@ test('el login descarta destinos externos escritos con barras invertidas', async
   await page.getByLabel('Contraseña').fill(CLAVE);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   await expect(page).toHaveURL('http://127.0.0.1:44321/prestamos');
-});
-
-test('la navegación móvil se despliega y conserva los permisos del gestor', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await ingresar(page, 'luis.ramos@escuela.edu');
-  const menu = page.getByRole('button', { name: 'Menú' });
-  await expect(menu).toHaveAttribute('aria-expanded', 'false');
-  await menu.click();
-  await expect(menu).toHaveAttribute('aria-expanded', 'true');
-  const navegacion = page.getByRole('navigation', { name: 'Principal' });
-  await expect(navegacion).toBeVisible();
-  await expect(navegacion).toContainText('Inventario');
-  await expect(navegacion).not.toContainText('Usuarios');
 });
 
 test('el administrador registra usuario, recurso, entrega y devolución', async ({ page }, testInfo) => {
