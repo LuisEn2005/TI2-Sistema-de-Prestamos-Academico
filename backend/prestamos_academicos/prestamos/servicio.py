@@ -17,7 +17,7 @@ from ..inventario import EstadoItem
 from .dominio import CondicionDevolucion, EstadoPrestamo, Prestamo
 from ..compartido import ItemId, ReservaId, RolUsuario, UsuarioId
 from ..compartido import validacion as v
-from ..compartido import Conflicto, ErrorAplicacion, NoEncontrado, SinPermiso
+from ..compartido import Conflicto, ErrorAplicacion, NoEncontrado
 from ..compartido.reloj import Reloj
 from ..sanciones import Sancion
 from ..calendario_laboral.servicio import CalendarioLaboralApplicationService
@@ -174,8 +174,6 @@ class PrestamoApplicationService:
             "rol_solicitante": p.rolSolicitante.value if p.rolSolicitante else None,
             "modalidad": p.modalidadNombre,
             "dias_plazo": p.diasPlazo,
-            "dias_aplazados": p.diasAplazados,
-            "numero_renovaciones": p.numeroRenovaciones,
             "items": [{
                 "item_id": d.itemId.valor,
                 "codigo": items[d.itemId.valor].codigo,
@@ -210,7 +208,9 @@ class PrestamoApplicationService:
             if prestamo is None or (not self._ve_todo(actor)
                                     and prestamo.usuarioId.valor != actor.id.valor):
                 raise NoEncontrado("El préstamo no existe.")
-            return self._vistas(uow, [prestamo])[0]
+            vista = self._vistas(uow, [prestamo])[0]
+            vista["aplazamientos"] = uow.prestamos.listar_aplazamientos(prestamo_id)
+            return vista
 
     # -- entrega (RF10) ------------------------------------------------------------------------
     def _fecha_final(self, uow, ctx, fecha_fin):
@@ -234,7 +234,7 @@ class PrestamoApplicationService:
                   fecha_fin=None):
         with self._uow() as uow:
             ctx = self._resolver_contexto(uow, usuario_id, modalidad_id, rol_solicitante)
-            fin, dias_plazo, dias_aplazados = self._fecha_final(uow, ctx, fecha_fin)
+            fin, dias_plazo, _ = self._fecha_final(uow, ctx, fecha_fin)
             uow.usuarios.bloquear(usuario_id)  # dos entregas simultáneas no superan el cupo
             ctx.items_en_prestamo = uow.prestamos.contar_items_activos(usuario_id)
             ctx.reservas_activas = uow.reservas.contar_activas_usuario(usuario_id)
@@ -265,6 +265,19 @@ class PrestamoApplicationService:
                 raise Conflicto(f"No están disponibles: {', '.join(sorted(ocupados))}.")
 
             for item_id in item_ids:
+                ultima = uow.prestamos.ultima_devolucion_item(item_id)
+                if ultima is not None:
+                    disponible = self.calendario.siguiente_laborable(
+                        uow, self.reloj.fecha_local(ultima) + timedelta(days=1))
+                    if self.reloj.hoy() < disponible:
+                        raise Conflicto(
+                            f"El recurso {items[item_id].codigo} estará disponible el "
+                            f"{disponible.isoformat()} después de su devolución.")
+                if uow.reservas.find_pendientes_solapadas(
+                        item_id, self.reloj.hoy(), fin):
+                    raise Conflicto(
+                        f"El recurso {items[item_id].codigo} tiene solicitudes pendientes "
+                        "en ese rango; resuélvalas antes de registrar el préstamo.")
                 if uow.reservas.find_confirmadas_solapadas(
                         item_id, self.reloj.hoy(), fin):
                     raise Conflicto(
@@ -286,7 +299,6 @@ class PrestamoApplicationService:
                     items=[ItemId(i) for i in item_ids], ahora=self.reloj.ahora(),
                     hoy=self.reloj.hoy())
                 prestamo.fechaDevolucionEsperada = fin
-                prestamo.diasAplazados = dias_aplazados
             except ErrorDominio as e:
                 raise ErrorAplicacion(str(e), 422)
             guardado = uow.prestamos.save(prestamo)
@@ -295,7 +307,7 @@ class PrestamoApplicationService:
         return vista
 
     # -- conversión de reserva (RF09) ----------------------------------------------------------
-    def registrar_desde_reserva(self, reserva_id, modalidad_id=None, fecha_fin=None):
+    def registrar_desde_reserva(self, actor, reserva_id, modalidad_id=None, fecha_fin=None):
         from ..reservas import EstadoReserva
 
         with self._uow() as uow:
@@ -350,54 +362,15 @@ class PrestamoApplicationService:
                     diasPlazo=dias_base,
                     items=[ItemId(item_id)], ahora=self.reloj.ahora(), hoy=self.reloj.hoy())
                 prestamo.fechaDevolucionEsperada = fin
-                prestamo.diasAplazados = dias_transcurridos - dias_base
                 prestamo.reservaId = ReservaId(reserva_id)
                 reserva.convertir()
             except ErrorDominio as error:
                 raise ErrorAplicacion(str(error), 422)
             guardado = uow.prestamos.save(prestamo)
             uow.reservas.save(reserva)
-            vista = self._vistas(uow, [guardado])[0]
-            uow.commit()
-        return vista
-
-    # -- renovación (RF12) --------------------------------------------------------------------
-    def renovar(self, actor, prestamo_id):
-        with self._uow() as uow:
-            prestamo = uow.prestamos.find_by_id(prestamo_id)
-            if prestamo is None:
-                raise NoEncontrado("El préstamo no existe.")
-            if prestamo.usuarioId.valor != actor.id.valor and not self._ve_todo(actor):
-                raise SinPermiso("Solo el titular o un gestor puede renovar el préstamo.")
-            uow.sanciones.sincronizar_vencidas(
-                self.reloj.hoy(), self.reloj.ahora(), prestamo.usuarioId.valor)
-            usuario = uow.usuarios.find_by_id(prestamo.usuarioId.valor)
-            motivo = usuario.motivoNoHabilitado()
-            if motivo:
-                raise ErrorAplicacion(motivo, 422)
-            if prestamo.fechaDevolucionEsperada is None or prestamo.diasPlazo is None:
-                raise Conflicto(
-                    "El préstamo heredado no tiene plazo y no puede renovarse automáticamente.")
-            reservados = []
-            inicio_renovacion = prestamo.fechaDevolucionEsperada + timedelta(days=1)
-            for detalle in prestamo.detalles:
-                nueva_fecha = prestamo.fechaDevolucionEsperada + timedelta(
-                    days=prestamo.diasPlazo)
-                nueva_fecha = self.calendario.siguiente_laborable(uow, nueva_fecha)
-                if uow.reservas.find_confirmadas_solapadas(
-                        detalle.itemId.valor, inicio_renovacion, nueva_fecha):
-                    reservados.append(detalle.itemId.valor)
-            if reservados:
-                raise Conflicto(
-                    "No puede renovarse: uno de los recursos tiene una reserva confirmada.")
-            try:
-                prestamo.renovar(self.reloj.hoy())
-                fecha_laborable = self.calendario.siguiente_laborable(
-                    uow, prestamo.fechaDevolucionEsperada)
-                prestamo.aplazarHasta(fecha_laborable)
-            except ErrorDominio as error:
-                raise Conflicto(str(error))
-            guardado = uow.prestamos.save(prestamo)
+            uow.reservas.registrar_evento(
+                reserva.id.valor, "ENTREGADA", self.reloj.ahora(),
+                actor_id=actor.id.valor, motivo="Préstamo creado desde la reserva.")
             vista = self._vistas(uow, [guardado])[0]
             uow.commit()
         return vista
@@ -426,6 +399,9 @@ class PrestamoApplicationService:
                 if not uow.items.cambiar_estado_si(detalle.itemId.valor, EstadoItem.PRESTADO, destino):
                     raise Conflicto(
                         "Un recurso del préstamo no figura como prestado; revise su estado.")
+                self.calendario.procesar_devolucion(
+                    uow, detalle.itemId.valor,
+                    disponible=destino == EstadoItem.DISPONIBLE)
             guardado = uow.prestamos.save(prestamo)
             vista = self._vistas(uow, [guardado])[0]
             if dias_atraso > 0:

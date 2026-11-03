@@ -29,9 +29,7 @@ def politica_a_dominio(fila: PoliticaServicioDB) -> PoliticaServicio:
         id=PoliticaServicioId(fila.id),
         rolAplicable=RolUsuario(fila.rol_aplicable),
         modalidadId=ModalidadId(fila.modalidad_id),
-        maxItemsSimultaneos=fila.max_items_simultaneos,
         diasPrestamo=fila.dias_prestamo,
-        diasSancionPorDiaAtraso=fila.dias_sancion_por_dia_atraso,
     )
 
 
@@ -135,8 +133,6 @@ def prestamo_a_dominio(fila: PrestamoDB, detalles: list[DetallePrestamoDB], *,
         modalidadId=ModalidadId(fila.modalidad_id) if fila.modalidad_id else None,
         modalidadNombre=modalidad_nombre,
         diasPlazo=fila.dias_plazo,
-        diasAplazados=fila.dias_aplazados,
-        numeroRenovaciones=fila.numero_renovaciones,
         fechaEntrega=fila.fecha_prestamo,
         fechaDevolucionEsperada=fila.fecha_devolucion_esperada,
         fechaDevolucionReal=fila.fecha_devolucion,

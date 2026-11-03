@@ -65,8 +65,6 @@ class Prestamo:
     modalidadId: Optional[ModalidadId] = None
     modalidadNombre: Optional[str] = None
     diasPlazo: Optional[int] = None
-    diasAplazados: int = 0
-    numeroRenovaciones: int = 0
     fechaEntrega: Optional[datetime] = None
     fechaDevolucionEsperada: Optional[date] = None
     fechaDevolucionReal: Optional[datetime] = None
@@ -113,7 +111,6 @@ class Prestamo:
     def aplazarHasta(self, nueva_fecha: date) -> None:
         if not self.fechaDevolucionEsperada or nueva_fecha <= self.fechaDevolucionEsperada:
             return
-        self.diasAplazados += (nueva_fecha - self.fechaDevolucionEsperada).days
         self.fechaDevolucionEsperada = nueva_fecha
 
     def estaVencido(self, hoy: date) -> bool:
@@ -149,23 +146,15 @@ class Prestamo:
                 diasAtraso=atraso,
             ))
 
-    def renovar(self, hoy: date) -> None:
-        if self.estado != EstadoPrestamo.ACTIVO:
-            raise ErrorDominio("Solo puede renovarse un préstamo activo.")
-        if self.estaVencido(hoy):
-            raise ErrorDominio("No puede renovarse un préstamo vencido.")
-        if not self.fechaDevolucionEsperada or not self.diasPlazo:
-            raise ErrorDominio("El préstamo anterior no tiene un plazo renovable.")
-        self.fechaDevolucionEsperada += timedelta(days=self.diasPlazo)
-        self.numeroRenovaciones += 1
-
-
 class IPrestamoRepository(ABC):
     @abstractmethod
     def save(self, prestamo: Prestamo) -> Prestamo: ...
 
     @abstractmethod
     def find_by_id(self, prestamo_id: int) -> Optional[Prestamo]: ...
+
+    @abstractmethod
+    def find_by_reserva_id(self, reserva_id: int) -> Optional[Prestamo]: ...
 
     @abstractmethod
     def find_activos(self) -> List[Prestamo]: ...
@@ -177,3 +166,14 @@ class IPrestamoRepository(ABC):
 
     @abstractmethod
     def contar_items_activos(self, usuario_id: int) -> int: ...
+
+    @abstractmethod
+    def ultima_devolucion_item(self, item_id: int): ...
+
+    @abstractmethod
+    def registrar_aplazamiento(self, prestamo_id: int, cierre_id: Optional[int],
+                               fecha_anterior: date, fecha_nueva: date,
+                               aplicado_en: datetime): ...
+
+    @abstractmethod
+    def listar_aplazamientos(self, prestamo_id: int): ...

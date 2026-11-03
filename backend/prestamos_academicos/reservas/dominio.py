@@ -20,6 +20,7 @@ class EstadoReserva(str, Enum):
     CANCELADA = "CANCELADA"
     CONVERTIDA = "CONVERTIDA"
     RECHAZADA = "RECHAZADA"
+    RETIRADA = "RETIRADA"
 
 
 ESTADOS_ACTIVOS = (EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA)
@@ -78,10 +79,17 @@ class Reserva:
         self.estado = EstadoReserva.EXPIRADA
         self.eventos.append(ReservaExpirada(self.id, self.itemId))
 
-    def cancelar(self) -> None:
-        if self.estado not in ESTADOS_ACTIVOS:
-            raise ErrorDominio("La reserva ya no puede cancelarse.")
+    def retirar(self, motivo: Optional[str] = None) -> None:
+        if self.estado != EstadoReserva.PENDIENTE:
+            raise ErrorDominio("Solo una solicitud pendiente puede retirarse.")
+        self.estado = EstadoReserva.RETIRADA
+        self.motivoResolucion = (motivo or "Solicitud retirada por el titular.").strip()
+
+    def cancelar(self, motivo: Optional[str] = None) -> None:
+        if self.estado != EstadoReserva.CONFIRMADA:
+            raise ErrorDominio("Solo una reserva confirmada puede cancelarse.")
         self.estado = EstadoReserva.CANCELADA
+        self.motivoResolucion = (motivo or "Reserva cancelada por el titular.").strip()
         self.eventos.append(ReservaCancelada(self.id, self.itemId))
 
     def rechazar(self, motivo: str) -> None:
@@ -133,6 +141,7 @@ class IReservaRepository(ABC):
     @abstractmethod
     def buscar(self, *, usuario_id: Optional[int] = None,
                estado: Optional[EstadoReserva] = None,
+               solo_activas: bool = False,
                pagina: int = 1, limite: int = 20) -> Tuple[List[Reserva], int]: ...
 
     @abstractmethod
@@ -155,7 +164,17 @@ class IReservaRepository(ABC):
             excluir_id: Optional[int] = None) -> List[Reserva]: ...
 
     @abstractmethod
+    def find_usuario_item_solapadas(
+            self, usuario_id: int, item_id: int, inicio: date, fin: date) -> List[Reserva]: ...
+
+    @abstractmethod
     def listar_activas(self) -> List[Reserva]: ...
 
     @abstractmethod
     def contar_activas_usuario(self, usuario_id: int) -> int: ...
+
+    @abstractmethod
+    def registrar_evento(self, reserva_id: int, tipo: str, ahora: datetime, **datos): ...
+
+    @abstractmethod
+    def listar_eventos(self, reserva_id: int): ...

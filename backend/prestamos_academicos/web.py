@@ -4,6 +4,7 @@ import logging
 import secrets
 from types import SimpleNamespace
 
+import click
 from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
@@ -70,6 +71,15 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
         admin_correo=config.admin_correo,
         admin_password=config.admin_password,
     )
+    # Recuperación idempotente por si el cron no se ejecutó mientras el servicio
+    # estuvo detenido.
+    app.extensions["servicios"].reservas.expirar_vencidas()
+
+    @app.cli.command("expirar-reservas")
+    def expirar_reservas():
+        """Expira solicitudes no atendidas; ejecutar diariamente a las 00:01 de Lima."""
+        cantidad = app.extensions["servicios"].reservas.expirar_vencidas()
+        click.echo(f"Reservas expiradas: {cantidad}")
 
     from .configuracion_servicio import rutas as rutas_configuracion
     from .identidad import rutas as rutas_identidad

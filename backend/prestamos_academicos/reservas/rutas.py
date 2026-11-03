@@ -20,7 +20,7 @@ bp = Blueprint("reservas", __name__, url_prefix="/api")
 @bp.get("/reservas")
 @requiere_autenticacion
 def listar():
-    parametros_permitidos("estado", "pagina", "limite")
+    parametros_permitidos("estado", "historial", "pagina", "limite")
     estado_texto = texto_consulta("estado", maximo=20)
     try:
         estado = EstadoReserva(estado_texto.upper()) if estado_texto else None
@@ -29,8 +29,15 @@ def listar():
             "«estado» no corresponde a un estado de reserva válido.", 400)
     return jsonify(servicios().reservas.listar(
         g.usuario, estado=estado,
+        historial=texto_consulta("historial", maximo=5) in ("1", "true"),
         pagina=entero_consulta("pagina", 1, maximo=100_000),
         limite=entero_consulta("limite", 20, maximo=100)))
+
+
+@bp.get("/reservas/<int:reserva_id>")
+@requiere_autenticacion
+def detalle(reserva_id):
+    return jsonify(servicios().reservas.obtener(g.usuario, id_ruta(reserva_id)))
 
 
 @bp.post("/reservas")
@@ -79,16 +86,28 @@ def rechazar(reserva_id):
     datos = cuerpo_json()
     v.campos(datos, {"motivo"})
     return jsonify(servicios().reservas.rechazar(
-        id_ruta(reserva_id),
-        v.texto(datos, "motivo", obligatorio=False, maximo=300)
-        or "Solicitud rechazada por el gestor."))
+        g.usuario, id_ruta(reserva_id),
+        v.texto(datos, "motivo", maximo=300)))
+
+
+@bp.post("/reservas/<int:reserva_id>/retiro")
+@requiere_autenticacion
+def retirar(reserva_id):
+    datos = cuerpo_json()
+    v.campos(datos, {"motivo"})
+    return jsonify(servicios().reservas.retirar(
+        g.usuario, id_ruta(reserva_id),
+        v.texto(datos, "motivo", obligatorio=False, maximo=300)))
 
 
 @bp.post("/reservas/<int:reserva_id>/cancelacion")
 @requiere_autenticacion
 def cancelar(reserva_id):
-    v.campos(cuerpo_json(), set())
-    return jsonify(servicios().reservas.cancelar(g.usuario, id_ruta(reserva_id)))
+    datos = cuerpo_json()
+    v.campos(datos, {"motivo"})
+    return jsonify(servicios().reservas.cancelar(
+        g.usuario, id_ruta(reserva_id),
+        v.texto(datos, "motivo", obligatorio=False, maximo=300)))
 
 
 @bp.post("/reservas/<int:reserva_id>/prestamo")
@@ -104,6 +123,7 @@ def convertir(reserva_id):
             raise ErrorAplicacion("«fecha_fin» debe usar AAAA-MM-DD.", 400)
     servicios().reservas.expirar_vencidas()
     return jsonify(servicios().prestamos.registrar_desde_reserva(
+        g.usuario,
         id_ruta(reserva_id),
         id_positivo(datos.get("modalidad_id"), "modalidad_id")
         if datos.get("modalidad_id") is not None else None,

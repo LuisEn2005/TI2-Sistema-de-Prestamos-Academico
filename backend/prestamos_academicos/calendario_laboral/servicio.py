@@ -10,8 +10,7 @@ from ..reservas import EstadoReserva
 
 MAX_RANGO_CALENDARIO = 366
 NO_PRESTABLES = {
-    EstadoItem.RESERVADO, EstadoItem.EN_MANTENIMIENTO,
-    EstadoItem.DADO_DE_BAJA, EstadoItem.EXTRAVIADO,
+    EstadoItem.EN_MANTENIMIENTO, EstadoItem.DADO_DE_BAJA, EstadoItem.EXTRAVIADO,
 }
 
 
@@ -46,6 +45,12 @@ class CalendarioLaboralApplicationService:
         while not self.es_laborable(uow, candidato):
             candidato += timedelta(days=1)
         return candidato
+
+    def fechas_institucionales(self):
+        hoy = self.reloj.hoy()
+        with self._uow() as uow:
+            siguiente = self.siguiente_laborable(uow, hoy + timedelta(days=1))
+        return {"fecha": hoy.isoformat(), "siguiente_laborable": siguiente.isoformat()}
 
     def validar_laborable(self, uow, fecha, etiqueta):
         if self.es_laborable(uow, fecha):
@@ -139,26 +144,87 @@ class CalendarioLaboralApplicationService:
             fin = self.siguiente_laborable(uow, inicio + timedelta(days=duracion))
 
     def _reprogramar(self, uow):
+        ahora = self.reloj.ahora()
+        ocupados_hasta = {}
         for prestamo in uow.prestamos.find_activos():
             limite = prestamo.fechaDevolucionEsperada
             if limite and not self.es_laborable(uow, limite):
-                prestamo.aplazarHasta(self.siguiente_laborable(uow, limite))
+                anterior = limite
+                nueva = self.siguiente_laborable(uow, limite)
+                cierres = uow.calendario.listar(anterior, anterior, solo_activos=True)
+                prestamo.aplazarHasta(nueva)
                 uow.prestamos.save(prestamo)
+                uow.prestamos.registrar_aplazamiento(
+                    prestamo.id.valor, cierres[0].id if cierres else None,
+                    anterior, nueva, ahora)
+            for detalle in prestamo.detalles:
+                if prestamo.fechaDevolucionEsperada:
+                    actual = ocupados_hasta.get(detalle.itemId.valor)
+                    if actual is None or prestamo.fechaDevolucionEsperada > actual:
+                        ocupados_hasta[detalle.itemId.valor] = prestamo.fechaDevolucionEsperada
 
         for reserva in (r for r in uow.reservas.listar_activas()
                         if not r.estaVencida(self.reloj.hoy())):
-            inicio, fin = reserva.fechaInicio, reserva.fechaFin
+            anterior_inicio, anterior_fin = reserva.fechaInicio, reserva.fechaFin
+            inicio, fin = anterior_inicio, anterior_fin
             if not self.es_laborable(uow, inicio):
-                duracion = (fin - inicio).days
                 inicio = self.siguiente_laborable(uow, inicio)
-                fin = inicio + timedelta(days=duracion)
             if not self.es_laborable(uow, fin):
                 fin = self.siguiente_laborable(uow, fin)
             if reserva.estado == EstadoReserva.CONFIRMADA:
-                inicio, fin = self.siguiente_rango_libre(
-                    uow, reserva.itemId.valor, inicio, fin, reserva.id.valor)
+                ocupado = ocupados_hasta.get(reserva.itemId.valor)
+                if ocupado is not None and inicio <= ocupado:
+                    inicio = self.siguiente_laborable(uow, ocupado + timedelta(days=1))
+                if fin < inicio:
+                    fin = inicio
+                ocupados_hasta[reserva.itemId.valor] = fin
             reserva.fechaInicio, reserva.fechaFin = inicio, fin
             uow.reservas.save(reserva)
+            if (inicio, fin) != (anterior_inicio, anterior_fin):
+                uow.reservas.registrar_evento(
+                    reserva.id.valor, "REPROGRAMADA", ahora,
+                    motivo="Reprogramación por calendario institucional.",
+                    inicio_anterior=anterior_inicio, fin_anterior=anterior_fin,
+                    inicio_nuevo=inicio, fin_nuevo=fin)
+
+    def procesar_devolucion(self, uow, item_id, *, disponible):
+        """Protege compromisos futuros después de una devolución real."""
+        activas = [r for r in uow.reservas.find_activas_por_item(item_id)
+                   if not r.estaVencida(self.reloj.hoy())]
+        ahora = self.reloj.ahora()
+        if not disponible:
+            for reserva in activas:
+                if reserva.estado == EstadoReserva.CONFIRMADA:
+                    reserva.cancelar(
+                        "El recurso fue devuelto dañado o reportado como perdido.")
+                    tipo = "CANCELADA"
+                else:
+                    reserva.rechazar(
+                        "El recurso fue devuelto dañado o reportado como perdido.")
+                    tipo = "RECHAZADA"
+                uow.reservas.save(reserva)
+                uow.reservas.registrar_evento(
+                    reserva.id.valor, tipo, ahora, motivo=reserva.motivoResolucion)
+            return
+
+        ocupado_hasta = self.reloj.hoy()
+        for reserva in (r for r in activas if r.estado == EstadoReserva.CONFIRMADA):
+            anterior_inicio, anterior_fin = reserva.fechaInicio, reserva.fechaFin
+            inicio, fin = anterior_inicio, anterior_fin
+            if inicio <= ocupado_hasta:
+                inicio = self.siguiente_laborable(
+                    uow, ocupado_hasta + timedelta(days=1))
+                if fin < inicio:
+                    fin = inicio
+            ocupado_hasta = fin
+            if (inicio, fin) != (anterior_inicio, anterior_fin):
+                reserva.fechaInicio, reserva.fechaFin = inicio, fin
+                uow.reservas.save(reserva)
+                uow.reservas.registrar_evento(
+                    reserva.id.valor, "REPROGRAMADA", ahora,
+                    motivo="Reprogramación por devolución posterior a la prevista.",
+                    inicio_anterior=anterior_inicio, fin_anterior=anterior_fin,
+                    inicio_nuevo=inicio, fin_nuevo=fin)
 
     def calendario_item(self, item_id, desde, hasta):
         self._validar_rango(desde, hasta)
@@ -207,3 +273,75 @@ class CalendarioLaboralApplicationService:
                 "fecha_fin": r.fechaFin.isoformat(),
                 "fecha_solicitud": r.fechaSolicitud.isoformat(),
             } for r in reservas]
+
+    def inventario_fecha(self, fecha, *, texto=None, tipo=None, estado=None,
+                         pagina=1, limite=15):
+        """Vista protegida: disponibilidad derivada e identidad del responsable."""
+        with self._uow() as uow:
+            items, _ = uow.items.buscar(
+                texto=texto, tipo=tipo, categoria=None, estado=None,
+                pagina=1, limite=100_000)
+            prestamos = uow.prestamos.find_activos()
+            nombres = uow.usuarios.nombres_de(
+                [p.usuarioId.valor for p in prestamos]
+                + [r.usuarioId.valor for item in items
+                   for r in uow.reservas.find_activas_por_item(item.id.valor)])
+            filas = []
+            for item in items:
+                asignacion = None
+                estado_fecha = "DISPONIBLE"
+                if item.estado in NO_PRESTABLES or not self.es_laborable(uow, fecha):
+                    estado_fecha = "NO_DISPONIBLE"
+                else:
+                    prestamo = next((p for p in prestamos if any(
+                        d.itemId.valor == item.id.valor for d in p.detalles)
+                        and p.fechaDevolucionEsperada is not None
+                        and self.reloj.fecha_local(p.fechaEntrega) <= fecha
+                        <= max(p.fechaDevolucionEsperada, self.reloj.hoy())), None)
+                    confirmadas = uow.reservas.find_confirmadas_solapadas(
+                        item.id.valor, fecha, fecha)
+                    if prestamo:
+                        estado_fecha = "PRESTADO"
+                        asignacion = {
+                            "tipo": "PRESTAMO",
+                            "usuario": nombres.get(prestamo.usuarioId.valor),
+                            "fecha_inicio": self.reloj.fecha_local(
+                                prestamo.fechaEntrega).isoformat(),
+                            "fecha_fin": prestamo.fechaDevolucionEsperada.isoformat(),
+                            "prestamo_id": prestamo.id.valor,
+                        }
+                    elif confirmadas:
+                        reserva = confirmadas[0]
+                        estado_fecha = "RESERVADO"
+                        asignacion = {
+                            "tipo": "RESERVA",
+                            "usuario": nombres.get(reserva.usuarioId.valor),
+                            "fecha_inicio": reserva.fechaInicio.isoformat(),
+                            "fecha_fin": reserva.fechaFin.isoformat(),
+                            "reserva_id": reserva.id.valor,
+                        }
+                    elif item.estado == EstadoItem.PRESTADO:
+                        estado_fecha = "PRESTADO"
+                pendientes = uow.reservas.find_pendientes_solapadas(
+                    item.id.valor, fecha, fecha)
+                if estado and estado_fecha != estado:
+                    continue
+                filas.append({
+                    "id": item.id.valor,
+                    "codigo": item.codigo,
+                    "nombre": item.nombre,
+                    "categoria": item.categoria,
+                    "tipo": item.TIPO,
+                    "estado_fisico": item.estado.value,
+                    "estado_fecha": estado_fecha,
+                    "asignacion": asignacion,
+                    "solicitudes_pendientes": len(pendientes),
+                    "atributos": {k: valor for k, valor in
+                                  item.atributosEspecificos().items()
+                                  if valor is not None},
+                })
+            total = len(filas)
+            inicio = (pagina - 1) * limite
+            return {"items": filas[inicio:inicio + limite], "total": total,
+                    "pagina": pagina, "limite": limite,
+                    "fecha": fecha.isoformat()}

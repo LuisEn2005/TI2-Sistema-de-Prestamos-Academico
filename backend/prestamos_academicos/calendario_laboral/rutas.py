@@ -34,7 +34,7 @@ def _fecha_cuerpo(datos, nombre):
 @bp.get("/calendario/hoy")
 def fecha_actual():
     """Fecha institucional; evita que el navegador aplique otra zona horaria."""
-    return jsonify({"fecha": servicios().calendario.reloj.hoy().isoformat()})
+    return jsonify(servicios().calendario.fechas_institucionales())
 
 
 @bp.get("/items/<int:item_id>/calendario")

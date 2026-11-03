@@ -37,6 +37,12 @@ def listar_politicas():
     return jsonify([politica_a_json(p) for p in servicios().configuracion.listar_politicas()])
 
 
+@bp.get("/politicas-rol")
+@requiere_autenticacion
+def listar_politicas_rol():
+    return jsonify(servicios().configuracion.listar_reglas_rol())
+
+
 @bp.get("/modalidades")
 @requiere_autenticacion
 def listar_modalidades():
@@ -48,6 +54,12 @@ def listar_modalidades():
 def actualizar_politica(politica_id):
     return jsonify(politica_a_json(servicios().configuracion.actualizar_politica(
         id_ruta(politica_id), cuerpo_json())))
+
+
+@bp.patch("/politicas-rol/<rol>")
+@requiere_permiso(Permiso.CONFIGURAR_POLITICAS)
+def actualizar_politica_rol(rol):
+    return jsonify(servicios().configuracion.actualizar_regla_rol(rol, cuerpo_json()))
 
 
 @bp.patch("/modalidades/<int:modalidad_id>")

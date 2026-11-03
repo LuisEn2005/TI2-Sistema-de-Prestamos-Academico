@@ -134,7 +134,7 @@ class InventarioApplicationService:
         if nuevo in ESTADOS_DE_FLUJO:
             raise ErrorAplicacion(
                 f"El estado {nuevo.value} solo lo establece el flujo de "
-                "préstamos o reservas.", 422)
+                "préstamos.", 422)
         with self._uow() as uow:
             item = uow.items.find_by_id(item_id)
             if item is None:
@@ -144,6 +144,10 @@ class InventarioApplicationService:
                 raise Conflicto(
                     f"El recurso está {anterior.value}: registre la devolución o "
                     "cancele la reserva antes de cambiar su estado.")
+            if nuevo != EstadoItem.DISPONIBLE and uow.reservas.find_activa_por_item(item_id):
+                raise Conflicto(
+                    "El recurso tiene reservas activas; resuélvalas antes de marcarlo "
+                    "como no disponible.")
             try:
                 {
                     EstadoItem.DISPONIBLE: item.marcarDisponible,

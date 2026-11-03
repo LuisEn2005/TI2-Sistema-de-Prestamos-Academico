@@ -1,7 +1,9 @@
 """Solicitudes de reserva por rango y selección manual del gestor."""
 
-from datetime import timedelta
+from datetime import timedelta, timezone
 from typing import Optional
+
+from sqlalchemy.exc import IntegrityError
 
 from .dominio import EstadoReserva, Reserva
 from ..calendario_laboral.servicio import CalendarioLaboralApplicationService
@@ -13,7 +15,7 @@ from ..identidad import Permiso
 from ..inventario import EstadoItem
 
 
-MAX_DIAS_ANTICIPACION = 365
+MAX_DIAS_ANTICIPACION = 90
 
 
 class ReservaApplicationService:
@@ -52,6 +54,9 @@ class ReservaApplicationService:
         for reserva in vencidas:
             reserva.expirar()
             uow.reservas.save(reserva)
+            uow.reservas.registrar_evento(
+                reserva.id.valor, "EXPIRADA", self.reloj.ahora(),
+                motivo="No fue atendida durante su fecha de inicio.")
         return len(vencidas)
 
     def expirar_vencidas(self):
@@ -73,7 +78,9 @@ class ReservaApplicationService:
             "modalidad_id": reserva.modalidadId.valor if reserva.modalidadId else None,
             "modalidad": modalidades.get(
                 reserva.modalidadId.valor) if reserva.modalidadId else None,
-            "fecha_solicitud": reserva.fechaSolicitud.isoformat(),
+            "fecha_solicitud": (reserva.fechaSolicitud.replace(tzinfo=timezone.utc)
+                                if reserva.fechaSolicitud.tzinfo is None
+                                else reserva.fechaSolicitud.astimezone(timezone.utc)).isoformat(),
             "fecha_inicio": reserva.fechaInicio.isoformat(),
             "fecha_fin": reserva.fechaFin.isoformat(),
             "fecha_reserva": reserva.fechaInicio.isoformat(),
@@ -87,15 +94,28 @@ class ReservaApplicationService:
         modalidades = {m.id.valor: m.nombre for m in uow.modalidades.listar()}
         return [self._vista(r, nombres, items, modalidades) for r in reservas]
 
-    def listar(self, actor, *, estado=None, pagina=1, limite=20):
+    def listar(self, actor, *, estado=None, historial=False, pagina=1, limite=20):
         with self._uow() as uow:
             self._expirar_en_uow(uow)
             reservas, total = uow.reservas.buscar(
                 usuario_id=None if self._ve_todo(actor) else actor.id.valor,
-                estado=estado, pagina=pagina, limite=limite)
+                estado=estado, solo_activas=not historial and estado is None,
+                pagina=pagina, limite=limite)
             vistas = self._vistas(uow, reservas)
             uow.commit()
         return {"reservas": vistas, "total": total, "pagina": pagina, "limite": limite}
+
+    def obtener(self, actor, reserva_id):
+        with self._uow() as uow:
+            reserva = uow.reservas.find_by_id(reserva_id)
+            if reserva is None or (reserva.usuarioId.valor != actor.id.valor
+                                   and not self._ve_todo(actor)):
+                raise NoEncontrado("La reserva no existe.")
+            vista = self._vistas(uow, [reserva])[0]
+            vista["eventos"] = uow.reservas.listar_eventos(reserva_id)
+            prestamo = uow.prestamos.find_by_reserva_id(reserva_id)
+            vista["prestamo_id"] = prestamo.id.valor if prestamo else None
+            return vista
 
     def _politica(self, uow, rol, modalidad_id, item):
         if modalidad_id is None:
@@ -133,6 +153,12 @@ class ReservaApplicationService:
 
     def crear(self, actor, item_id, inicio, fin, modalidad_id=None, rol_solicitante=None):
         hoy = self.reloj.hoy()
+        with self._uow() as uow:
+            minimo = self.calendario.siguiente_laborable(uow, hoy + timedelta(days=1))
+        if inicio < minimo:
+            raise ErrorAplicacion(
+                f"La reserva debe comenzar desde el siguiente día laborable: "
+                f"{minimo.isoformat()}.", 422)
         if inicio > hoy + timedelta(days=MAX_DIAS_ANTICIPACION):
             raise ErrorAplicacion(
                 f"La reserva puede solicitarse con hasta {MAX_DIAS_ANTICIPACION} días "
@@ -156,6 +182,23 @@ class ReservaApplicationService:
                 self._validar_rango(uow, politica, inicio, fin)
 
             uow.usuarios.bloquear(usuario.id.valor)
+            duplicadas = uow.reservas.find_usuario_item_solapadas(
+                usuario.id.valor, item_id, inicio, fin)
+            if duplicadas:
+                existente = duplicadas[0]
+                raise Conflicto(
+                    f"Ya tiene una solicitud activa para {item.codigo} entre "
+                    f"{existente.fechaInicio.isoformat()} y {existente.fechaFin.isoformat()}.")
+
+            ocupado = self.calendario.rango_ocupado(uow, item_id, inicio, fin)
+            if ocupado is not None:
+                sugerido_inicio, sugerido_fin = self.calendario.siguiente_rango_libre(
+                    uow, item_id, inicio, fin)
+                raise Conflicto(
+                    f"El recurso está ocupado hasta {ocupado.isoformat()}. "
+                    f"Primer rango disponible: {sugerido_inicio.isoformat()} a "
+                    f"{sugerido_fin.isoformat()}.")
+
             prestamos = uow.prestamos.contar_items_activos(usuario.id.valor)
             reservas = uow.reservas.contar_activas_usuario(usuario.id.valor)
             if prestamos + reservas >= politica.maxItemsSimultaneos:
@@ -170,7 +213,15 @@ class ReservaApplicationService:
                     fecha_fin=fin, hoy=hoy)
             except ErrorDominio as error:
                 raise ErrorAplicacion(str(error), 422)
-            guardada = uow.reservas.save(reserva)
+            try:
+                guardada = uow.reservas.save(reserva)
+            except IntegrityError:
+                raise Conflicto(
+                    "Ya existe una solicitud activa equivalente para este recurso.")
+            uow.reservas.registrar_evento(
+                guardada.id.valor, "SOLICITADA", self.reloj.ahora(),
+                actor_id=actor.id.valor,
+                inicio_nuevo=guardada.fechaInicio, fin_nuevo=guardada.fechaFin)
             vista = self._vistas(uow, [guardada])[0]
             uow.commit()
         return vista
@@ -210,16 +261,23 @@ class ReservaApplicationService:
             except ErrorDominio as error:
                 raise Conflicto(str(error))
             guardada = uow.reservas.save(reserva)
+            uow.reservas.registrar_evento(
+                reserva.id.valor, "CONFIRMADA", self.reloj.ahora(),
+                actor_id=actor.id.valor,
+                inicio_nuevo=reserva.fechaInicio, fin_nuevo=reserva.fechaFin)
             for pendiente in uow.reservas.find_pendientes_solapadas(
                     reserva.itemId.valor, reserva.fechaInicio, reserva.fechaFin,
                     excluir_id=reserva.id.valor):
                 pendiente.rechazar("Otra solicitud fue confirmada para este rango.")
                 uow.reservas.save(pendiente)
+                uow.reservas.registrar_evento(
+                    pendiente.id.valor, "RECHAZADA", self.reloj.ahora(),
+                    motivo=pendiente.motivoResolucion)
             vista = self._vistas(uow, [guardada])[0]
             uow.commit()
         return vista
 
-    def rechazar(self, reserva_id, motivo):
+    def rechazar(self, actor, reserva_id, motivo):
         with self._uow() as uow:
             reserva = uow.reservas.find_by_id(reserva_id)
             if reserva is None:
@@ -229,11 +287,32 @@ class ReservaApplicationService:
             except ErrorDominio as error:
                 raise Conflicto(str(error))
             guardada = uow.reservas.save(reserva)
+            uow.reservas.registrar_evento(
+                reserva.id.valor, "RECHAZADA", self.reloj.ahora(),
+                actor_id=actor.id.valor, motivo=reserva.motivoResolucion)
             vista = self._vistas(uow, [guardada])[0]
             uow.commit()
         return vista
 
-    def cancelar(self, actor, reserva_id):
+    def retirar(self, actor, reserva_id, motivo=None):
+        self.expirar_vencidas()
+        with self._uow() as uow:
+            reserva = uow.reservas.find_by_id(reserva_id)
+            if reserva is None or reserva.usuarioId.valor != actor.id.valor:
+                raise NoEncontrado("La reserva no existe.")
+            try:
+                reserva.retirar(motivo)
+            except ErrorDominio as error:
+                raise Conflicto(str(error))
+            guardada = uow.reservas.save(reserva)
+            uow.reservas.registrar_evento(
+                reserva.id.valor, "RETIRADA", self.reloj.ahora(),
+                actor_id=actor.id.valor, motivo=reserva.motivoResolucion)
+            vista = self._vistas(uow, [guardada])[0]
+            uow.commit()
+        return vista
+
+    def cancelar(self, actor, reserva_id, motivo=None):
         self.expirar_vencidas()
         with self._uow() as uow:
             reserva = uow.reservas.find_by_id(reserva_id)
@@ -241,11 +320,16 @@ class ReservaApplicationService:
                 raise NoEncontrado("La reserva no existe.")
             if reserva.usuarioId.valor != actor.id.valor and not self._ve_todo(actor):
                 raise SinPermiso("Solo el titular o un gestor puede cancelar la reserva.")
+            if self._ve_todo(actor) and not motivo:
+                raise ErrorAplicacion("El motivo es obligatorio para el personal.", 400)
             try:
-                reserva.cancelar()
+                reserva.cancelar(motivo)
             except ErrorDominio as error:
                 raise Conflicto(str(error))
             guardada = uow.reservas.save(reserva)
+            uow.reservas.registrar_evento(
+                reserva.id.valor, "CANCELADA", self.reloj.ahora(),
+                actor_id=actor.id.valor, motivo=reserva.motivoResolucion)
             vista = self._vistas(uow, [guardada])[0]
             uow.commit()
         return vista

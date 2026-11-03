@@ -3,7 +3,8 @@ from sqlalchemy import func, select
 from .dominio import IPrestamoRepository
 from ..base_datos import mapeadores
 from ..base_datos.modelos import (
-    DetallePrestamoDB, ModalidadDB, PoliticaServicioDB, PrestamoDB,
+    AplazamientoPrestamoDB, DetallePrestamoDB, DiaNoLaborableDB,
+    ModalidadDB, PoliticaServicioDB, PrestamoDB,
 )
 
 
@@ -42,6 +43,11 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
         fila = self.sesion.get(PrestamoDB, prestamo_id)
         return self._a_dominio([fila])[0] if fila else None
 
+    def find_by_reserva_id(self, reserva_id):
+        fila = self.sesion.scalar(
+            select(PrestamoDB).where(PrestamoDB.reserva_id == reserva_id))
+        return self._a_dominio([fila])[0] if fila else None
+
     def find_activos(self):
         filas = self.sesion.scalars(
             select(PrestamoDB).where(PrestamoDB.fecha_devolucion.is_(None))
@@ -70,6 +76,46 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
             .join(PrestamoDB, PrestamoDB.id == DetallePrestamoDB.prestamo_id)
             .where(PrestamoDB.usuario_id == usuario_id, DetallePrestamoDB.activo.is_(True)))
 
+    def ultima_devolucion_item(self, item_id):
+        return self.sesion.scalar(
+            select(func.max(PrestamoDB.fecha_devolucion))
+            .join(DetallePrestamoDB, DetallePrestamoDB.prestamo_id == PrestamoDB.id)
+            .where(DetallePrestamoDB.item_id == item_id,
+                   PrestamoDB.fecha_devolucion.is_not(None)))
+
+    def registrar_aplazamiento(self, prestamo_id, cierre_id, fecha_anterior,
+                               fecha_nueva, aplicado_en):
+        existente = self.sesion.scalar(select(AplazamientoPrestamoDB).where(
+            AplazamientoPrestamoDB.prestamo_id == prestamo_id,
+            AplazamientoPrestamoDB.fecha_anterior == fecha_anterior,
+            AplazamientoPrestamoDB.fecha_nueva == fecha_nueva,
+        ))
+        if existente:
+            return existente
+        fila = AplazamientoPrestamoDB(
+            prestamo_id=prestamo_id, cierre_id=cierre_id,
+            fecha_anterior=fecha_anterior, fecha_nueva=fecha_nueva,
+            aplicado_en=aplicado_en)
+        self.sesion.add(fila)
+        self.sesion.flush()
+        return fila
+
+    def listar_aplazamientos(self, prestamo_id):
+        filas = self.sesion.execute(
+            select(AplazamientoPrestamoDB, DiaNoLaborableDB.motivo)
+            .outerjoin(DiaNoLaborableDB,
+                       DiaNoLaborableDB.id == AplazamientoPrestamoDB.cierre_id)
+            .where(AplazamientoPrestamoDB.prestamo_id == prestamo_id)
+            .order_by(AplazamientoPrestamoDB.aplicado_en,
+                      AplazamientoPrestamoDB.id)
+        ).all()
+        return [{
+            "fecha_anterior": fila.fecha_anterior.isoformat(),
+            "fecha_nueva": fila.fecha_nueva.isoformat(),
+            "motivo": motivo or "Ajuste del calendario laboral",
+            "aplicado_en": fila.aplicado_en.isoformat(),
+        } for fila, motivo in filas]
+
     # -- escritura --------------------------------------------------------
     def save(self, prestamo):
         fila = self.sesion.get(PrestamoDB, prestamo.id.valor) if prestamo.id else None
@@ -81,8 +127,6 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
                                       if prestamo.politicaServicioId else None),
                 modalidad_id=prestamo.modalidadId.valor if prestamo.modalidadId else None,
                 dias_plazo=prestamo.diasPlazo,
-                dias_aplazados=prestamo.diasAplazados,
-                numero_renovaciones=prestamo.numeroRenovaciones,
                 fecha_devolucion_esperada=prestamo.fechaDevolucionEsperada)
             if prestamo.fechaEntrega is not None:
                 fila.fecha_prestamo = prestamo.fechaEntrega
@@ -101,7 +145,5 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
                 fila_detalle.activo = d.condicion is None
         fila.fecha_devolucion = prestamo.fechaDevolucionReal
         fila.fecha_devolucion_esperada = prestamo.fechaDevolucionEsperada
-        fila.numero_renovaciones = prestamo.numeroRenovaciones
-        fila.dias_aplazados = prestamo.diasAplazados
         self.sesion.flush()
         return self.find_by_id(fila.id)

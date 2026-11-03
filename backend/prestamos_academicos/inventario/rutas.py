@@ -1,5 +1,7 @@
 """Rutas del contexto Inventario. El catálogo es público (RNF04)."""
 
+from datetime import date
+
 from flask import Blueprint, jsonify
 
 from ..identidad import Permiso
@@ -7,6 +9,7 @@ from ..compartido.autenticacion import requiere_permiso, servicios
 from ..compartido.http import (
     cuerpo_json, entero_consulta, id_ruta, parametros_permitidos, texto_consulta,
 )
+from ..compartido import ErrorAplicacion
 
 bp = Blueprint("inventario", __name__, url_prefix="/api")
 
@@ -62,6 +65,28 @@ def listar_items():
 @bp.get("/items/tipos")
 def listar_tipos():
     return jsonify([tipo_a_json(t) for t in servicios().inventario.listar_tipos()])
+
+
+@bp.get("/inventario")
+@requiere_permiso(Permiso.REGISTRAR_ITEM_INVENTARIO)
+def inventario_por_fecha():
+    parametros_permitidos("fecha", "q", "tipo", "estado", "pagina", "limite")
+    fecha_texto = texto_consulta("fecha", maximo=10)
+    try:
+        fecha = (date.fromisoformat(fecha_texto) if fecha_texto
+                 else servicios().calendario.reloj.hoy())
+    except ValueError:
+        raise ErrorAplicacion("«fecha» debe usar AAAA-MM-DD.", 400)
+    estado = texto_consulta("estado", maximo=30)
+    validos = {"DISPONIBLE", "RESERVADO", "PRESTADO", "NO_DISPONIBLE"}
+    if estado and estado not in validos:
+        raise ErrorAplicacion(
+            f"«estado» debe ser uno de: {', '.join(sorted(validos))}.", 400)
+    return jsonify(servicios().calendario.inventario_fecha(
+        fecha, texto=texto_consulta("q", maximo=120),
+        tipo=texto_consulta("tipo", maximo=30), estado=estado,
+        pagina=entero_consulta("pagina", 1, maximo=100_000),
+        limite=entero_consulta("limite", 15, maximo=100)))
 
 
 @bp.get("/items/categorias")
