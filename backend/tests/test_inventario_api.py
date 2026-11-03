@@ -159,7 +159,7 @@ class AdministracionInventarioTest(ApiBase):
         self.assertEqual(cambiar("EN_MANTENIMIENTO").json["estado"], "EN_MANTENIMIENTO")
         self.assertEqual(cambiar("EN_MANTENIMIENTO").status_code, 409)
         self.assertEqual(cambiar("PRESTADO").status_code, 422)
-        self.assertEqual(cambiar("RESERVADO").status_code, 422)
+        self.assertEqual(cambiar("RESERVADO").status_code, 400)
         self.assertEqual(cambiar("NO_EXISTE").status_code, 400)
         self.assertEqual(cambiar("DISPONIBLE").json["disponible"], True)
         self.assertEqual(cambiar("DADO_DE_BAJA").status_code, 200)

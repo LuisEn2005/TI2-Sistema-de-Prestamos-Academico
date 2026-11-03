@@ -293,6 +293,9 @@ class DevolucionTest(PrestamosBase):
         self.assertEqual(self.entregar(h, codigos=("LIB-CLEAN",)).status_code, 409)
         self.cliente.post(f"/api/items/{self.item_id('LIB-CLEAN')}/estado", headers=h,
                           json={"estado": "DISPONIBLE"})
+        # La devolución bloquea una nueva entrega hasta el siguiente día laborable.
+        self.assertEqual(self.entregar(h, codigos=("LIB-CLEAN",)).status_code, 409)
+        self.reloj.instante += timedelta(days=1)
         self.assertEqual(self.entregar(h, codigos=("LIB-CLEAN",)).status_code, 201)
 
     def test_la_devolucion_exige_la_condicion_de_todos_los_items(self):

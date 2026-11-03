@@ -35,7 +35,8 @@ class CalendarioRangosTest(ApiBase):
         confirmada = self.cliente.post(
             f"/api/reservas/{docente.json['id']}/confirmacion", headers=admin, json={})
         self.assertEqual(confirmada.status_code, 200, confirmada.json)
-        reservas = self.cliente.get("/api/reservas", headers=admin).json["reservas"]
+        reservas = self.cliente.get(
+            "/api/reservas?historial=1", headers=admin).json["reservas"]
         estados = {r["id"]: r["estado"] for r in reservas}
         self.assertEqual(estados[docente.json["id"]], "CONFIRMADA")
         self.assertEqual(estados[primera.json["id"]], "RECHAZADA")
@@ -96,8 +97,8 @@ class CalendarioRangosTest(ApiBase):
         self.assertEqual(cierre.status_code, 201, cierre.json)
         actualizado = self.cliente.get(
             f"/api/prestamos/{prestamo['id']}", headers=admin).json
-        self.assertEqual((actualizado["fecha_limite"], actualizado["dias_aplazados"]),
-                         ("2026-10-27", 1))
+        self.assertEqual(actualizado["fecha_limite"], "2026-10-27")
+        self.assertEqual(actualizado["aplazamientos"][0]["fecha_anterior"], "2026-10-26")
 
         self.reloj.instante += timedelta(days=8)
         item = actualizado["items"][0]
@@ -123,7 +124,7 @@ class CalendarioRangosTest(ApiBase):
         self.assertEqual(respuesta.status_code, 422, respuesta.json)
         self.assertIn("fecha de entrega no es laborable", respuesta.json["error"])
 
-    def test_cierre_reprograma_una_reserva_confirmada_sin_perder_el_rango(self):
+    def test_cierre_reprograma_inicio_y_conserva_el_final(self):
         estudiante = self.ingresar(ESTUDIANTE)
         reserva = self._reserva(
             estudiante, "LIB-CLRS", "2026-10-26", "2026-11-02").json
@@ -141,7 +142,35 @@ class CalendarioRangosTest(ApiBase):
             "/api/reservas", headers=admin).json["reservas"][0]
         self.assertEqual(
             (actualizada["fecha_inicio"], actualizada["fecha_fin"]),
-            ("2026-10-27", "2026-11-03"))
+            ("2026-10-27", "2026-11-02"))
+
+    def test_no_permite_reservar_el_mismo_item_en_rangos_superpuestos(self):
+        estudiante = self.ingresar(ESTUDIANTE)
+        primera = self._reserva(
+            estudiante, "LIB-CLRS", "2026-10-20", "2026-10-23")
+        duplicada = self._reserva(
+            estudiante, "LIB-CLRS", "2026-10-22", "2026-10-26")
+        consecutiva = self._reserva(
+            estudiante, "LIB-CLRS", "2026-10-26", "2026-10-27")
+        self.assertEqual(primera.status_code, 201)
+        self.assertEqual(duplicada.status_code, 409)
+        self.assertEqual(consecutiva.status_code, 201, consecutiva.json)
+
+    def test_inventario_protegido_muestra_reserva_y_usuario_por_fecha(self):
+        estudiante = self.ingresar(ESTUDIANTE)
+        reserva = self._reserva(
+            estudiante, "LIB-CLRS", "2026-10-20", "2026-10-26").json
+        admin = self.ingresar(ADMIN)
+        self.cliente.post(
+            f"/api/reservas/{reserva['id']}/confirmacion", headers=admin, json={})
+        vista = self.cliente.get(
+            "/api/inventario", headers=admin,
+            query_string={"fecha": "2026-10-21", "estado": "RESERVADO"})
+        self.assertEqual(vista.status_code, 200, vista.json)
+        item = next(i for i in vista.json["items"] if i["codigo"] == "LIB-CLRS")
+        self.assertEqual(item["asignacion"]["usuario"], "Jesus Perez")
+        self.assertEqual(self.cliente.get(
+            "/api/inventario?fecha=2026-10-21", headers=estudiante).status_code, 403)
 
     def test_solo_administrador_gestiona_y_puede_editar_cierres(self):
         estudiante = self.ingresar(ESTUDIANTE)
@@ -169,3 +198,40 @@ class CalendarioRangosTest(ApiBase):
             self.ingresar(ESTUDIANTE), "LIB-CLRS", "2026-10-24", "2026-10-26")
         self.assertEqual(respuesta.status_code, 422, respuesta.json)
         self.assertIn("Siguiente fecha permitida: 2026-10-26", respuesta.json["error"])
+
+    def test_reserva_rechaza_el_mismo_dia_y_prestamo_respeta_pendientes(self):
+        estudiante = self.ingresar(ESTUDIANTE)
+        mismo_dia = self._reserva(
+            estudiante, "LIB-CLRS", "2026-10-19", "2026-10-20")
+        self.assertEqual(mismo_dia.status_code, 422)
+        pendiente = self._reserva(
+            estudiante, "LIB-CLRS", "2026-10-20", "2026-10-26")
+        self.assertEqual(pendiente.status_code, 201, pendiente.json)
+        directo = self._prestamo(self.ingresar(ADMIN), "LIB-CLRS")
+        self.assertEqual(directo.status_code, 409)
+        self.assertIn("solicitudes pendientes", directo.json["error"])
+
+    def test_cierre_desplaza_reservas_confirmadas_sin_reutilizar_el_mismo_dia(self):
+        estudiante = self.ingresar(ESTUDIANTE)
+        admin = self.ingresar(ADMIN)
+        primera = self._reserva(
+            estudiante, "LIB-CLRS", "2026-11-09", "2026-11-13").json
+        self.cliente.post(
+            f"/api/reservas/{primera['id']}/confirmacion", headers=admin, json={})
+        segunda = self._reserva(
+            self.ingresar(GESTOR_DOCENTE), "LIB-CLRS", "2026-11-16", "2026-11-18").json
+        self.cliente.post(
+            f"/api/reservas/{segunda['id']}/confirmacion", headers=admin, json={})
+        cierre = self.cliente.post("/api/dias-no-laborables", headers=admin, json={
+            "fecha_inicio": "2026-11-13", "fecha_fin": "2026-11-13",
+            "tipo": "FERIADO", "motivo": "Cierre extraordinario",
+        })
+        self.assertEqual(cierre.status_code, 201, cierre.json)
+        reservas = self.cliente.get(
+            "/api/reservas?historial=1", headers=admin).json["reservas"]
+        por_id = {r["id"]: r for r in reservas}
+        self.assertEqual(
+            (por_id[primera["id"]]["fecha_fin"],
+             por_id[segunda["id"]]["fecha_inicio"],
+             por_id[segunda["id"]]["fecha_fin"]),
+            ("2026-11-16", "2026-11-17", "2026-11-18"))

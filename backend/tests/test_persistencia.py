@@ -48,8 +48,8 @@ class MigracionTest(unittest.TestCase):
                 fila[1] for fila in con.execute("PRAGMA table_info('prestamos')")}
             self.assertEqual(columnas_prestamo, {
                 "id", "usuario_id", "reserva_id", "modalidad_id",
-                "politica_servicio_id", "dias_plazo", "numero_renovaciones",
-                "dias_aplazados", "fecha_prestamo", "fecha_devolucion_esperada",
+                "politica_servicio_id", "dias_plazo",
+                "fecha_prestamo", "fecha_devolucion_esperada",
                 "fecha_devolucion",
             })
             columnas_modalidad = {
@@ -58,9 +58,12 @@ class MigracionTest(unittest.TestCase):
             columnas_politica = {
                 fila[1] for fila in con.execute("PRAGMA table_info('politicas_servicio')")}
             self.assertEqual(columnas_politica, {
-                "id", "rol_aplicable", "modalidad_id", "max_items_simultaneos",
-                "dias_prestamo", "dias_sancion_por_dia_atraso",
+                "id", "rol_aplicable", "modalidad_id", "dias_prestamo",
             })
+            columnas_politica_rol = {
+                fila[1] for fila in con.execute("PRAGMA table_info('politicas_rol')")}
+            self.assertEqual(columnas_politica_rol, {
+                "rol", "max_items_simultaneos", "dias_sancion_por_dia_atraso"})
             columnas_reserva = {
                 fila[1] for fila in con.execute("PRAGMA table_info('reservas')")}
             self.assertNotIn("fecha_expiracion", columnas_reserva)
@@ -75,6 +78,9 @@ class MigracionTest(unittest.TestCase):
                 "id", "fecha_inicio", "fecha_fin", "tipo", "motivo", "activo",
                 "creado_por_usuario_id", "creado_en",
             })
+            self.assertTrue({"eventos_reserva", "aplazamientos_prestamo"} <= {
+                fila[0] for fila in con.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'")})
             columnas_sancion = {
                 fila[1] for fila in con.execute("PRAGMA table_info('sanciones')")}
             self.assertEqual(columnas_sancion, {
@@ -168,7 +174,7 @@ class MigracionTest(unittest.TestCase):
                              [("Externa (a domicilio)", 1)])
             self.assertEqual(c2.get("/api/items").json["total"], 26)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0014")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0015")
             self.assertEqual(con.execute(
                 "SELECT dias_prestamo FROM politicas_servicio p JOIN modalidades m "
                 "ON m.id=p.modalidad_id WHERE p.rol_aplicable='ESTUDIANTE' "
@@ -197,6 +203,63 @@ class MigracionTest(unittest.TestCase):
                 con.execute(text("UPDATE items SET estado = 'ROTO' WHERE codigo = 'LIB-CLRS'"))
             with self.assertRaises(IntegrityError), motor.begin() as con:
                 con.execute(text("UPDATE items SET codigo = 'lib-clrs' WHERE codigo = 'LIB-CLRS'"))
+
+    def test_0015_migra_politicas_inconsistentes_y_reservas_duplicadas(self):
+        from alembic import command
+        from sqlalchemy import create_engine, text
+        from prestamos_academicos.base_datos.aplicar_migraciones import (
+            configuracion_alembic,
+        )
+
+        with TemporaryDirectory() as d:
+            ruta = Path(d) / "antes-0015.sqlite"
+            url = f"sqlite:///{ruta}"
+            create_app(url, datos_demo=True, secret_key="k")
+            motor = create_engine(url)
+            cfg = configuracion_alembic()
+            with motor.connect() as con:
+                cfg.attributes["connection"] = con
+                command.downgrade(cfg, "0014")
+                con.commit()
+            with motor.begin() as con:
+                con.execute(text("""
+                    UPDATE politicas_servicio
+                    SET max_items_simultaneos = CASE modalidad_id WHEN 1 THEN 4 ELSE 6 END,
+                        dias_sancion_por_dia_atraso = CASE modalidad_id WHEN 1 THEN 2 ELSE 1 END
+                    WHERE rol_aplicable = 'ESTUDIANTE'
+                """))
+                usuario_id = con.execute(text(
+                    "SELECT id FROM usuarios WHERE correo='jesus.perez@escuela.edu'"
+                )).scalar_one()
+                item_id = con.execute(text(
+                    "SELECT id FROM items WHERE codigo='LIB-CLEAN'"
+                )).scalar_one()
+                for estado in ("PENDIENTE", "CONFIRMADA"):
+                    con.execute(text("""
+                        INSERT INTO reservas
+                            (usuario_id, item_id, rol_solicitante, modalidad_id,
+                             fecha_solicitud, fecha_inicio, fecha_fin, estado)
+                        VALUES
+                            (:usuario, :item, 'ESTUDIANTE', 2,
+                             '2026-10-01 10:00:00', '2026-11-10', '2026-11-12', :estado)
+                    """), {"usuario": usuario_id, "item": item_id, "estado": estado})
+            with motor.connect() as con:
+                cfg.attributes["connection"] = con
+                command.upgrade(cfg, "head")
+                con.commit()
+            with motor.connect() as con:
+                regla = con.execute(text("""
+                    SELECT max_items_simultaneos, dias_sancion_por_dia_atraso
+                    FROM politicas_rol WHERE rol='ESTUDIANTE'
+                """)).one()
+                self.assertEqual(tuple(regla), (4, 2))
+                estados = con.execute(text(
+                    "SELECT estado FROM reservas ORDER BY id")).scalars().all()
+                self.assertEqual(estados, ["RECHAZADA", "CONFIRMADA"])
+                self.assertEqual(con.execute(text(
+                    "SELECT count(*) FROM eventos_reserva WHERE tipo='MIGRADA'"
+                )).scalar_one(), 2)
+            motor.dispose()
 
 
 class MigracionDelSprint2Test(unittest.TestCase):

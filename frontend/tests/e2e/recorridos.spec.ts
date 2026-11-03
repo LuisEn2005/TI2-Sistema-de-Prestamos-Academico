@@ -67,7 +67,7 @@ test('el administrador registra usuario, recurso, entrega y devolución', async 
   await expect(page.locator('#mensaje')).toContainText('Recurso registrado.');
   const respuestaBusqueda = page.waitForResponse((respuesta) => {
     const url = new URL(respuesta.url());
-    return url.pathname === '/api/items' && url.searchParams.get('q') === codigoItem
+    return url.pathname === '/api/inventario' && url.searchParams.get('q') === codigoItem
       && respuesta.ok();
   });
   await page.getByLabel('Buscar').fill(codigoItem);
@@ -145,8 +145,8 @@ test('el estudiante reserva y el administrador convierte la reserva en préstamo
   await expect(opcion).toHaveCount(1);
   await selectorRecurso.selectOption((await opcion.getAttribute('value'))!);
   await page.getByLabel('Modalidad').selectOption({ label: 'Externa (a domicilio)' });
-  await expect(page.getByLabel('Desde')).toHaveValue('2026-10-19');
-  await expect(page.getByLabel('Hasta')).toHaveValue('2026-10-26');
+  await expect(page.getByLabel('Desde')).toHaveValue('2026-10-20');
+  await expect(page.getByLabel('Hasta')).toHaveValue('2026-10-27');
   await page.getByRole('button', { name: 'Solicitar reserva' }).click();
   await expect(page.locator('#mensaje')).toContainText('Solicitud registrada');
   const propia = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
@@ -157,25 +157,31 @@ test('el estudiante reserva y el administrador convierte la reserva en préstamo
   const gestion = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
   await gestion.getByRole('button', { name: 'Confirmar' }).click();
   await expect(gestion).toContainText('Confirmada');
-  await gestion.getByRole('button', { name: 'Registrar entrega' }).click();
+  const entregar = gestion.getByRole('button', { name: 'Entregar y crear préstamo' });
+  await expect(entregar).toBeDisabled();
+  await page.request.post('/api/pruebas/avanzar-dia');
+  await page.reload();
+  const confirmada = page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' });
+  await confirmada.getByRole('button', { name: 'Entregar y crear préstamo' }).click();
   await expect(page.locator('#mensaje')).toContainText('Reserva convertida en préstamo');
-  await expect(gestion).toContainText('Convertida en préstamo');
+  await page.getByLabel('Mostrar').selectOption('HISTORIAL');
+  await expect(page.locator('#lista > li.prestamo').filter({ hasText: 'LIB-CLEAN' }))
+    .toContainText('Entregada · préstamo creado');
 });
 
 test('el administrador configura una política y gestiona una sanción', async ({ page }) => {
   await ingresar(page);
   await page.goto('/admin/configuracion');
-  const factor = page.getByLabel(
-    'Sanción por atraso de Estudiante · Externa (a domicilio)');
+  const factor = page.getByLabel('Sanción por atraso de Estudiante');
   await factor.fill('2');
   await page.getByRole('button', {
-    name: 'Guardar política de Estudiante · Externa (a domicilio)',
+    name: 'Guardar reglas de Estudiante',
   }).click();
   await expect(page.locator('#mensaje')).toContainText('actualizada');
   // Se restaura el valor inicial para que la demostración siga siendo repetible.
   await factor.fill('1');
   await page.getByRole('button', {
-    name: 'Guardar política de Estudiante · Externa (a domicilio)',
+    name: 'Guardar reglas de Estudiante',
   }).click();
 
   await page.goto('/sanciones');

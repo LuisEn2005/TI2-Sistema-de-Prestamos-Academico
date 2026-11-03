@@ -33,9 +33,10 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
             "ADMIN_CORREO": "admin-ci@escuela.edu",
             "ADMIN_PASSWORD": "clave-ci-segura",
         }):
+            reloj = RelojFijo(datetime(2026, 10, 19, 20, 0, tzinfo=timezone.utc))
             app = create_app(
                 URL, datos_demo=False, secret_key="ci",
-                reloj=RelojFijo(datetime(2026, 10, 19, 20, 0, tzinfo=timezone.utc)))
+                reloj=reloj)
         cliente = app.test_client()
 
         acceso = cliente.post("/api/auth/login", json={
@@ -91,11 +92,12 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         token_estudiante = {"Authorization": f"Bearer {acceso_estudiante.json['token']}"}
         reserva = cliente.post("/api/reservas", headers=token_estudiante, json={
             "item_id": item.json["id"], "modalidad_id": externa["id"],
-            "fecha_inicio": "2026-10-19", "fecha_fin": "2026-10-26"})
+            "fecha_inicio": "2026-10-20", "fecha_fin": "2026-10-27"})
         self.assertEqual(reserva.status_code, 201, reserva.json)
         confirmada = cliente.post(
             f"/api/reservas/{reserva.json['id']}/confirmacion", headers=cabeceras, json={})
         self.assertEqual(confirmada.status_code, 200, confirmada.json)
+        reloj.instante = datetime(2026, 10, 20, 20, 0, tzinfo=timezone.utc)
         convertido = cliente.post(
             f"/api/reservas/{reserva.json['id']}/prestamo", headers=cabeceras,
             json={})
@@ -105,15 +107,14 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         motor = create_engine(URL)
         with motor.connect() as conexion:
             self.assertEqual(conexion.execute(text(
-                "SELECT version_num FROM alembic_version")).scalar_one(), "0014")
+                "SELECT version_num FROM alembic_version")).scalar_one(), "0015")
             columnas = set(conexion.execute(text("""
                 SELECT column_name FROM information_schema.columns
                 WHERE table_schema='public' AND table_name='prestamos'
             """)).scalars())
             self.assertEqual(columnas, {
                 "id", "usuario_id", "reserva_id", "modalidad_id",
-                "politica_servicio_id", "dias_plazo", "numero_renovaciones",
-                "dias_aplazados",
+                "politica_servicio_id", "dias_plazo",
                 "fecha_prestamo", "fecha_devolucion_esperada", "fecha_devolucion",
             })
             self.assertEqual(conexion.execute(text("""
