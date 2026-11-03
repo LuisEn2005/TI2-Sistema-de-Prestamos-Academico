@@ -9,7 +9,7 @@ from .dominio import (
     PerfilAdministradorSistema, PerfilAdministrativo, PerfilDocente, PerfilEstudiante,
     PerfilGestorInventario, Permiso, ServicioAutorizacionRol, Usuario,
 )
-from ..compartido import RolUsuario
+from ..compartido import EspacioTrabajo, RolUsuario
 from ..compartido import validacion as v
 from ..compartido import Conflicto, ErrorAplicacion, NoAutenticado, NoEncontrado, SinPermiso
 from ..compartido.reloj import Reloj
@@ -73,8 +73,44 @@ class IdentidadApplicationService:
             and (version_sesion is None or usuario.versionSesion == version_sesion)
         ) else None
 
+    def espacios_de(self, usuario):
+        espacios = []
+        if usuario.esPrestatario():
+            espacios.append(EspacioTrabajo.PERSONAL)
+        if (usuario.tieneRol(RolUsuario.GESTOR_INVENTARIO)
+                or usuario.tieneRol(RolUsuario.ADMINISTRADOR_SISTEMA)):
+            espacios.append(EspacioTrabajo.INVENTARIO)
+        if usuario.tieneRol(RolUsuario.ADMINISTRADOR_SISTEMA):
+            espacios.append(EspacioTrabajo.ADMINISTRACION)
+        return espacios
+
+    def activar_espacio(self, usuario, espacio=None, *, estricto=False):
+        disponibles = self.espacios_de(usuario)
+        solicitado = None
+        if espacio:
+            try:
+                solicitado = EspacioTrabajo(str(espacio).upper())
+            except ValueError:
+                if estricto:
+                    raise ErrorAplicacion("El espacio de trabajo no es válido.", 400)
+        if solicitado not in disponibles:
+            if estricto:
+                raise SinPermiso("El usuario no tiene acceso a ese espacio de trabajo.")
+            solicitado = next((e for e in (
+                EspacioTrabajo.PERSONAL,
+                EspacioTrabajo.ADMINISTRACION,
+                EspacioTrabajo.INVENTARIO,
+            ) if e in disponibles), None)
+        if solicitado is None:
+            raise SinPermiso("El usuario no tiene un espacio de trabajo disponible.")
+        usuario.espacioActivo = solicitado
+        return solicitado
+
     def permisos_de(self, usuario):
-        return self.autorizacion.permisosDeRoles(usuario.roles or [])
+        permisos = self.autorizacion.permisosDeRoles(usuario.roles or [])
+        if usuario.espacioActivo is not None:
+            permisos &= self.autorizacion.permisosDeEspacio(usuario.espacioActivo)
+        return permisos
 
     def cambiar_password(self, usuario_id, actual, nueva):
         validar_password(nueva)

@@ -32,7 +32,7 @@ class FlujoReservaTest(ReservasBase):
         self.assertNotIn("fecha_expiracion", creada)
         self.assertEqual(self.estado_item("LIB-CLRS"), "DISPONIBLE")
 
-        administrador = self.ingresar(ADMIN)
+        administrador = self.ingresar(ADMIN, espacio="INVENTARIO")
         confirmada = self.cliente.post(
             f"/api/reservas/{creada['id']}/confirmacion", headers=administrador, json={})
         self.assertEqual(confirmada.status_code, 200, confirmada.json)
@@ -93,14 +93,15 @@ class FlujoReservaTest(ReservasBase):
 
     def test_varias_solicitudes_compiten_y_una_confirmacion_resuelve_el_conflicto(self):
         primera = self.reservar(self.ingresar(ESTUDIANTE))
-        segunda = self.reservar(self.ingresar(GESTOR_DOCENTE))
+        segunda = self.reservar(self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL"))
         self.assertEqual((primera.status_code, segunda.status_code), (201, 201))
         confirmada = self.cliente.post(
             f"/api/reservas/{segunda.json['id']}/confirmacion",
-            headers=self.ingresar(ADMIN), json={})
+            headers=self.ingresar(ADMIN, espacio="INVENTARIO"), json={})
         self.assertEqual(confirmada.status_code, 200, confirmada.json)
         reservas = self.cliente.get(
-            "/api/reservas?historial=1", headers=self.ingresar(ADMIN)).json["reservas"]
+            "/api/reservas?historial=1",
+            headers=self.ingresar(ADMIN, espacio="INVENTARIO")).json["reservas"]
         estados = {r["id"]: r["estado"] for r in reservas}
         self.assertEqual(estados[primera.json["id"]], "RECHAZADA")
         self.assertEqual(estados[segunda.json["id"]], "CONFIRMADA")
@@ -108,7 +109,7 @@ class FlujoReservaTest(ReservasBase):
 
 class RenovacionDescartadaTest(ReservasBase):
     def test_el_endpoint_de_renovacion_ya_no_existe(self):
-        prestamo = self.entregar(self.ingresar(ADMIN)).json
+        prestamo = self.entregar(self.ingresar(ADMIN, espacio="INVENTARIO")).json
         respuesta = self.cliente.post(
             f"/api/prestamos/{prestamo['id']}/renovacion",
             headers=self.ingresar(ESTUDIANTE), json={})
@@ -119,7 +120,7 @@ class SeguridadYValidacionReservasTest(ReservasBase):
     def test_permisos_y_visibilidad(self):
         self.assertEqual(self.cliente.get("/api/reservas").status_code, 401)
         self.assertEqual(self.cliente.post("/api/reservas", json={}).status_code, 401)
-        self.assertEqual(self.reservar(self.ingresar(ADMIN)).status_code, 422)
+        self.assertEqual(self.reservar(self.ingresar(ADMIN)).status_code, 403)
 
         estudiante = self.ingresar(ESTUDIANTE)
         reserva = self.reservar(estudiante).json
@@ -156,10 +157,10 @@ class SeguridadYValidacionReservasTest(ReservasBase):
             "/api/reservas?otro=1", headers=estudiante).status_code, 400)
 
     def test_no_confirma_un_rango_que_se_superpone_con_un_prestamo(self):
-        administrador = self.ingresar(ADMIN)
+        administrador = self.ingresar(ADMIN, espacio="INVENTARIO")
         self.entregar(administrador)
         reserva = self.reservar(
-            self.ingresar(GESTOR_DOCENTE), fecha="2026-10-20",
+            self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL"), fecha="2026-10-20",
             fecha_fin="2026-10-27")
         respuesta = reserva
         self.assertEqual(respuesta.status_code, 409)

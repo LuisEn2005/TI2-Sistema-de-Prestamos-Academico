@@ -8,7 +8,7 @@ from datetime import date
 from enum import Enum
 from typing import Iterable, List, Optional, Set
 
-from ..compartido import RolUsuario, UsuarioId
+from ..compartido import EspacioTrabajo, RolUsuario, UsuarioId
 
 
 class Permiso(str, Enum):
@@ -51,6 +51,17 @@ _MATRIZ = {
     RolUsuario.ADMINISTRADOR_SISTEMA: frozenset(Permiso),
 }
 
+_PERMISOS_ESPACIO = {
+    EspacioTrabajo.PERSONAL: _BASE_PRESTATARIO,
+    EspacioTrabajo.INVENTARIO: _MATRIZ[RolUsuario.GESTOR_INVENTARIO],
+    EspacioTrabajo.ADMINISTRACION: frozenset({
+        Permiso.CONFIGURAR_POLITICAS,
+        Permiso.GESTIONAR_USUARIOS_Y_ROLES,
+        Permiso.LEVANTAR_SANCION,
+        Permiso.CONSULTAR_HISTORIAL_GLOBAL,
+    }),
+}
+
 
 @dataclass
 class ServicioAutorizacionRol:
@@ -68,6 +79,9 @@ class ServicioAutorizacionRol:
 
     def rolesTienenPermiso(self, roles: Iterable[RolUsuario], permiso: Permiso) -> bool:
         return Permiso(permiso) in self.permisosDeRoles(roles)
+
+    def permisosDeEspacio(self, espacio: EspacioTrabajo) -> Set[Permiso]:
+        return set(_PERMISOS_ESPACIO[EspacioTrabajo(espacio)])
 
 
 @dataclass
@@ -120,6 +134,7 @@ class Usuario:
     perfilAdministrativo: Optional[PerfilAdministrativo] = None
     perfilGestorInventario: Optional[PerfilGestorInventario] = None
     perfilAdministradorSistema: Optional[PerfilAdministradorSistema] = None
+    espacioActivo: Optional[EspacioTrabajo] = None
 
     def invalidarSesiones(self) -> None:
         self.versionSesion += 1

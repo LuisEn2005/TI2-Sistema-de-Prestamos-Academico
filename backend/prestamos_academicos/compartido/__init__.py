@@ -1,7 +1,7 @@
 """Piezas transversales usadas por los modulos funcionales."""
 
 from .dominio import (
-    ItemId, ModalidadId, PoliticaSancionId, PoliticaServicioId, PrestamoId,
+    EspacioTrabajo, ItemId, ModalidadId, PoliticaSancionId, PoliticaServicioId, PrestamoId,
     ReservaId, RolUsuario, SancionId, UsuarioId,
 )
 from .errores import (
@@ -10,7 +10,7 @@ from .errores import (
 )
 
 __all__ = [
-    "Conflicto", "ErrorAplicacion", "ErrorDominio", "ItemId", "ModalidadId",
+    "Conflicto", "ErrorAplicacion", "ErrorDominio", "EspacioTrabajo", "ItemId", "ModalidadId",
     "NoAutenticado", "NoEncontrado",
     "PoliticaSancionId", "PoliticaServicioId", "PrestamoId", "ReservaId",
     "RolUsuario", "SancionId", "SinPermiso", "TransicionInvalida", "UsuarioId",
