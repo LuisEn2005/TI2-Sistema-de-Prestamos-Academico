@@ -19,16 +19,20 @@ foráneas y `JOIN`.
 | --- | --- | --- |
 | `modalidades` | `id`, `nombre`, `activo` | Nombre único; no contiene plazos. |
 | `tipos_recurso` | `codigo`, `nombre` | Catálogo referenciado por inventario y políticas. |
-| `politicas_servicio` | `id`, `rol_aplicable`, `modalidad_id`, `max_items_simultaneos`, `dias_prestamo`, `dias_sancion_por_dia_atraso` | Una sola fila por `(rol_aplicable, modalidad_id)`; valores positivos y rol restringido. |
+| `politicas_rol` | `rol`, `max_items_simultaneos`, `dias_sancion_por_dia_atraso` | Una fila por rol; evita repetir cupo y sanción en cada modalidad. |
+| `politicas_servicio` | `id`, `rol_aplicable`, `modalidad_id`, `dias_prestamo` | Una sola fila por `(rol_aplicable, modalidad_id)`; plazo positivo y rol restringido. |
 | `politica_tipos_recurso` | `politica_servicio_id`, `tipo_recurso_codigo` | PK compuesta y dos FKs; reemplaza la lista separada por comas. |
-| `prestamos` | `id`, FKs, `dias_plazo`, `dias_aplazados`, fechas y renovaciones | Conserva el plazo otorgado y separa aplazamientos institucionales. |
+| `prestamos` | `id`, FKs, `dias_plazo` y fechas | Conserva únicamente el plazo otorgado y las referencias normalizadas. |
 | `reservas` | FKs de usuario, ítem y modalidad, `fecha_inicio`, `fecha_fin`, estado y datos de confirmación | El rango está ordenado y la disponibilidad se calcula por fecha. |
 | `dias_no_laborables` | Rango, tipo, motivo, estado y administrador responsable | Registra feriados, huelgas y otros cierres sin mezclar reglas con préstamos. |
+| `eventos_reserva` | Reserva, actor, tipo, fecha y detalle | Bitácora inmutable de las transiciones de una reserva. |
+| `aplazamientos_prestamo` | Préstamo, cierre, fecha anterior, fecha nueva y motivo | Historial relacional de reprogramaciones; reemplaza un contador acumulado. |
 | `sanciones` | `id`, FKs de usuario, préstamo y responsable, origen, motivo, monto, vigencia, estado y resolución | Fechas ordenadas, monto positivo y estados/orígenes restringidos. |
 
 ```mermaid
 erDiagram
     MODALIDADES ||--o{ POLITICAS_SERVICIO : configura
+    POLITICAS_ROL ||--o{ POLITICAS_SERVICIO : complementa
     TIPOS_RECURSO ||--o{ POLITICA_TIPOS_RECURSO : clasifica
     POLITICAS_SERVICIO ||--o{ POLITICA_TIPOS_RECURSO : permite
     USUARIOS ||--o{ PRESTAMOS : recibe
@@ -52,8 +56,8 @@ La operación se ejecuta en una sola unidad de trabajo:
 
 1. carga el usuario y comprueba que la cuenta y la vinculación del perfil estén vigentes;
 2. carga la modalidad activa;
-3. busca exactamente una política por `(rol_aplicable, modalidad_id)`;
-4. carga los recursos, valida sus tipos mediante `politica_tipos_recurso` y comprueba el cupo;
+3. busca la regla común en `politicas_rol` y la política por `(rol_aplicable, modalidad_id)`;
+4. carga los recursos, valida sus tipos mediante `politica_tipos_recurso` y comprueba el cupo compartido con reservas activas;
 5. cambia cada recurso de `DISPONIBLE` a `PRESTADO` de forma atómica;
 6. calcula `fecha_devolucion_esperada` con `politicas_servicio.dias_prestamo`;
 7. inserta la cabecera con `usuario_id`, `modalidad_id`, `politica_servicio_id` y el `dias_plazo` otorgado, y agrega sus detalles;
@@ -84,10 +88,16 @@ agrega el factor de sanción y el registro relacional de sanciones. `0014` añad
 los rangos de reserva, responsables de confirmación, aplazamientos y calendario
 institucional; su código está en
 [`0014_calendario_y_rangos.py`](../backend/prestamos_academicos/base_datos/migraciones/versions/0014_calendario_y_rangos.py).
+La migración final
+[`0015_politicas_y_trazabilidad.py`](../backend/prestamos_academicos/base_datos/migraciones/versions/0015_politicas_y_trazabilidad.py)
+crea `politicas_rol`, elimina los campos de renovación y el aplazamiento
+acumulado, añade el retiro de solicitudes y crea los registros auditables.
 
 Las reservas no tienen días de gracia ni una segunda fecha de expiración. Se
 mantienen activas durante `fecha_inicio` y expiran al comenzar el día siguiente.
 `fecha_fin` describe el uso solicitado, no un periodo adicional para recogerla.
+Los ítems mantienen solo estados físicos; `RESERVADO` es una disponibilidad
+derivada para la fecha consultada.
 
 ## Migración de datos existentes
 

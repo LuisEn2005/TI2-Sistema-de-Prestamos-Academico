@@ -14,13 +14,13 @@ El **Sprint 3 está terminado**. El préstamo básico del Sprint 2 (un ítem, si
 | RF11 · Devolución y condición del ítem | **Completo** | — |
 | RF13 · Bloqueo por sanción o límite simultáneo | Parcial: cupo por perfil y disponibilidad del ítem | Bloqueo por sanción activa en el Sprint 5. |
 | RF03 · Política según perfil | **Aplicada**: cupo, plazo y tipos permitidos | Edición de políticas y revisión integral en el Sprint 5. |
-| RF05 · Estados del ítem | Parcial: `PRESTADO`, `EN_MANTENIMIENTO` y `EXTRAVIADO` los fija el flujo de préstamo | `RESERVADO` y su liberación en el Sprint 4. |
+| RF05 · Estados del ítem | Parcial: `PRESTADO`, `EN_MANTENIMIENTO` y `EXTRAVIADO` los fija el flujo de préstamo | La disponibilidad reservada se deriva por fecha desde el Sprint 6. |
 | RF02 · Usuario habilitado | Parcial (sin cambios) | Sanciones activas en el Sprint 5. |
 | RNF03 · Trazabilidad | Pendiente | El dominio ya emite los eventos de devolución; la auditoría los consume en el Sprint 6. |
 
 ## Reglas aplicadas
 
-- **Plazo (RN2).** Al cierre original del Sprint 3 se comparaba el plazo de la modalidad con el de la política. La normalización final del Sprint 4 sustituyó esa duplicidad por una sola política para cada combinación rol-modalidad: 1 día in situ, hasta el final de la fecha de entrega; en modalidad externa son 7 días para estudiantes y 15 para docentes o administrativos.
+- **Plazo (RN2).** Al cierre original del Sprint 3 se comparaba el plazo de la modalidad con el de la política. La normalización posterior sustituyó esa duplicidad por una sola política para cada combinación rol-modalidad: 1 día in situ, hasta el final de la fecha de entrega; en modalidad externa son 7 días para estudiantes y 14 para docentes o administrativos.
 - **Fecha límite.** Se cuenta en días calendario desde la **fecha local de la escuela** (`America/Lima` por defecto, configurable con `ZONA_HORARIA`), no desde UTC: un préstamo hecho a las 19:00 en Lima sigue siendo del mismo día. La devolución se considera a tiempo hasta el propio día límite.
 - **Perfil con que se presta.** Un usuario puede tener varios perfiles prestatarios (p. ej. estudiante y docente). Si tiene más de uno, el gestor debe indicar cuál. Se exige vinculación vigente **en ese perfil** y se guarda la FK de la política aplicada; el rol se obtiene de esa relación.
 - **Cupo (RF13).** Los ítems sin devolver del usuario, sumados a los de la entrega, no pueden superar `max_items_simultaneos` de la política del perfil elegido. Se cuenta sobre todos los préstamos activos del usuario y se serializan las entregas concurrentes del mismo usuario (bloqueo de fila en PostgreSQL).
@@ -83,17 +83,17 @@ La página **Préstamos** se rehízo:
 
 ## Límites y decisiones por validar
 
-- Los plazos efectivos son 1 día in situ para todos los perfiles, 7 días externos para estudiantes y 15 externos para docentes o administrativos. Cada valor pertenece directamente a una política rol-modalidad. Las políticas se podrán editar desde la interfaz en el Sprint 5.
+- Los plazos finales son 1 día in situ para todos los perfiles, 7 días externos para estudiantes y 14 externos para docentes o administrativos. Cada valor pertenece directamente a una política rol-modalidad y puede administrarse dentro de sus límites.
 - La devolución es **completa** (todos los ítems a la vez); no hay devolución parcial.
 - Un ítem dañado pasa a `EN_MANTENIMIENTO` y uno perdido a `EXTRAVIADO` automáticamente; la **sanción** correspondiente se genera recién en el Sprint 5.
 - `EstadoPrestamo.VENCIDO` existe en el dominio, pero el estado vencido se calcula al consultar; no se guarda.
-- Los eventos `PrestamoDevuelto` y `PrestamoDevueltoTarde` ya se generan en el agregado, pero **todavía nada los consume**.
-- La renovación y las reservas todavía no estaban implementadas al cierre de este sprint; ambas se completaron en el Sprint 4.
+- Los eventos `PrestamoDevuelto` y `PrestamoDevueltoTarde` ya se generaban en el agregado; los incrementos posteriores incorporaron sanciones y trazabilidad persistente.
+- Las reservas todavía no estaban implementadas al cierre de este sprint; se completaron en el Sprint 4. La renovación explorada inicialmente fue descartada en la versión final.
 - Un usuario que ya cumple su cupo no puede recibir más ítems hasta devolver; el cupo se calcula sobre todos sus préstamos activos aunque hayan sido con otro perfil.
 
 ## Siguiente incremento
 
-El Sprint 4 implementó reservas (crear, confirmar, cancelar y expirar), su conversión en préstamo y la renovación condicionada a que no haya reservas pendientes.
+El Sprint 4 implementó reservas (crear, confirmar, cancelar y expirar) y su conversión en préstamo. El Sprint 6 consolidó retiro, rechazo, calendario y trazabilidad, y eliminó la renovación.
 
 ## Avance del proyecto
 

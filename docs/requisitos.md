@@ -44,13 +44,13 @@ El Sistema de Préstamos gestiona el préstamo de recursos (equipos, libros, mat
 
 **Reservas**
 - RF07: Permitir que un usuario habilitado solicite un ítem para un rango futuro; el gestor elige manualmente entre solicitudes incompatibles.
-- RF08: Cancelar o expirar automáticamente una reserva no recogida dentro de un plazo definido por la política.
+- RF08: Retirar una solicitud pendiente, rechazarla, cancelar una reserva confirmada o expirar automáticamente una reserva no recogida al terminar el día inicial.
 - RF09: Convertir una reserva confirmada en préstamo al momento de la entrega.
 
 **Préstamos**
 - RF10: Registrar un préstamo indicando usuario, ítem(es), modalidad (in situ / externo), fecha de entrega y fecha de devolución esperada (calculada según política).
 - RF11: Registrar la devolución de un préstamo, actualizando el estado del ítem y verificando condición (daño, pérdida).
-- RF12: Permitir renovación de un préstamo si no hay reservas pendientes sobre el ítem y el usuario no tiene sanciones.
+- RF12: **Descartado por decisión del equipo:** no se renuevan préstamos. Para continuar usando un recurso debe finalizar el préstamo y gestionarse una nueva reserva, respetando disponibilidad, cupo y prioridad.
 - RF13: Bloquear nuevos préstamos a usuarios con sanciones activas o que excedan su límite de ítems simultáneos.
 
 **Sanciones**
@@ -81,11 +81,12 @@ El Sistema de Préstamos gestiona el préstamo de recursos (equipos, libros, mat
 2. El plazo de devolución se calcula a partir de la **modalidad** del préstamo y la **política** asociada al rol del usuario.
 3. Un ítem solo puede estar en un préstamo activo a la vez; las reservas futuras no alteran su estado físico y se reflejan en el calendario.
 4. Una reserva no recogida expira al terminar su fecha de inicio.
-5. La renovación no procede si se superpone con una reserva confirmada; las solicitudes pendientes no bloquean el recurso.
+5. No existe renovación de préstamos ni reutilización del recurso el mismo día de su devolución.
 6. Toda sanción registra su origen (retraso, daño, pérdida) y su estado (activa/cerrada).
 7. Préstamos activos y reservas activas comparten el cupo máximo de la política del usuario.
 8. No se entregan ni reciben recursos los fines de semana o durante un cierre institucional.
-9. Un cierre desplaza obligaciones afectadas al siguiente rango laborable sin generar atraso.
+9. Un cierre desplaza obligaciones afectadas al siguiente rango laborable sin generar atraso y deja registro del aplazamiento.
+10. La fecha se calcula en `America/Lima`; los instantes de auditoría se almacenan en UTC y se presentan en la zona institucional.
 
 ---
 
@@ -96,14 +97,15 @@ El Sistema de Préstamos gestiona el préstamo de recursos (equipos, libros, mat
 | Entidad | Responsabilidad |
 |---|---|
 | **Usuario** | Identidad y rol de quien interactúa con el sistema. |
-| **PoliticaServicio** | Reglas que rigen a un rol de usuario (límites, plazos). |
+| **PoliticaRol** | Cupo compartido y factor de sanción que corresponden a cada rol. |
+| **PoliticaServicio** | Plazo y tipos permitidos para una combinación rol–modalidad. |
 | **Item** (superclase) | Recurso prestable; se especializa en `Libro`, `Equipo`, `Material`. |
 | **Modalidad** | Forma en que se realiza el préstamo (in situ / externo) y su regla de plazo. |
 | **Reserva** | Intención de préstamo futuro sobre un ítem. |
 | **Prestamo** | Transacción activa/cerrada de entrega y devolución de uno o más ítems. |
 | **DetallePrestamo** | Relación entre un préstamo y cada ítem incluido (permite préstamos multi-ítem). |
 | **Sancion** | Restricción temporal sobre un usuario, con motivo y vigencia. |
-| **HistorialMovimiento** | Registro auditable de cambios de estado (préstamo, reserva, sanción, ítem). |
+| **EventoReserva / AplazamientoPrestamo** | Registros auditables del ciclo de una reserva y de las fechas movidas por cierres. |
 
 ### 6.2 Diagrama de clases (Mermaid)
 
@@ -122,9 +124,7 @@ classDiagram
         +int id
         +string rol_aplicable
         +int modalidad_id
-        +int max_items_simultaneos
         +int dias_prestamo
-        +int dias_sancion_por_dia_atraso
     }
 
     class Item {
@@ -190,7 +190,13 @@ classDiagram
         +string resolucion
     }
 
-    class HistorialMovimiento {
+    class PoliticaRol {
+        +string rol
+        +int max_items_simultaneos
+        +int dias_sancion_por_dia_atraso
+    }
+
+    class EventoReserva {
         +int id
         +string tipo_evento
         +datetime fecha_evento
@@ -201,7 +207,8 @@ classDiagram
     Usuario "1" --> "0..*" Reserva : realiza
     Usuario "1" --> "0..*" Prestamo : solicita
     Usuario "1" --> "0..*" Sancion : recibe
-    Usuario "1" --> "0..*" HistorialMovimiento : genera
+    PoliticaRol "1" --> "1..*" PoliticaServicio : complementa
+    Usuario "1" --> "0..*" EventoReserva : genera
 
     Item <|-- Libro
     Item <|-- Equipo
@@ -222,19 +229,20 @@ classDiagram
 - **Item como jerarquía**: el dominio conserva las clases `Libro`, `Equipo`, `Material` y `Mobiliario`; SQLAlchemy las persiste en una tabla común y guarda los atributos específicos como JSON. Así el inventario sigue siendo único y extensible sin alterar el esquema para cada tipo.
 - **DetallePrestamo** existe para soportar préstamos de múltiples ítems en una sola transacción sin duplicar lógica de fechas/estado en `Prestamo`.
 - **Sancion** se vincula opcionalmente a un `Prestamo` (para las automáticas por retraso) pero puede existir sin préstamo asociado (para pérdidas o daños reportados aparte).
-- **HistorialMovimiento** actúa como bitácora transversal: cualquier entidad relevante (préstamo, reserva, sanción, ítem) puede generar un evento, cubriendo RF17 y RNF03 sin necesidad de tablas de auditoría separadas por entidad.
-- **PoliticaServicio** desacopla límites y plazos del código y representa una
-  combinación única de rol y modalidad. Los tipos permitidos se relacionan mediante
-  `politica_tipos_recurso`, no como una lista en una columna. Su aplicación ya
-  funciona; el Sprint 5 permite editar límites, plazos y el factor de atraso desde
-  la interfaz administrativa.
+- **EventoReserva** conserva cada transición con actor, fecha y detalle;
+  **AplazamientoPrestamo** conserva la fecha anterior, la nueva y el cierre que
+  originó el cambio. Préstamos y sanciones mantienen además sus propios datos de
+  creación y cierre.
+- **PoliticaRol** contiene el cupo y el factor de sanción. **PoliticaServicio**
+  representa una combinación única de rol y modalidad, con el plazo y sus tipos
+  permitidos en `politica_tipos_recurso`. Esta separación evita repetir reglas.
 
 ---
 
 ## 7. Estado de implementación
 
-Los Sprints 1–5 implementan identidad, inventario, préstamos, reservas,
-renovaciones, sanciones y políticas editables. El primer incremento del Sprint 6
-añade rangos, calendario y cierres institucionales mediante la migración `0014`.
-La auditoría, el historial filtrable y el cierre integral siguen pendientes. El
-detalle de aceptación se mantiene en el [plan de sprints](sprints/plan.md).
+Los Sprints 1–6 están terminados. La migración `0014` añadió rangos, calendario y
+cierres institucionales; `0015` separa las políticas por rol, elimina la
+renovación, agrega retiro de solicitudes y persiste los eventos de reserva y los
+aplazamientos. El detalle de aceptación se mantiene en el
+[plan de sprints](sprints/plan.md).

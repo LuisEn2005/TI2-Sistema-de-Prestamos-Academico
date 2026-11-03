@@ -1,105 +1,100 @@
-# Plan de sprints y cierre funcional
+# Plan de desarrollo por sprints
 
-## Alcance y estado
+## Estado general
 
-Este plan parte de los [requisitos RF01–RF18 y RNF01–RNF06](../requisitos.md). **Sprints 1–5 están implementados** ([MVP](sprint-01.md), [Sprint 2](sprint-02.md), [Sprint 3](sprint-03.md), [Sprint 4](sprint-04.md) y [Sprint 5](sprint-05.md)). **El Sprint 6 está en progreso**. La numeración expresa orden de desarrollo; duración, fechas, responsables e incidencias de Jira se definirán con el equipo.
+Los seis sprints están **terminados**. El plan conserva el orden en que creció el
+sistema y señala una decisión final importante: RF12, renovación de préstamos,
+fue descartado para evitar extensiones indefinidas. Esta decisión no elimina el
+historial ni la reserva posterior; obliga a cerrar el préstamo y volver a pasar
+por las reglas de disponibilidad y prioridad.
 
-Cada sprint debe entregar una funcionalidad visible en Astro, una API y reglas en Flask, persistencia cuando corresponda y comprobaciones de su recorrido principal. La cobertura parcial de un requisito en un sprint no equivale a su cierre; la tabla de trazabilidad indica dónde quedará completo.
+## Sprint 1 — MVP de préstamo y devolución
 
-## Sprint 1 — MVP de préstamo básico · Terminado
+- **Objetivo:** comprobar la idea central con el menor flujo útil.
+- **Backend:** catálogo pequeño, usuarios ficticios, préstamo y devolución de un
+  recurso, persistencia SQLite.
+- **Frontend:** consulta y formulario mínimo de préstamo/devolución.
+- **Resultado:** prototipo funcional documentado en [Sprint 1](sprint-01.md).
 
-**Objetivo.** Validar el recorrido central de consultar un recurso, prestarlo y devolverlo.
+## Sprint 2 — Identidad e inventario
 
-| Módulo | Backend | Frontend | Resultado comprobable |
-| --- | --- | --- | --- |
-| Identidad de prueba | Dos usuarios precargados. | Selector de usuario. | Se puede elegir quién recibe el recurso. |
-| Inventario de prueba | Tres recursos precargados y consulta de disponibilidad. | Catálogo con estado de cada recurso. | Un préstamo cambia el recurso a «Prestado». |
-| Préstamos y devoluciones | Registro, devolución y rechazo de préstamo duplicado. | Formulario y lista de préstamos activos. | La devolución libera el recurso para otro préstamo. |
+- **Objetivo:** reemplazar los datos rígidos por administración real.
+- **Backend:** autenticación, sesiones, perfiles, matrícula/vinculación, permisos,
+  inventario tipado, migraciones y compatibilidad PostgreSQL.
+- **Frontend:** login, gestión de usuarios, catálogo filtrable e inventario.
+- **Resultado:** RF01, RF03, RF04 y RF06; base de RF02 y RF05. Véase
+  [Sprint 2](sprint-02.md).
 
-Se usaron Flask, Astro y SQLAlchemy con SQLite local por defecto. Es una implementación **parcial** de RF01, RF04–RF06, RF10–RF11 y RF13. No hay autenticación, políticas, reservas ni sanciones. Los endpoints, datos de demostración, pruebas y límites se detallan en el [documento del Sprint 1](sprint-01.md).
+## Sprint 3 — Préstamos completos
 
-## Sprint 2 — Identidad e inventario administrable · Terminado
+- **Objetivo:** completar entrega y devolución bajo políticas.
+- **Backend:** modalidades, varios ítems, plazos, cupos, tipos permitidos,
+  devolución por condición y transacciones atómicas.
+- **Frontend:** selección de prestatario, modalidad, días válidos y recepción.
+- **Resultado:** RF10, RF11 y reglas principales de RF13. Véase
+  [Sprint 3](sprint-03.md).
 
-**Objetivo.** Sustituir los datos de demostración por usuarios y recursos gestionados desde el sistema.
+## Sprint 4 — Reservas
 
-- **Backend:** autenticación y autorización por rol; registro y actualización de usuarios, perfiles y estado de matrícula o vinculación; asociación de políticas por perfil; inventario con atributos comunes y específicos para libros, equipos y materiales; estados completos y búsqueda por tipo, categoría o texto; migraciones y base PostgreSQL.
-- **Frontend:** acceso según rol, formularios de usuarios y recursos, catálogo público con búsqueda y filtros, detalle de ítem y estado visible.
-- **Cierre:** RF01, RF03, RF04 y RF06 completos. RF02 avanza con la verificación de vinculación; RF05 incorpora los estados de inventario, pero su integración con reservas se cerrará en Sprint 4.
-- **Demostración:** un encargado registra un recurso y un usuario habilitado; un visitante encuentra el recurso mediante el catálogo sin autenticarse.
-- **Resultado:** implementado; ver [Sprint 2](sprint-02.md) para el alcance real, los endpoints y lo que quedó pendiente.
+- **Objetivo:** solicitar uso futuro y convertir una reserva en préstamo.
+- **Backend:** solicitud, confirmación, rechazo, retiro, cancelación, expiración y
+  conversión con referencia al préstamo resultante.
+- **Frontend:** rango, seguimiento, decisión manual e historial.
+- **Resultado:** RF05 y RF07–RF09. La renovación inicialmente explorada se
+  descartó y su endpoint ya no existe. Véase [Sprint 4](sprint-04.md).
 
-## Sprint 3 — Préstamos completos · Terminado
+## Sprint 5 — Sanciones y configuración
 
-**Objetivo.** Extender el préstamo básico a las reglas del modelo de dominio.
+- **Objetivo:** aplicar elegibilidad real y mover reglas fuera del código.
+- **Backend:** sanciones por atraso, daño o pérdida; cierre; políticas editables;
+  separación entre operación del gestor y configuración del administrador.
+- **Frontend:** panel de sanciones y configuración de políticas.
+- **Resultado:** RF02, RF13–RF16 y RF18. Véase [Sprint 5](sprint-05.md).
 
-- **Backend:** préstamos con uno o más ítems; modalidades *in situ* y externa; fecha límite calculada según política y perfil; control de cupos y exclusividad del ítem; devolución con fecha y condición física, incluyendo daño o pérdida; transacciones para cambios coordinados.
-- **Frontend:** flujo de entrega con selección de modalidad e ítems, consulta de fechas y préstamos activos, formulario de devolución con condición de cada recurso.
-- **Cierre:** RF10 y RF11 completos; RF13 cubre cupos y disponibilidad, y queda pendiente el bloqueo por sanción hasta Sprint 5.
-- **Demostración:** un encargado entrega varios recursos, ve el plazo calculado y registra su devolución con el estado individual de cada ítem.
-- **Resultado:** implementado; reglas, API, cambios incompatibles y decisiones por validar en el [documento del Sprint 3](sprint-03.md).
+## Sprint 6 — Calendario, trazabilidad y cierre integral
 
-## Sprint 4 — Reservas y renovaciones · Terminado
+- **Objetivo:** resolver disponibilidad por fecha, cierres institucionales e
+  historial, y validar el producto completo.
+- **Backend:** rangos hasta 90 días, competencia manual, cupo compartido,
+  inventario por fecha, feriados/huelgas, reprogramación, eventos de reserva,
+  aplazamientos y expiración programada.
+- **Frontend:** calendario público, inventario protegido por fecha, acciones por
+  estado y consulta de historial.
+- **Resultado:** RF17 y cierre conjunto de requisitos funcionales y no
+  funcionales. Véase [Sprint 6](sprint-06.md).
 
-**Objetivo.** Gestionar solicitudes previas a la entrega y respetar su prioridad.
+## Matriz final de requisitos
 
-- **Backend:** reserva por usuario habilitado, ítem y fecha o franja; confirmación, cancelación y expiración con liberación del recurso; conversión de reserva confirmada en préstamo; renovación condicionada a ausencia de reservas pendientes y a la elegibilidad del usuario.
-- **Frontend:** solicitud y seguimiento de reservas, cancelación, presentación de vencimientos y acción de renovación con el motivo de aceptación o rechazo.
-- **Cierre:** RF05, RF08 y RF09 completos. RF07 y RF12 implementan el flujo de reserva y renovación; su validación contra sanciones activas se cerrará en Sprint 5.
-- **Demostración original:** la reserva se convertía en préstamo y podía cancelarse o expirar. El calendario por rango, las solicitudes concurrentes y el bloqueo únicamente por reservas confirmadas sustituyen esa primera regla en el Sprint 6.
-- **Resultado:** implementado; ver [Sprint 4](sprint-04.md) para reglas, API, persistencia, pruebas y límites.
-
-## Sprint 5 — Sanciones y políticas configurables · Terminado
-
-**Objetivo.** Aplicar incumplimientos y permitir cambiar reglas sin modificar código.
-
-- **Backend:** sanción automática por atraso según política; sanción manual por daño o pérdida con motivo, plazo o monto; cierre por cumplimiento o resolución; validación de sanciones activas antes de reservar, prestar o renovar; administración persistente de límites, plazos, modalidades y reglas de sanción.
-- **Frontend:** consulta del estado de sanciones, registro y cierre por personal autorizado, mensajes de bloqueo y panel administrativo de políticas.
-- **Cierre:** RF02, RF07, RF12, RF13, RF14, RF15, RF16 y RF18 completos. Se comprueba también la aplicación de la política por perfil definida en RF03.
-- **Demostración:** un atraso genera la sanción correspondiente; mientras esté activa, el usuario no puede iniciar nuevas operaciones; un administrador cambia una regla desde la interfaz.
-- **Resultado:** implementado; ver [Sprint 5](sprint-05.md) para reglas, API, persistencia, pruebas y límites.
-
-## Sprint 6 — Calendario, auditoría y entrega integral · En progreso
-
-**Objetivo.** Completar la disponibilidad por fechas, la trazabilidad y validar el sistema entero en su configuración final.
-
-- **Backend implementado:** rangos de reserva, cupo compartido, selección manual, calendario laborable, reprogramación por cierres y política externa de 14 días para personal.
-- **Frontend implementado:** calendario público, cola de solicitudes para el gestor, fechas de inicio y fin y gestión de cierres institucionales.
-- **Pendiente:** historial de préstamos, reservas, sanciones y cambios de estado por usuario e ítem; filtros, auditoría y validación final sobre PostgreSQL.
-- **Cierre:** RF17 y RNF01–RNF06 verificados; regresión de RF01–RF18 sobre PostgreSQL. El sistema deja de depender de datos precargados para funcionar.
-- **Demostración final:** recorrer catálogo público, acceso por rol, administración de usuarios e inventario, reserva, préstamo, renovación, devolución, sanción, cambio de política e historial desde la interfaz Astro, con datos persistidos por Flask y SQLAlchemy.
-
-## Trazabilidad de requisitos funcionales
-
-| Requisito | Módulo y funcionalidad | Sprint de cierre |
-| --- | --- | --- |
-| RF01 | Registro de usuarios, roles y vinculación. | 2 |
-| RF02 | Habilitación por vinculación y ausencia de sanciones activas. | 5 |
-| RF03 | Política de servicio asociada al perfil. | 2; aplicación integral revisada en 5 |
-| RF04 | Registro de recursos y atributos por tipo. | 2 |
-| RF05 | Estados completos del recurso, incluidos reserva y devolución. | 4 |
-| RF06 | Disponibilidad y búsqueda por tipo, categoría o texto. | 2 |
-| RF07 | Reserva de ítem disponible para fecha o franja, solo para usuarios habilitados. | 5 |
-| RF08 | Cancelación y expiración con liberación de ítem. | 4 |
-| RF09 | Conversión de reserva confirmada en préstamo. | 4 |
-| RF10 | Préstamo con ítems, modalidad y plazo calculado. | 3 |
-| RF11 | Devolución y evaluación de condición del recurso. | 3 |
-| RF12 | Renovación sujeta a prioridad de reservas y elegibilidad. | 5 |
-| RF13 | Bloqueo por sanción o límite simultáneo. | 5 |
-| RF14 | Sanción automática por devolución tardía. | 5 |
+| Requisito | Resultado | Sprint de cierre |
+| --- | --- | ---: |
+| RF01 | Usuarios, perfiles y vigencias administrables. | 2 |
+| RF02 | Elegibilidad por vigencia y sanciones activas. | 5 |
+| RF03 | Política por rol y modalidad. | 3 |
+| RF04 | Inventario tipado y extensible. | 2 |
+| RF05 | Estado físico y disponibilidad derivada por fecha. | 6 |
+| RF06 | Catálogo, filtros y calendario público. | 6 |
+| RF07 | Solicitud futura y decisión manual. | 6 |
+| RF08 | Retiro, rechazo, cancelación y expiración. | 6 |
+| RF09 | Reserva confirmada convertida en préstamo. | 4 |
+| RF10 | Entrega con plazo y política aplicados. | 3 |
+| RF11 | Devolución con condición. | 3 |
+| RF12 | Descartado por decisión funcional; no hay renovación. | 6 |
+| RF13 | Bloqueo por sanción, cupo compartido y disponibilidad. | 6 |
+| RF14 | Sanción automática por atraso. | 5 |
 | RF15 | Sanción manual por daño o pérdida. | 5 |
-| RF16 | Cierre de sanción por plazo o resolución. | 5 |
-| RF17 | Historial completo por usuario e ítem. | 6 |
-| RF18 | Administración de políticas sin cambio de código. | 5 |
+| RF16 | Cierre de sanciones. | 5 |
+| RF17 | Historial de operaciones y eventos relevantes. | 6 |
+| RF18 | Configuración administrativa persistente. | 5 |
 
-## Verificación no funcional y criterio de entrega final
+## Criterios de entrega
 
-| Requisito | Verificación prevista |
-| --- | --- |
-| RNF01 | PostgreSQL con restricciones, relaciones y migraciones reproducibles. |
-| RNF02 | API Flask consumida por Astro en todos los módulos. |
-| RNF03 | Bitácora de cambios relevantes con fecha, responsable y referencia. |
-| RNF04 | Catálogo público; reserva y préstamo protegidos por autenticación y permisos. |
-| RNF05 | Consultas de catálogo con respuesta aceptable para la carga habitual de la escuela. |
-| RNF06 | Incorporación de un nuevo tipo de recurso sin rediseñar todo el inventario. |
+El producto se considera completo cuando los recorridos operan de extremo a
+extremo, las restricciones se aplican también en base de datos, las respuestas
+públicas no exponen datos personales y la misma migración funciona en SQLite y
+PostgreSQL. La CI ejecuta pruebas de backend, integración PostgreSQL, build de
+Astro y Playwright.
 
-El **Sprint 6 y el proyecto completo** se aceptarán solo si los 18 requisitos funcionales pueden ejecutarse de extremo a extremo, los seis requisitos no funcionales se comprueban, las operaciones críticas tienen pruebas y la documentación de uso y despliegue refleja el comportamiento real. Para las demostraciones se usará una base separada con datos ficticios; la entrega final se verificará con una base nueva, sin esos datos, donde el administrador inicial pueda registrar usuarios, recursos y el resto de la información desde la interfaz. Las tareas concretas de Jira se crearán posteriormente a partir de este plan; no se asignan aquí identificadores ni fechas ficticias.
+La demostración usa una base aislada con datos ficticios. La entrega final debe
+arrancar con `DATOS_DEMO=0`, una base nueva y las credenciales del administrador
+inicial en variables de entorno; desde allí se crean usuarios y recursos reales.
+Las incidencias concretas de Jira se administran fuera de este documento.

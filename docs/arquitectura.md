@@ -21,9 +21,9 @@ cuatro archivos para que una operación pueda seguirse sin recorrer capas disper
 | `rutas.py` | Endpoints Flask y conversión a JSON. |
 
 Los módulos `identidad/`, `inventario/`, `prestamos/`, `reservas/`, `sanciones/`,
-`calendario_laboral/` y `configuracion_servicio/` tienen recorridos funcionales. `auditoria/` conserva
-el modelo de dominio previsto para el Sprint 6 y todavía no se presenta como una
-funcionalidad terminada.
+`calendario_laboral/` y `configuracion_servicio/` contienen todos los recorridos
+funcionales. La trazabilidad que necesita cada flujo se guarda cerca de su origen:
+eventos en reservas y aplazamientos en préstamos.
 
 `compartido/` contiene autenticación, validaciones HTTP, errores, reloj e
 identificadores comunes. `base_datos/` reúne la conexión, los modelos ORM, los
@@ -61,6 +61,7 @@ erDiagram
     USUARIOS ||--o{ SANCIONES : registra
     USUARIOS ||--o{ DIAS_NO_LABORABLES : registra
     MODALIDADES ||--o{ POLITICAS_SERVICIO : configura
+    POLITICAS_ROL ||--o{ POLITICAS_SERVICIO : complementa
     TIPOS_RECURSO ||--o{ POLITICA_TIPOS_RECURSO : clasifica
     POLITICAS_SERVICIO ||--o{ POLITICA_TIPOS_RECURSO : permite
     TIPOS_RECURSO ||--o{ ITEMS : tipifica
@@ -68,19 +69,23 @@ erDiagram
     POLITICAS_SERVICIO ||--o{ PRESTAMOS : aplica
     RESERVAS ||--o| PRESTAMOS : origina
     ITEMS ||--o{ RESERVAS : corresponde
+    RESERVAS ||--o{ EVENTOS_RESERVA : registra
     PRESTAMOS ||--|{ DETALLES_PRESTAMO : contiene
     PRESTAMOS ||--o{ SANCIONES : origina
     ITEMS ||--o{ DETALLES_PRESTAMO : participa
+    PRESTAMOS ||--o{ APLAZAMIENTOS_PRESTAMO : registra
 ```
 
 Los modelos SQLAlchemy están centralizados en `base_datos/modelos.py`. Las
-migraciones `0001`–`0014` conservan la evolución desde el MVP y se aplican al
+migraciones `0001`–`0015` conservan la evolución desde el MVP y se aplican al
 iniciar Flask. La migración `0011` normaliza políticas por rol y modalidad,
 convierte los tipos permitidos en una relación y elimina las copias descriptivas
 de `prestamos`. `0012` elimina los días de gracia: una reserva expira al terminar
 su fecha reservada y esa fecha no se duplica en otra columna. `0013` incorpora
-sanciones y el factor de atraso configurable. `0014` agrega rangos de reserva,
-aplazamientos y cierres institucionales. Una restricción única parcial impide que
+sanciones y el factor de atraso configurable. `0014` agrega rangos de reserva y
+cierres institucionales. `0015` separa las reglas comunes en `politicas_rol`,
+elimina la renovación y los acumulados redundantes, y crea la trazabilidad de
+reservas y aplazamientos. Una restricción única parcial impide que
 un ítem aparezca en dos préstamos activos; las solicitudes de reserva sí pueden
 coincidir hasta que el gestor confirme una. El diseño detallado se
 documenta en [Préstamos y políticas](base-de-datos-normalizada.md).
