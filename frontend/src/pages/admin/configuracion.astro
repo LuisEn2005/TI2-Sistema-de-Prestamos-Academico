@@ -14,21 +14,21 @@ import Base from '../../layouts/Base.astro';
     <tbody id="modalidades"></tbody>
   </table></div>
 
-  <h2 style="margin-top:2rem">Reglas compartidas por perfil</h2>
+  <h2 class="seccion-separada">Reglas compartidas por perfil</h2>
   <div class="tabla-envoltura"><table>
     <thead><tr><th>Perfil</th><th>Cupo compartido</th><th>Sanción por día de atraso</th><th>Acción</th></tr></thead>
     <tbody id="politicas-rol"></tbody>
   </table></div>
 
-  <h2 style="margin-top:2rem">Plazos por perfil y modalidad</h2>
+  <h2 class="seccion-separada">Plazos por perfil y modalidad</h2>
   <div class="tabla-envoltura"><table>
     <thead><tr><th>Perfil</th><th>Modalidad</th><th>Días de préstamo</th><th>Acción</th></tr></thead>
     <tbody id="politicas"></tbody>
   </table></div>
   <p class="tenue pequeno">Los cambios se aplican a las operaciones nuevas. Los préstamos existentes conservan el plazo que recibieron.</p>
 
-  <h2 style="margin-top:2rem">Días no laborables</h2>
-  <form id="formulario-cierre" class="barra">
+  <h2 class="seccion-separada">Días no laborables</h2>
+  <form id="formulario-cierre" class="barra panel filtros-operativos">
     <div><label for="cierre-inicio">Desde</label><input id="cierre-inicio" type="date" required /></div>
     <div><label for="cierre-fin">Hasta</label><input id="cierre-fin" type="date" required /></div>
     <div><label for="cierre-tipo">Tipo</label><select id="cierre-tipo">

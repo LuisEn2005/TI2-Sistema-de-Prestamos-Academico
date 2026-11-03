@@ -8,7 +8,7 @@ import Base from '../layouts/Base.astro';
     <p>Solicite un recurso para un rango permitido y consulte su disponibilidad.</p>
   </div>
 
-  <section id="nueva" hidden>
+  <section id="nueva" class="panel-operativo" hidden>
     <h2>Nueva reserva</h2>
     <form id="formulario">
       <div class="barra">
@@ -24,7 +24,7 @@ import Base from '../layouts/Base.astro';
     </form>
   </section>
 
-  <section style="margin-top:2rem">
+  <section class="panel-operativo seccion-separada">
     <h2>Calendario de disponibilidad</h2>
     <div class="barra">
       <div><label for="cal-item">Recurso del calendario</label><select id="cal-item"></select></div>
@@ -43,7 +43,7 @@ import Base from '../layouts/Base.astro';
     </div>
   </section>
 
-  <h2 style="margin-top:2rem">Seguimiento</h2>
+  <h2 class="seccion-separada">Seguimiento</h2>
   <div class="barra">
     <div><label for="estado">Mostrar</label><select id="estado">
       <option value="">Activas</option>

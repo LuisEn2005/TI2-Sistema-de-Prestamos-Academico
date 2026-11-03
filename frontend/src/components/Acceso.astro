@@ -1,0 +1,44 @@
+<section class="acceso-contenedor">
+  <div class="acceso-presentacion">
+    <p class="sobrelinea">Sistema institucional</p>
+    <h1>Recursos académicos, en un solo lugar.</h1>
+    <p class="acceso-descripcion">
+      Gestione préstamos, reservas y devoluciones de la Escuela de Ciencia de la
+      Computación de forma clara y segura.
+    </p>
+    <div class="acceso-ventajas" aria-label="Características del sistema">
+      <p><span aria-hidden="true">01</span> Consulte disponibilidad por fecha.</p>
+      <p><span aria-hidden="true">02</span> Revise préstamos y reservas vigentes.</p>
+      <p><span aria-hidden="true">03</span> Acceda según su perfil institucional.</p>
+    </div>
+  </div>
+
+  <div class="tarjeta-acceso">
+    <p class="sobrelinea">Acceso institucional</p>
+    <h2>Iniciar sesión</h2>
+    <p class="tenue">Ingrese con el correo registrado en la Escuela.</p>
+
+    <form id="formulario" class="formulario-acceso">
+      <label for="correo">Correo institucional</label>
+      <input id="correo" type="email" autocomplete="username"
+        placeholder="nombre@escuela.edu" required autofocus />
+
+      <label for="password">Contraseña</label>
+      <div class="campo-password">
+        <input id="password" type="password" autocomplete="current-password" required />
+        <button id="mostrar-password" type="button" class="boton-campo"
+          aria-pressed="false">Mostrar</button>
+      </div>
+
+      <button type="submit" id="entrar">Iniciar sesión</button>
+    </form>
+
+    <p class="ayuda-acceso">
+      ¿Aún no tiene acceso? Comuníquese con el administrador del sistema.
+    </p>
+    <div class="separador"><span>o</span></div>
+    <a class="boton secundario ancho" href="/catalogo">Consultar catálogo público</a>
+  </div>
+</section>
+
+<script>import '../funcionalidades/login.ts';</script>

@@ -40,7 +40,7 @@ export function cerrarSesion() {
   window.location.href = '/';
 }
 
-/** Redirige a /login si no hay sesión; devuelve null si falta el permiso. */
+/** Redirige al acceso si no hay sesión; devuelve null si falta el permiso. */
 export async function exigirSesion(permiso?: string): Promise<UsuarioDTO | null> {
   let usuario: UsuarioDTO | null;
   try {
@@ -55,14 +55,14 @@ export async function exigirSesion(permiso?: string): Promise<UsuarioDTO | null>
   }
   if (!usuario) {
     const destino = encodeURIComponent(window.location.pathname);
-    window.location.href = `/login?siguiente=${destino}`;
+    window.location.href = `/?siguiente=${destino}`;
     return null;
   }
   if (permiso && !tienePermiso(usuario, permiso)) {
     document.querySelector('main')?.replaceChildren(
       el('h1', {}, 'Acceso restringido'),
       el('p', {}, 'Su perfil no incluye permisos para esta sección.'),
-      el('a', { href: '/' }, 'Volver al catálogo'),
+      el('a', { href: '/catalogo' }, 'Volver al catálogo'),
     );
     return null;
   }
@@ -72,16 +72,33 @@ export async function exigirSesion(permiso?: string): Promise<UsuarioDTO | null>
 export async function dibujarNavegacion() {
   const nav = document.querySelector('#navegacion');
   if (!nav) return;
+
+  const botonMenu = document.querySelector<HTMLButtonElement>('#menu-navegacion');
+  const zonaNavegacion = document.querySelector<HTMLElement>('.zona-navegacion');
+  if (botonMenu && zonaNavegacion) {
+    const cerrar = () => {
+      zonaNavegacion.classList.remove('abierta');
+      botonMenu.setAttribute('aria-expanded', 'false');
+    };
+    botonMenu.addEventListener('click', () => {
+      const abrir = !zonaNavegacion.classList.contains('abierta');
+      zonaNavegacion.classList.toggle('abierta', abrir);
+      botonMenu.setAttribute('aria-expanded', String(abrir));
+    });
+    nav.addEventListener('click', cerrar);
+    window.matchMedia('(min-width: 761px)').addEventListener('change', cerrar);
+  }
+
   let usuario: UsuarioDTO | null;
   try {
     usuario = await usuarioActual();
   } catch {
-    nav.replaceChildren(el('a', { href: '/' }, 'Catálogo'));
+    nav.replaceChildren(el('a', { href: '/catalogo' }, 'Catálogo'));
     const zona = document.querySelector('#zona-sesion');
     zona?.replaceChildren(el('span', { class: 'meta' }, 'Servidor no disponible'));
     return;
   }
-  const enlaces: [string, string][] = [['/', 'Catálogo']];
+  const enlaces: [string, string][] = [['/catalogo', 'Catálogo']];
   if (usuario) enlaces.push(['/prestamos', 'Préstamos']);
   if (usuario) enlaces.push(['/sanciones', 'Sanciones']);
   if (tienePermiso(usuario, 'RESERVAR_ITEM') || tienePermiso(usuario, 'CONFIRMAR_RESERVA')) {
@@ -93,7 +110,7 @@ export async function dibujarNavegacion() {
 
   nav.replaceChildren(
     ...enlaces.map(([ruta, texto]) => {
-      const activo = ruta === '/' ? window.location.pathname === '/' : window.location.pathname.startsWith(ruta);
+      const activo = window.location.pathname.startsWith(ruta);
       const a = el('a', { href: ruta }, texto);
       if (activo) a.setAttribute('aria-current', 'page');
       return a;
@@ -107,8 +124,11 @@ export async function dibujarNavegacion() {
     salir.addEventListener('click', cerrarSesion);
     zona.replaceChildren(el('a', { href: '/cuenta' }, usuario.nombre), salir);
   } else {
-    zona.replaceChildren(el('a', { href: '/login' }, 'Iniciar sesión'));
+    zona.replaceChildren(el('a', { href: '/' }, 'Iniciar sesión'));
   }
+
+  const marca = document.querySelector<HTMLAnchorElement>('#marca');
+  if (marca) marca.href = usuario ? '/prestamos' : '/';
 }
 
 void dibujarNavegacion();

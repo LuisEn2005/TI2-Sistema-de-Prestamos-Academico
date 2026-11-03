@@ -1,7 +1,12 @@
 ---
 import '../styles/global.css';
-interface Props { titulo: string }
-const { titulo } = Astro.props;
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+
+interface Props { titulo: string; acceso?: boolean }
+const { titulo, acceso = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -11,21 +16,38 @@ const { titulo } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{titulo} · Préstamos Académicos</title>
   </head>
-  <body>
-    <header class="cabecera">
+  <body class:list={{ 'pagina-acceso': acceso }}>
+    <header class:list={['cabecera', { 'cabecera-acceso': acceso }]}>
       <div class="cabecera-interior">
-        <a class="marca" href="/">
-          <strong>Préstamos Académicos</strong>
-          <span>Escuela de Ciencia de la Computación · UNSA</span>
+        <a id="marca" class="marca" href={acceso ? '/' : '/catalogo'}>
+          <span class="marca-simbolo" aria-hidden="true">PA</span>
+          <span class="marca-texto">
+            <strong>Préstamos Académicos</strong>
+            <small>Escuela de Ciencia de la Computación · UNSA</small>
+          </span>
         </a>
-        <nav id="navegacion" aria-label="Principal"></nav>
-        <div id="zona-sesion" class="sesion"></div>
+        {acceso ? (
+          <a class="boton secundario acceso-catalogo" href="/catalogo">Consultar catálogo</a>
+        ) : (
+          <>
+            <button id="menu-navegacion" class="menu-navegacion" type="button"
+              aria-controls="navegacion" aria-expanded="false">Menú</button>
+            <div class="zona-navegacion">
+              <nav id="navegacion" aria-label="Principal"></nav>
+              <div id="zona-sesion" class="sesion"></div>
+            </div>
+          </>
+        )}
       </div>
     </header>
-    <main>
+    <main class:list={{ 'contenido-acceso': acceso }}>
       <p id="mensaje" class="mensaje" role="status" aria-live="polite"></p>
       <slot />
     </main>
+    <footer class="pie-pagina">
+      <span>Escuela de Ciencia de la Computación</span>
+      <span>Universidad Nacional de San Agustín de Arequipa</span>
+    </footer>
     <script>
       import '../compartido/sesion.ts';
     </script>
