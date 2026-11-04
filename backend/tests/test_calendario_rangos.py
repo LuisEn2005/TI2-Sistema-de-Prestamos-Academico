@@ -161,6 +161,38 @@ class CalendarioRangosTest(ApiBase):
             (actualizada["fecha_inicio"], actualizada["fecha_fin"]),
             ("2026-10-27", "2026-11-02"))
 
+    def test_devolucion_tardia_reacomoda_la_reserva_confirmada(self):
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
+        docente = self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL")
+        # El recurso se presta al estudiante con límite el viernes 23.
+        prestamo = self._prestamo(inventario, "LIB-CLRS", fin="2026-10-23").json
+        # El docente reserva el mismo recurso para apenas se libere: lun 26 a vie 30.
+        reserva = self._reserva(docente, "LIB-CLRS", "2026-10-26", "2026-10-30").json
+        confirmada = self.cliente.post(
+            f"/api/reservas/{reserva['id']}/confirmacion", headers=inventario, json={})
+        self.assertEqual(confirmada.status_code, 200, confirmada.json)
+
+        # El préstamo se devuelve TARDE: el mismo lunes 26 en que arrancaba la reserva.
+        self.reloj.instante += timedelta(days=7)  # 19 -> 26 de octubre
+        item = prestamo["items"][0]
+        devolucion = self.cliente.post(
+            f"/api/prestamos/{prestamo['id']}/devolucion", headers=inventario,
+            json={"condiciones": [{"item_id": item["item_id"],
+                                    "condicion": "BUEN_ESTADO"}]})
+        self.assertEqual(devolucion.status_code, 200, devolucion.json)
+
+        # La reserva se corre al primer día libre (mar 27) y conserva el fin (vie 30).
+        detalle = self.cliente.get(
+            f"/api/reservas/{reserva['id']}", headers=docente).json
+        self.assertEqual((detalle["estado"], detalle["fecha_inicio"], detalle["fecha_fin"]),
+                         ("CONFIRMADA", "2026-10-27", "2026-10-30"))
+        ultimo = detalle["eventos"][-1]
+        self.assertEqual(ultimo["tipo"], "REPROGRAMADA")
+        self.assertIn("posterior a la prevista", ultimo["motivo"])
+        self.assertEqual(
+            (ultimo["fecha_inicio_anterior"], ultimo["fecha_inicio_nueva"]),
+            ("2026-10-26", "2026-10-27"))
+
     def test_no_permite_reservar_el_mismo_item_en_rangos_superpuestos(self):
         estudiante = self.ingresar(ESTUDIANTE)
         primera = self._reserva(
