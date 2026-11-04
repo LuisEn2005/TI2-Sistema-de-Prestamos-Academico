@@ -1,11 +1,18 @@
 """Disponibilidad, días laborables y reprogramación institucional."""
 
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 
 from .dominio import DiaNoLaborable, TipoCierre
 from ..compartido import Conflicto, ErrorAplicacion, NoEncontrado
 from ..inventario import EstadoItem
 from ..reservas import EstadoReserva
+
+
+def _iso_utc(instante):
+    """Normaliza a UTC con offset explícito para que el navegador no lo lea como hora local."""
+    if instante.tzinfo is None:
+        instante = instante.replace(tzinfo=timezone.utc)
+    return instante.astimezone(timezone.utc).isoformat()
 
 
 MAX_RANGO_CALENDARIO = 366
@@ -271,7 +278,7 @@ class CalendarioLaboralApplicationService:
                 "rol_solicitante": r.rolSolicitante.value,
                 "fecha_inicio": r.fechaInicio.isoformat(),
                 "fecha_fin": r.fechaFin.isoformat(),
-                "fecha_solicitud": r.fechaSolicitud.isoformat(),
+                "fecha_solicitud": _iso_utc(r.fechaSolicitud),
             } for r in reservas]
 
     def inventario_fecha(self, fecha, *, texto=None, tipo=None, estado=None,

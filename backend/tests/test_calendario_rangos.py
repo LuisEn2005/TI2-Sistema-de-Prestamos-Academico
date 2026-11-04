@@ -53,6 +53,19 @@ class CalendarioRangosTest(ApiBase):
                           "desde": "2026-10-19", "hasta": "2026-10-31"})
         self.assertEqual(solicitudes.status_code, 200, solicitudes.json)
         self.assertEqual(solicitudes.json[0]["usuario"], "Jesus Perez")
+        # La fecha de solicitud debe llevar zona horaria (UTC) y coincidir con
+        # la que expone /api/reservas, para que el navegador no la muestre con
+        # un desfase de horas según la zona local.
+        from datetime import datetime
+        marca_calendario = solicitudes.json[0]["fecha_solicitud"]
+        self.assertIsNotNone(datetime.fromisoformat(marca_calendario).tzinfo)
+        marca_reservas = self.cliente.get(
+            "/api/reservas?historial=1", headers=admin).json["reservas"]
+        marca_reservas = next(r["fecha_solicitud"] for r in marca_reservas
+                              if r["id"] == reserva["id"])
+        self.assertEqual(
+            datetime.fromisoformat(marca_calendario),
+            datetime.fromisoformat(marca_reservas))
 
         publico = self.cliente.get(
             f"/api/items/{self.item_id('LIB-CLRS')}/calendario",
