@@ -244,5 +244,6 @@ classDiagram
 Los Sprints 1–6 están terminados. La migración `0014` añadió rangos, calendario y
 cierres institucionales; `0015` separa las políticas por rol, elimina la
 renovación, agrega retiro de solicitudes y persiste los eventos de reserva y los
-aplazamientos. El detalle de aceptación se mantiene en el
-[plan de sprints](sprints/plan.md).
+aplazamientos. RF17 se cierra con un historial unificado (`GET /api/historial`) que
+agrega préstamos, reservas y sanciones sin una tabla nueva. El detalle de
+aceptación se mantiene en el [plan de sprints](sprints/plan.md).

@@ -101,6 +101,19 @@ export const ETIQUETA_RESERVA: Record<EstadoReserva, string> = {
   RECHAZADA: 'Rechazada', RETIRADA: 'Retirada',
 };
 
+export type TipoMovimiento = 'PRESTAMO' | 'RESERVA' | 'SANCION';
+export type MovimientoHistorialDTO = {
+  tipo: TipoMovimiento; referencia_id: number; fecha: string; estado: string;
+  detalle: string; usuario_id: number; usuario: string | null;
+  item_id: number | null; codigo: string | null; item: string | null;
+};
+export type PaginaHistorialDTO = {
+  movimientos: MovimientoHistorialDTO[]; total: number; pagina: number; limite: number;
+};
+export const ETIQUETA_TIPO_MOVIMIENTO: Record<TipoMovimiento, string> = {
+  PRESTAMO: 'Préstamo', RESERVA: 'Reserva', SANCION: 'Sanción',
+};
+
 export type EstadoCalendario = 'DISPONIBLE' | 'RESERVADO' | 'NO_DISPONIBLE';
 export type CalendarioItemDTO = {
   item_id: number; codigo: string; item: string;

@@ -16,6 +16,7 @@ y PostgreSQL mediante SQLAlchemy y Alembic.
 | Políticas | Cupo y sanción por rol; plazo y tipos permitidos por rol y modalidad. | Configuración separada y legible para cada regla. |
 | Cierres | Feriados, huelgas y otros cierres; reprogramación ordenada de vencimientos y reservas. | Gestión exclusiva del administrador y fechas institucionales visibles. |
 | Trazabilidad | Eventos de reserva y aplazamientos de préstamo con actor, fecha, motivo y referencia. | Historial accesible al titular y al personal autorizado. |
+| Historial unificado (RF17) | `GET /api/historial` agrega préstamos, reservas y sanciones en una sola línea de tiempo, filtrable por tipo, estado, rango de fechas, usuario e ítem. No persiste una tabla nueva: deriva de los datos ya guardados. El titular solo ve lo suyo; `CONSULTAR_HISTORIAL_GLOBAL` ve el de cualquiera. | Página «Historial» con filtros y paginación. |
 
 ## Reglas finales
 
@@ -66,9 +67,9 @@ El comando `flask expirar-reservas` debe ejecutarse diariamente a las 00:01 en l
 zona `America/Lima`; el arranque de Flask también realiza una recuperación por si
 la tarea programada no se ejecutó.
 
-La validación final incluye 138 pruebas de backend con SQLite, la integración de
-PostgreSQL en CI, compilación y comprobación de Astro, y siete recorridos
-Playwright. Los datos de demostración viven en bases aisladas; la instalación
+La validación final incluye 156 pruebas de backend con SQLite, la integración de
+PostgreSQL, compilación y comprobación de Astro, y siete recorridos Playwright, todo
+ejecutado localmente. Los datos de demostración viven en bases aisladas; la instalación
 final usa `DATOS_DEMO=0` y permite crear usuarios, recursos y operaciones desde
 una base limpia.
 

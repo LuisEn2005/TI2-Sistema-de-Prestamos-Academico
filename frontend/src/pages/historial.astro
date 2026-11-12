@@ -1,0 +1,34 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base titulo="Historial">
+  <div class="encabezado-pagina">
+    <h1>Historial</h1>
+    <p>Línea de tiempo unificada de préstamos, reservas y sanciones. Filtre por tipo,
+      estado, fecha y recurso.</p>
+  </div>
+
+  <div class="barra filtros-operativos">
+    <div><label for="tipo">Tipo</label><select id="tipo">
+      <option value="">Todos</option>
+      <option value="PRESTAMO">Préstamos</option>
+      <option value="RESERVA">Reservas</option>
+      <option value="SANCION">Sanciones</option>
+    </select></div>
+    <div><label for="estado">Estado</label><select id="estado"><option value="">Todos</option></select></div>
+    <div id="zona-usuario" hidden><label for="usuario">Usuario</label><select id="usuario"><option value="">Todos</option></select></div>
+    <div><label for="item">Recurso</label><select id="item"><option value="">Todos</option></select></div>
+    <div><label for="desde">Desde</label><input id="desde" type="date" /></div>
+    <div><label for="hasta">Hasta</label><input id="hasta" type="date" /></div>
+    <button id="actualizar" type="button" class="secundario">Filtrar</button>
+  </div>
+
+  <ul id="lista" class="indice"></ul>
+  <div class="paginacion">
+    <button id="anterior" type="button" class="secundario">Anterior</button>
+    <span id="pagina" class="tenue pequeno"></span>
+    <button id="siguiente" type="button" class="secundario">Siguiente</button>
+  </div>
+  <script>import '../funcionalidades/historial.ts';</script>
+</Base>

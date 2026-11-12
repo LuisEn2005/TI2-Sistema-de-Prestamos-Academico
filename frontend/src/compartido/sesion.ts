@@ -101,15 +101,15 @@ export async function dibujarNavegacion() {
   const generales: [string, string][] = [['/catalogo', 'Catálogo']];
   if (usuario?.espacio_activo === 'PERSONAL') {
     generales.push(['/prestamos', 'Mis préstamos'], ['/reservas', 'Mis reservas'],
-      ['/sanciones', 'Mis sanciones']);
+      ['/sanciones', 'Mis sanciones'], ['/historial', 'Mi historial']);
   }
   if (usuario?.espacio_activo === 'INVENTARIO') {
     generales.push(['/admin/inventario', 'Inventario'], ['/prestamos', 'Préstamos'],
-      ['/reservas', 'Reservas'], ['/sanciones', 'Sanciones']);
+      ['/reservas', 'Reservas'], ['/sanciones', 'Sanciones'], ['/historial', 'Historial']);
   }
   if (usuario?.espacio_activo === 'ADMINISTRACION') {
     generales.push(['/admin/usuarios', 'Usuarios'], ['/admin/configuracion', 'Configuración'],
-      ['/sanciones', 'Sanciones']);
+      ['/sanciones', 'Sanciones'], ['/historial', 'Historial']);
   }
 
   const crearEnlaces = (enlaces: [string, string][]) => enlaces.map(([ruta, texto]) => {

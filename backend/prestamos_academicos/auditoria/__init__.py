@@ -1,4 +1,4 @@
-"""Modelo planificado de auditoria para el Sprint 6."""
+"""Historial unificado de préstamos, reservas y sanciones (RF17)."""
 
 from .dominio import HistorialMovimiento, TipoEvento
 

@@ -91,8 +91,8 @@ por las reglas de disponibilidad y prioridad.
 El producto se considera completo cuando los recorridos operan de extremo a
 extremo, las restricciones se aplican también en base de datos, las respuestas
 públicas no exponen datos personales y la misma migración funciona en SQLite y
-PostgreSQL. La CI ejecuta pruebas de backend, integración PostgreSQL, build de
-Astro y Playwright.
+PostgreSQL. La verificación se ejecuta localmente: pruebas de backend, integración
+PostgreSQL, build de Astro y recorridos Playwright.
 
 La demostración usa una base aislada con datos ficticios. La entrega final debe
 arrancar con `DATOS_DEMO=0`, una base nueva y las credenciales del administrador

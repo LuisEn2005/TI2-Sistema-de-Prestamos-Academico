@@ -19,6 +19,7 @@ from .prestamos.servicio import PrestamoApplicationService
 from .reservas.servicio import ReservaApplicationService
 from .sanciones.servicio import SancionApplicationService
 from .calendario_laboral.servicio import CalendarioLaboralApplicationService
+from .auditoria.servicio import HistorialApplicationService
 from .base_datos.conexion import crear_fabrica_sesiones
 from .base_datos.datos_demo import preparar_datos
 from .base_datos.aplicar_migraciones import aplicar_migraciones
@@ -60,6 +61,8 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
         sanciones=SancionApplicationService(
             fabrica_uow, identidad, reloj_aplicacion),
         calendario=calendario,
+        historial=HistorialApplicationService(
+            fabrica_uow, identidad, reloj_aplicacion),
         configuracion=ConfiguracionApplicationService(fabrica_uow),
         tokens=EmisorTokens(clave),
         limitador=LimitadorIntentos(),
@@ -88,9 +91,10 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
     from .reservas import rutas as rutas_reservas
     from .sanciones import rutas as rutas_sanciones
     from .calendario_laboral import rutas as rutas_calendario
+    from .auditoria import rutas as rutas_historial
     for modulo in (
             rutas_identidad, rutas_inventario, rutas_prestamos, rutas_reservas,
-            rutas_configuracion, rutas_sanciones, rutas_calendario):
+            rutas_configuracion, rutas_sanciones, rutas_calendario, rutas_historial):
         app.register_blueprint(modulo.bp)
 
     @app.get("/api/salud")
