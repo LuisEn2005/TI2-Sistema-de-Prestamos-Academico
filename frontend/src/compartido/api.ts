@@ -42,6 +42,31 @@ async function solicitar<T>(ruta: string, { metodo = 'GET', cuerpo }: Opciones =
   return datos as T;
 }
 
+/** Descarga un archivo de un endpoint autenticado (p. ej. un PDF) usando el token. */
+export async function descargar(ruta: string, nombre: string) {
+  const actual = token();
+  const respuesta = await fetch(ruta, {
+    headers: actual ? { Authorization: `Bearer ${actual}` } : {},
+  });
+  if (!respuesta.ok) {
+    const datos = await respuesta.json().catch(() => ({}));
+    if (respuesta.status === 401 && actual) {
+      olvidarToken();
+      window.dispatchEvent(new Event(EVENTO_SESION_INVALIDADA));
+    }
+    throw new ApiError(datos.error || 'No se pudo generar el reporte.', respuesta.status);
+  }
+  const blob = await respuesta.blob();
+  const url = URL.createObjectURL(blob);
+  const ancla = document.createElement('a');
+  ancla.href = url;
+  ancla.download = nombre;
+  document.body.append(ancla);
+  ancla.click();
+  ancla.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   get: <T>(ruta: string, consulta?: Record<string, string | number | undefined>) => {
     const params = new URLSearchParams();

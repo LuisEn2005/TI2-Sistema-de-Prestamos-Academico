@@ -145,6 +145,26 @@ class SqlAlchemyReservaRepository(IReservaRepository):
         self.sesion.flush()
         return fila
 
+    def eventos_para_reporte(self, *, usuario_id=None, item_id=None):
+        """Eventos de reserva con su usuario e ítem, para el historial de acciones."""
+        condiciones = []
+        if usuario_id is not None:
+            condiciones.append(ReservaDB.usuario_id == usuario_id)
+        if item_id is not None:
+            condiciones.append(ReservaDB.item_id == item_id)
+        filas = self.sesion.execute(
+            select(EventoReservaDB, ReservaDB.usuario_id, ReservaDB.item_id, UsuarioDB.nombre)
+            .join(ReservaDB, ReservaDB.id == EventoReservaDB.reserva_id)
+            .outerjoin(UsuarioDB, UsuarioDB.id == EventoReservaDB.actor_usuario_id)
+            .where(*condiciones)
+            .order_by(EventoReservaDB.creado_en, EventoReservaDB.id)
+        ).all()
+        return [{
+            "reserva_id": evento.reserva_id, "usuario_id": usuario, "item_id": item,
+            "tipo": evento.tipo, "actor": nombre or "Sistema",
+            "motivo": evento.motivo, "creado_en": evento.creado_en,
+        } for evento, usuario, item, nombre in filas]
+
     def listar_eventos(self, reserva_id):
         filas = self.sesion.execute(
             select(EventoReservaDB, UsuarioDB.nombre)

@@ -17,6 +17,7 @@ y PostgreSQL mediante SQLAlchemy y Alembic.
 | Cierres | Feriados, huelgas y otros cierres; reprogramación ordenada de vencimientos y reservas. | Gestión exclusiva del administrador y fechas institucionales visibles. |
 | Trazabilidad | Eventos de reserva y aplazamientos de préstamo con actor, fecha, motivo y referencia. | Historial accesible al titular y al personal autorizado. |
 | Historial unificado (RF17) | `GET /api/historial` agrega préstamos, reservas y sanciones en una sola línea de tiempo, filtrable por tipo, estado, rango de fechas, usuario e ítem. No persiste una tabla nueva: deriva de los datos ya guardados. El titular solo ve lo suyo; `CONSULTAR_HISTORIAL_GLOBAL` ve el de cualquiera. | Página «Historial» con filtros y paginación. |
+| Reportes PDF | `GET /api/reportes/usuario/<id>` y `/api/reportes/item/<id>` generan un PDF (fpdf2) de las acciones a nivel de evento, con resumen y rango de hasta 90 días. El prestatario genera el suyo; el gestor/admin, el de cualquier usuario o recurso. | Panel «Generar reporte PDF» en la página de Historial, con descarga autenticada. |
 
 ## Reglas finales
 

@@ -24,6 +24,22 @@ import Base from '../layouts/Base.astro';
     <button id="actualizar" type="button" class="secundario">Filtrar</button>
   </div>
 
+  <section class="seccion-operativa">
+    <h2>Generar reporte PDF</h2>
+    <p class="tenue pequeno">Reporte de acciones en un rango de hasta 90 días.</p>
+    <div class="barra">
+      <div id="rep-zona-ambito" hidden><label for="rep-ambito">Ámbito</label><select id="rep-ambito">
+        <option value="usuario">Por usuario</option>
+        <option value="item">Por recurso</option>
+      </select></div>
+      <div id="rep-zona-objetivo" hidden><label for="rep-objetivo">Seleccionar</label><select id="rep-objetivo"></select></div>
+      <div><label for="rep-desde">Desde</label><input id="rep-desde" type="date" /></div>
+      <div><label for="rep-hasta">Hasta</label><input id="rep-hasta" type="date" /></div>
+      <button id="rep-descargar" type="button">Descargar PDF</button>
+    </div>
+  </section>
+
+  <h2 class="seccion-separada">Movimientos</h2>
   <ul id="lista" class="indice"></ul>
   <div class="paginacion">
     <button id="anterior" type="button" class="secundario">Anterior</button>

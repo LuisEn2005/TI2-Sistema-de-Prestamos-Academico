@@ -1,4 +1,4 @@
-import { api } from '../compartido/api';
+import { api, descargar } from '../compartido/api';
 import {
   ETIQUETA_RESERVA, ETIQUETA_TIPO_MOVIMIENTO,
   type EstadoReserva, type MovimientoHistorialDTO, type PaginaHistorialDTO,
@@ -11,6 +11,8 @@ const LIMITE = 20;
 const usuario = await exigirSesion();
 const global = tienePermiso(usuario, 'CONSULTAR_HISTORIAL_GLOBAL');
 let pagina = 1;
+let listaItems: { id: number; nombre: string; codigo: string }[] = [];
+let listaUsuarios: { id: number; nombre: string }[] = [];
 
 const ESTADOS_PRESTAMO: [string, string][] = [
   ['activo', 'Activo'], ['vencido', 'Vencido'], ['devuelto', 'Devuelto']];
@@ -80,15 +82,60 @@ async function cargar() {
 
 async function cargarItems() {
   const r = await api.get<PaginaItemsDTO>('/api/items', { limite: 100 });
+  listaItems = r.items.map((i) => ({ id: i.id, nombre: i.nombre, codigo: i.codigo }));
   opciones($<HTMLSelectElement>('#item'),
-    r.items.map((i) => [String(i.id), `${i.nombre} (${i.codigo})`]), 'Todos');
+    listaItems.map((i) => [String(i.id), `${i.nombre} (${i.codigo})`]), 'Todos');
 }
 
 async function cargarUsuarios() {
   const ruta = tienePermiso(usuario, 'CONSULTAR_PRESTATARIOS')
     ? '/api/usuarios/prestatarios' : '/api/usuarios';
-  const lista = await api.get<{ id: number; nombre: string }[]>(ruta);
-  opciones($<HTMLSelectElement>('#usuario'), lista.map((u) => [String(u.id), u.nombre]), 'Todos');
+  listaUsuarios = await api.get<{ id: number; nombre: string }[]>(ruta);
+  opciones($<HTMLSelectElement>('#usuario'),
+    listaUsuarios.map((u) => [String(u.id), u.nombre]), 'Todos');
+}
+
+function validarRango(desde: string, hasta: string): string | null {
+  if (!desde || !hasta) return 'Indique la fecha inicial y la final.';
+  if (hasta < desde) return 'La fecha final no puede ser anterior a la inicial.';
+  if ((Date.parse(hasta) - Date.parse(desde)) / 86_400_000 > 90) {
+    return 'El rango del reporte no puede superar 90 días.';
+  }
+  return null;
+}
+
+function poblarObjetivo() {
+  const ambito = $<HTMLSelectElement>('#rep-ambito').value;
+  const valores: [string, string][] = ambito === 'item'
+    ? listaItems.map((i) => [String(i.id), `${i.nombre} (${i.codigo})`])
+    : listaUsuarios.map((u) => [String(u.id), u.nombre]);
+  opciones($<HTMLSelectElement>('#rep-objetivo'), valores, 'Seleccione…');
+}
+
+async function descargarReporte() {
+  const desde = $<HTMLInputElement>('#rep-desde').value;
+  const hasta = $<HTMLInputElement>('#rep-hasta').value;
+  const error = validarRango(desde, hasta);
+  if (error) { avisar(error, true); return; }
+  let ruta: string;
+  let nombre: string;
+  if (global) {
+    const ambito = $<HTMLSelectElement>('#rep-ambito').value === 'item' ? 'item' : 'usuario';
+    const objetivo = $<HTMLSelectElement>('#rep-objetivo').value;
+    if (!objetivo) { avisar('Elija un usuario o recurso para el reporte.', true); return; }
+    ruta = `/api/reportes/${ambito}/${objetivo}?desde=${desde}&hasta=${hasta}`;
+    nombre = `reporte-${ambito}-${objetivo}-${desde}-a-${hasta}.pdf`;
+  } else {
+    ruta = `/api/reportes/usuario/${usuario!.id}?desde=${desde}&hasta=${hasta}`;
+    nombre = `mi-reporte-${desde}-a-${hasta}.pdf`;
+  }
+  const boton = $<HTMLButtonElement>('#rep-descargar');
+  boton.disabled = true;
+  try {
+    await descargar(ruta, nombre);
+    avisar('Reporte generado.');
+  } catch (e) { avisar(mensajeDe(e), true); }
+  finally { boton.disabled = false; }
 }
 
 if (usuario) {
@@ -101,8 +148,15 @@ if (usuario) {
   $('#actualizar').addEventListener('click', () => { pagina = 1; void cargar(); });
   $('#anterior').addEventListener('click', () => { pagina -= 1; void cargar(); });
   $('#siguiente').addEventListener('click', () => { pagina += 1; void cargar(); });
+  $('#rep-descargar').addEventListener('click', () => void descargarReporte());
   try {
     await Promise.all([cargarItems(), global ? cargarUsuarios() : Promise.resolve()]);
   } catch (error) { avisar(mensajeDe(error), true); }
+  if (global) {
+    $('#rep-zona-ambito').hidden = false;
+    $('#rep-zona-objetivo').hidden = false;
+    poblarObjetivo();
+    $('#rep-ambito').addEventListener('change', poblarObjetivo);
+  }
   void cargar();
 }
