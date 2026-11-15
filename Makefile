@@ -4,13 +4,13 @@
 
 dev:
 	@[ -f .env ] || { cp .env.example .env; echo ">> Creé .env desde .env.example (edítalo solo para instalación real)."; }
-	@trap 'kill 0' INT TERM; \
-	$(MAKE) --no-print-directory backend & \
-	$(MAKE) --no-print-directory frontend & \
+	@trap 'kill $$BE $$FE 2>/dev/null' INT TERM; \
+	( cd backend && exec .venv/bin/python -m flask --app prestamos_academicos.web run ) & BE=$$!; \
+	( cd frontend && exec npm run dev ) & FE=$$!; \
 	wait
 
 backend:
-	cd backend && .venv/bin/python -m flask --app prestamos_academicos.web run
+	cd backend && exec .venv/bin/python -m flask --app prestamos_academicos.web run
 
 frontend:
-	cd frontend && npm run dev
+	cd frontend && exec npm run dev
