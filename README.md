@@ -57,17 +57,22 @@ El alcance final se valida de extremo a extremo en Astro, Flask, SQLite y Postgr
 
 Se requiere Python 3.10 o superior y Node.js compatible con la versión de Astro indicada en `frontend/package.json`.
 
-**Backend** (en una terminal):
+**Instalación inicial** (una sola vez) — dependencias de backend y frontend:
 
 ```bash
-cp .env.example .env
-cd backend
-python3 -m venv .venv
-.venv/bin/python -m pip install -e .
-.venv/bin/python -m flask --app prestamos_academicos.web run --debug
+cd backend && python3 -m venv .venv && .venv/bin/python -m pip install -e . && cd ..
+cd frontend && npm ci && cd ..
 ```
 
-Edite `.env` antes de iniciar. Para una demostración use `DATOS_DEMO=true`; para una instalación limpia use `DATOS_DEMO=false` y cambie las credenciales iniciales. La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación aplica las migraciones de Alembic y garantiza las políticas de servicio base. Con la base SQLite predeterminada se usa `backend/instance/prestamos.sqlite`.
+**Ejecutar en desarrollo** — un solo comando desde la raíz:
+
+```bash
+make dev
+```
+
+`make dev` levanta Flask (`http://127.0.0.1:5000`) y Astro (`http://localhost:4321`) a la vez; con **Ctrl-C** se detienen ambos. La primera vez crea `.env` a partir de `.env.example` si no existe (viene con `DATOS_DEMO=1`, es decir datos de demostración). Para levantar solo uno: `make backend` o `make frontend`.
+
+Abra `http://localhost:4321`: Astro redirige `/api` a Flask, la ruta `/` muestra el acceso institucional y el catálogo público está en `/catalogo` sin iniciar sesión. La API responde en `http://127.0.0.1:5000/api/salud`. Al iniciar, la aplicación aplica las migraciones de Alembic y garantiza las políticas de servicio base; con la base SQLite predeterminada usa `backend/instance/prestamos.sqlite`. Edite `.env` para cambiar la configuración (variables abajo).
 
 | Variable | Uso |
 | --- | --- |
@@ -104,17 +109,9 @@ cd backend
 .venv/bin/python -m flask --app prestamos_academicos.web expirar-reservas
 ```
 
-**Frontend** (en otra terminal):
+Para comprobar tipos y generar el frontend: `npm run build` (ejecuta `astro check` y `astro build`) desde `frontend/`.
 
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-Para comprobar tipos y generar el frontend: `npm run build` (ejecuta `astro check` y `astro build`).
-
-Astro sirve la aplicación en `http://localhost:4321` y redirige `/api` a Flask. La ruta `/` muestra el acceso institucional; el catálogo público está disponible en `/catalogo` sin iniciar sesión. Pruebas del backend:
+Pruebas del backend:
 
 ```bash
 cd backend
