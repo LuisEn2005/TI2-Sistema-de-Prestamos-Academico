@@ -3,6 +3,7 @@ import {
   ETIQUETA_ESTADO, type CalendarioItemDTO, type Estado, type ItemDTO,
   type PaginaItemsDTO, type TipoDTO,
 } from '../compartido/contratos';
+import { usuarioActual } from '../compartido/sesion';
 import { $, avisar, el, mensajeDe, opciones, retardo } from '../compartido/ui';
 
 const LIMITE = 10;
@@ -149,4 +150,6 @@ for (const campo of [campoTipo, campoCategoria, campoEstado]) campo.addEventList
 $('#filtros').addEventListener('submit', (e) => { e.preventDefault(); reiniciar(); });
 $('#anterior').addEventListener('click', () => { pagina -= 1; buscar(); });
 $('#siguiente').addEventListener('click', () => { pagina += 1; buscar(); });
+// El enlace «Acceder al sistema» solo aplica sin sesión activa.
+void usuarioActual().then((u) => { if (!u) $<HTMLAnchorElement>('#acceder').hidden = false; });
 iniciar();
