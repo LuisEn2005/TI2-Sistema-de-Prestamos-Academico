@@ -62,6 +62,8 @@ class ReservaApplicationService:
     def expirar_vencidas(self):
         with self._uow() as uow:
             cantidad = self._expirar_en_uow(uow)
+            # El cierre de sanciones por plazo cumplido va en la misma tarea diaria (00:01).
+            uow.sanciones.sincronizar_vencidas(self.reloj.hoy(), self.reloj.ahora())
             uow.commit()
         return cantidad
 

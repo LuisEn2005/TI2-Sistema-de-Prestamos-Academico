@@ -1,6 +1,7 @@
 """Sanciones, bloqueos y configuración del Sprint 5."""
 
-from datetime import timedelta
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR, IN_SITU, ApiBase
 
@@ -67,6 +68,28 @@ class SancionAutomaticaTest(SancionesBase):
         self.assertEqual(sancion["estado"], "CERRADA")
         self.assertIn("cumplimiento", sancion["resolucion"])
         self.assertEqual(self.prestar(inventario, "LIB-CLEAN").status_code, 201)
+
+    def test_cron_diario_cierra_sancion_al_dia_siguiente_del_fin(self):
+        inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
+        prestamo = self.prestar(inventario, modalidad=IN_SITU).json
+        self.reloj.instante += timedelta(days=1)
+        self.devolver(inventario, prestamo)
+        sancion = self.cliente.get("/api/sanciones", headers=inventario).json[0]
+
+        # 00:01 en Lima del día siguiente al fin, sin ninguna petición del usuario.
+        fin = date.fromisoformat(sancion["fecha_fin"])
+        cron = datetime.combine(fin + timedelta(days=1), time(0, 1),
+                                ZoneInfo("America/Lima")).astimezone(timezone.utc)
+        self.reloj.instante = cron
+        servicios = self.app.extensions["servicios"]
+        servicios.reservas.expirar_vencidas()
+
+        with servicios.reservas._uow() as uow:
+            cerrada = uow.sanciones.find_by_id(sancion["id"])
+            usuario = uow.usuarios.find_by_id(cerrada.usuarioId.valor)
+        self.assertEqual(cerrada.estado.value, "CERRADA")
+        self.assertEqual(cerrada.cerradaEn.replace(tzinfo=timezone.utc), cron)
+        self.assertFalse(usuario.tieneSancionActivaCache)
 
 
 class SancionManualTest(SancionesBase):

@@ -83,7 +83,7 @@ def create_app(database_url=None, *, datos_demo=None, secret_key=None, reloj=Non
 
     @app.cli.command("expirar-reservas")
     def expirar_reservas():
-        """Expira solicitudes no atendidas; ejecutar diariamente a las 00:01 de Lima."""
+        """Expira solicitudes no atendidas y cierra sanciones cumplidas; ejecutar diariamente a las 00:01 de Lima."""
         cantidad = app.extensions["servicios"].reservas.expirar_vencidas()
         click.echo(f"Reservas expiradas: {cantidad}")
 
