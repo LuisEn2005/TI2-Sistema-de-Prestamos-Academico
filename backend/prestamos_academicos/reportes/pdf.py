@@ -2,7 +2,7 @@
 
 Usa las fuentes núcleo (Helvetica), que codifican en latin-1; el texto se sanea a
 ese juego para no fallar con caracteres fuera de rango. El diseño es discreto y
-basado en texto: sin recuadros, con líneas finas, acentos ámbar y detalles
+basado en texto: sin recuadros, con líneas finas, acentos de color y detalles
 redondeados sutiles, en línea con la estética de la aplicación."""
 
 from datetime import timezone
@@ -12,13 +12,13 @@ from fpdf import FPDF, FontFace
 
 _LIMA = ZoneInfo("America/Lima")
 
-# Paleta "Cálida académica" (RGB).
-NAVY = (34, 48, 78)
-AMBAR = (179, 121, 27)
-AMBAR_FUERTE = (147, 95, 18)
-LINEA = (227, 215, 196)
-TENUE = (122, 114, 98)
-FONDO_ENCABEZADO = (246, 239, 226)
+# Paleta 60-30-10 de la aplicación (RGB): crema, verde y acento #EE4129.
+VERDE = (27, 69, 50)
+ACENTO = (238, 65, 41)
+ACENTO_TEXTO = (184, 50, 31)   # Variante oscura del acento, legible como texto.
+LINEA = (220, 203, 169)
+TENUE = (86, 100, 90)
+FONDO_ENCABEZADO = (238, 226, 203)
 
 RESUMEN_ETIQUETAS = [
     ("total", "Acciones en total"),
@@ -60,7 +60,7 @@ def _regla(pdf, grosor=0.2, color=LINEA, margen=0.0):
 
 def _encabezado(pdf, datos):
     pdf.set_font("Helvetica", "B", 15)
-    pdf.set_text_color(*NAVY)
+    pdf.set_text_color(*VERDE)
     pdf.cell(0, 8, _txt("Sistema de Préstamos · Escuela de Ciencia de la Computación"),
              new_x="LMARGIN", new_y="NEXT")
     titulo = ("Reporte de acciones por usuario" if datos["tipo"] == "usuario"
@@ -69,7 +69,7 @@ def _encabezado(pdf, datos):
     pdf.set_text_color(*TENUE)
     pdf.cell(0, 6, _txt(f"{titulo}:  {datos['sujeto']}"), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2.5)
-    _regla(pdf, 0.6, AMBAR)      # Hairline ámbar bajo el título.
+    _regla(pdf, 0.6, ACENTO)      # Hairline de acento bajo el título.
     pdf.ln(4)
 
 
@@ -83,17 +83,17 @@ def _linea_meta(pdf, texto):
 def _titulo_seccion(pdf, texto):
     pdf.ln(4)
     y = pdf.get_y()
-    pdf.set_fill_color(*AMBAR)
+    pdf.set_fill_color(*ACENTO)
     pdf.ellipse(pdf.l_margin + 0.3, y + 1.6, 2.2, 2.2, style="F")   # Punto redondeado.
     pdf.set_x(pdf.l_margin + 5)
     pdf.set_font("Helvetica", "B", 11.5)
-    pdf.set_text_color(*NAVY)
+    pdf.set_text_color(*VERDE)
     pdf.cell(0, 6, _txt(texto), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
 
 
 def _resumen(pdf, resumen):
-    """Dos columnas de texto: número ámbar + etiqueta, sin recuadros."""
+    """Dos columnas de texto: número en acento + etiqueta, sin recuadros."""
     colw = pdf.epw / 2
     numw = 11
     fila_h = 7
@@ -104,7 +104,7 @@ def _resumen(pdf, resumen):
             y = pdf.get_y()
         pdf.set_xy(pdf.l_margin + col * colw, y)
         pdf.set_font("Helvetica", "B", 13)
-        pdf.set_text_color(*AMBAR_FUERTE)
+        pdf.set_text_color(*ACENTO_TEXTO)
         pdf.cell(numw, fila_h, _txt(str(resumen.get(clave, 0))), align="R")
         pdf.set_font("Helvetica", "", 9.5)
         pdf.set_text_color(*TENUE)
@@ -129,11 +129,11 @@ def _tabla(pdf, acciones, tipo):
         ("Detalle", 56, lambda a: a.detalle),
     ]
     pdf.set_draw_color(*LINEA)
-    pdf.set_fill_color(255, 255, 255)   # _titulo_seccion deja el relleno en ámbar.
+    pdf.set_fill_color(255, 255, 255)   # _titulo_seccion deja el relleno en el acento.
     pdf.set_line_width(0.15)
-    pdf.set_text_color(*NAVY)
+    pdf.set_text_color(*VERDE)
     pdf.set_font("Helvetica", "", 7.8)
-    encabezado = FontFace(emphasis="BOLD", color=NAVY, fill_color=FONDO_ENCABEZADO)
+    encabezado = FontFace(emphasis="BOLD", color=VERDE, fill_color=FONDO_ENCABEZADO)
     with pdf.table(col_widths=[c[1] for c in columnas], headings_style=encabezado,
                    borders_layout="HORIZONTAL_LINES", line_height=4.2, padding=1.2,
                    text_align="LEFT", first_row_as_headings=True) as t:
