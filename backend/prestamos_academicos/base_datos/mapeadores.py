@@ -137,6 +137,10 @@ def prestamo_a_dominio(fila: PrestamoDB, detalles: list[DetallePrestamoDB], *,
         fechaDevolucionEsperada=fila.fecha_devolucion_esperada,
         fechaDevolucionReal=fila.fecha_devolucion,
         estado=EstadoPrestamo.DEVUELTO if fila.fecha_devolucion else EstadoPrestamo.ACTIVO,
+        entregadoPorUsuarioId=(UsuarioId(fila.entregado_por_usuario_id)
+                               if fila.entregado_por_usuario_id else None),
+        recibidoPorUsuarioId=(UsuarioId(fila.recibido_por_usuario_id)
+                              if fila.recibido_por_usuario_id else None),
         detalles=[
             DetallePrestamo(
                 id=d.id, itemId=ItemId(d.item_id), observacion=d.observacion,

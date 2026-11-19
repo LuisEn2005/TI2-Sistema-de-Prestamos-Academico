@@ -41,6 +41,7 @@ class Sancion:
     estado: EstadoSancion = EstadoSancion.ACTIVA
     cerradaEn: Optional[datetime] = None
     resolucion: Optional[str] = None
+    cerradaPorUsuarioId: Optional[UsuarioId] = None
 
     @classmethod
     def porAtraso(cls, *, usuario_id, prestamo_id, dias_atraso, factor, hoy):
@@ -82,7 +83,8 @@ class Sancion:
         return self.estado == EstadoSancion.ACTIVA and bool(
             self.fechaFin and hoy > self.fechaFin)
 
-    def cerrar(self, resolucion: str, ahora: datetime) -> None:
+    def cerrar(self, resolucion: str, ahora: datetime,
+               por: Optional[UsuarioId] = None) -> None:
         if self.estado != EstadoSancion.ACTIVA:
             raise ErrorDominio("La sanción ya está cerrada.")
         if not resolucion or not resolucion.strip():
@@ -90,6 +92,7 @@ class Sancion:
         self.estado = EstadoSancion.CERRADA
         self.resolucion = resolucion.strip()
         self.cerradaEn = ahora
+        self.cerradaPorUsuarioId = por
 
 
 class ISancionRepository(ABC):

@@ -84,7 +84,7 @@ def prestar():
         except (TypeError, ValueError):
             raise ErrorAplicacion("«fecha_fin» debe usar AAAA-MM-DD.", 400)
     return jsonify(servicios().prestamos.registrar(
-        usuario_id, item_ids, modalidad_id, rol, fecha_fin)), 201
+        usuario_id, item_ids, modalidad_id, rol, fecha_fin, actor=g.usuario)), 201
 
 
 @bp.post("/prestamos/<int:prestamo_id>/devolucion")
@@ -92,4 +92,5 @@ def prestar():
 def devolver(prestamo_id):
     datos = cuerpo_json()
     v.campos(datos, {"condiciones"})
-    return jsonify(servicios().prestamos.devolver(id_ruta(prestamo_id), datos.get("condiciones")))
+    return jsonify(servicios().prestamos.devolver(
+        id_ruta(prestamo_id), datos.get("condiciones"), actor=g.usuario))

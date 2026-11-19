@@ -50,4 +50,4 @@ def cerrar(sancion_id):
     datos = cuerpo_json()
     v.campos(datos, {"resolucion"})
     return jsonify(servicios().sanciones.cerrar(
-        id_ruta(sancion_id), v.texto(datos, "resolucion", maximo=300)))
+        id_ruta(sancion_id), v.texto(datos, "resolucion", maximo=300), g.usuario))

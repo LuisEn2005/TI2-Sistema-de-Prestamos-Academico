@@ -6,6 +6,8 @@ from .dominio import EstadoSancion, ISancionRepository, Monto, OrigenSancion, Sa
 from ..base_datos.modelos import SancionDB, UsuarioDB
 from ..compartido import PrestamoId, SancionId, UsuarioId
 
+RESOLUCION_AUTOMATICA = "Cierre automático por cumplimiento del plazo."
+
 
 def _a_dominio(fila):
     if fila is None:
@@ -20,6 +22,8 @@ def _a_dominio(fila):
         fechaInicio=fila.fecha_inicio, fechaFin=fila.fecha_fin,
         estado=EstadoSancion(fila.estado), cerradaEn=fila.cerrada_en,
         resolucion=fila.resolucion,
+        cerradaPorUsuarioId=(UsuarioId(fila.cerrada_por_usuario_id)
+                             if fila.cerrada_por_usuario_id else None),
     )
 
 
@@ -42,6 +46,8 @@ class SqlAlchemySancionRepository(ISancionRepository):
         fila.estado = sancion.estado.value
         fila.cerrada_en = sancion.cerradaEn
         fila.resolucion = sancion.resolucion
+        fila.cerrada_por_usuario_id = (
+            sancion.cerradaPorUsuarioId.valor if sancion.cerradaPorUsuarioId else None)
         self.sesion.add(fila)
         self.sesion.flush()
         return _a_dominio(fila)
@@ -72,7 +78,7 @@ class SqlAlchemySancionRepository(ISancionRepository):
         if usuarios:
             self.sesion.execute(update(SancionDB).where(*condiciones).values(
                 estado=EstadoSancion.CERRADA.value, cerrada_en=ahora,
-                resolucion="Cierre automático por cumplimiento del plazo."))
+                resolucion=RESOLUCION_AUTOMATICA))
             for uid in usuarios:
                 self.actualizar_cache_usuario(uid)
         return len(usuarios)

@@ -69,6 +69,8 @@ class Prestamo:
     fechaDevolucionEsperada: Optional[date] = None
     fechaDevolucionReal: Optional[datetime] = None
     estado: Optional[EstadoPrestamo] = EstadoPrestamo.ACTIVO
+    entregadoPorUsuarioId: Optional[UsuarioId] = None
+    recibidoPorUsuarioId: Optional[UsuarioId] = None
     detalles: List[DetallePrestamo] = field(default_factory=list)
     eventos: List[object] = field(default_factory=list, repr=False, compare=False)
 

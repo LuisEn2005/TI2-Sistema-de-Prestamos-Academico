@@ -93,13 +93,14 @@ class SancionApplicationService:
             uow.commit()
         return vista
 
-    def cerrar(self, sancion_id, resolucion):
+    def cerrar(self, sancion_id, resolucion, actor=None):
         with self._uow() as uow:
             sancion = uow.sanciones.find_by_id(sancion_id)
             if sancion is None:
                 raise NoEncontrado("La sanción no existe.")
             try:
-                sancion.cerrar(resolucion, self.reloj.ahora())
+                sancion.cerrar(resolucion, self.reloj.ahora(),
+                               por=actor.id if actor is not None else None)
             except ErrorDominio as error:
                 raise Conflicto(str(error))
             guardada = uow.sanciones.save(sancion)

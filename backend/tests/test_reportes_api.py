@@ -85,6 +85,16 @@ class ReportesPdfTest(ReportesBase):
 
     def test_datos_incluyen_acciones_y_resumen(self):
         gestor = self._sembrar()
+        prestamo = self.cliente.get("/api/prestamos", headers=gestor).json["prestamos"][0]
+        self.assertEqual(self.cliente.post(
+            f"/api/prestamos/{prestamo['id']}/devolucion", headers=gestor,
+            json={"condiciones": [{"item_id": self.item_prestamo, "condicion": "BUEN_ESTADO"}]}
+        ).status_code, 200)
+        admin = self.ingresar(ADMIN, espacio="ADMINISTRACION")
+        sancion_id = self.cliente.get("/api/sanciones", headers=admin).json[0]["id"]
+        self.assertEqual(self.cliente.post(
+            f"/api/sanciones/{sancion_id}/cierre", headers=admin,
+            json={"resolucion": "Repuso el material."}).status_code, 200)
         servicios = self.app.extensions["servicios"]
         uid, version, espacio = servicios.tokens.verificar(
             gestor["Authorization"].split()[1])
@@ -108,5 +118,10 @@ class ReportesPdfTest(ReportesBase):
         sancion = next(a for a in acciones if a.accion == "Sanción aplicada")
         self.assertIn("Por daño", sancion.detalle)
         self.assertNotIn(sancion.responsable, (None, "Sistema"))
+        gestor_nombre = "Luis Enrique Ramos Chambi"
+        devolucion = next(a for a in acciones if a.accion.startswith("Préstamo devuelto"))
+        cierre = next(a for a in acciones if a.accion == "Sanción cerrada")
+        self.assertEqual((entrega.responsable, devolucion.responsable, cierre.responsable),
+                         (gestor_nombre, gestor_nombre, "Administrador"))
         reserva = next(a for a in acciones if a.accion == "Reserva solicitada")
         self.assertIn("del 2026-10-20 al 2026-10-26", reserva.detalle)

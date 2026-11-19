@@ -111,7 +111,7 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
         motor = create_engine(URL)
         with motor.connect() as conexion:
             self.assertEqual(conexion.execute(text(
-                "SELECT version_num FROM alembic_version")).scalar_one(), "0015")
+                "SELECT version_num FROM alembic_version")).scalar_one(), "0016")
             columnas = set(conexion.execute(text("""
                 SELECT column_name FROM information_schema.columns
                 WHERE table_schema='public' AND table_name='prestamos'
@@ -120,6 +120,7 @@ class PostgreSQLIntegracionTest(unittest.TestCase):
                 "id", "usuario_id", "reserva_id", "modalidad_id",
                 "politica_servicio_id", "dias_plazo",
                 "fecha_prestamo", "fecha_devolucion_esperada", "fecha_devolucion",
+                "entregado_por_usuario_id", "recibido_por_usuario_id",
             })
             self.assertEqual(conexion.execute(text("""
                 SELECT p.rol_aplicable, m.nombre, p.dias_prestamo

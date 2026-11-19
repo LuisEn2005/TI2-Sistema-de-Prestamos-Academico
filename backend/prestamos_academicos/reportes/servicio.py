@@ -12,6 +12,7 @@ from typing import Optional
 from ..compartido import NoEncontrado, SinPermiso
 from ..compartido.reloj import Reloj
 from ..identidad import Permiso
+from ..sanciones.repositorio import RESOLUCION_AUTOMATICA
 
 ETIQUETA_EVENTO_RESERVA = {
     "SOLICITADA": "Reserva solicitada",
@@ -148,7 +149,7 @@ class ReporteApplicationService:
             acciones.append(Accion(
                 fecha=entrega.isoformat(), hora=self._hora(p.fechaEntrega),
                 categoria="PRESTAMO", accion="Préstamo entregado",
-                responsable=None, item=visible, usuario=prestatario,
+                responsable=self._nombre(uow, p.entregadoPorUsuarioId, nombres), item=visible, usuario=prestatario,
                 detalle=" · ".join(filter(None, (
                     numero,
                     f"modalidad {p.modalidadNombre}" if p.modalidadNombre else None,
@@ -166,7 +167,7 @@ class ReporteApplicationService:
                     fecha=devuelto.isoformat(), hora=self._hora(p.fechaDevolucionReal),
                     categoria="PRESTAMO",
                     accion="Préstamo devuelto con atraso" if atraso else "Préstamo devuelto a tiempo",
-                    responsable=None, item=visible, usuario=prestatario,
+                    responsable=self._nombre(uow, p.recibidoPorUsuarioId, nombres), item=visible, usuario=prestatario,
                     detalle=f"{numero} · " + (f"devuelto con {atraso} día(s) de atraso"
                                                if atraso else "devuelto dentro del plazo")))
             for apl in uow.prestamos.listar_aplazamientos(p.id.valor):
@@ -203,8 +204,10 @@ class ReporteApplicationService:
                 acciones.append(Accion(
                     fecha=cierre.isoformat(), hora=self._hora(s.cerradaEn),
                     categoria="SANCION", accion="Sanción cerrada",
-                    # El cierre no guarda quién lo hizo.
-                    responsable=None, item=None, usuario=afectado,
+                    responsable=(self._nombre(uow, s.cerradaPorUsuarioId, nombres)
+                                 or ("Sistema" if s.resolucion == RESOLUCION_AUTOMATICA
+                                     else None)),
+                    item=None, usuario=afectado,
                     detalle=s.resolucion or "Sanción levantada"))
         return acciones
 

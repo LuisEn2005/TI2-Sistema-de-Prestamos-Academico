@@ -95,6 +95,7 @@ class SancionAutomaticaTest(SancionesBase):
         self.assertEqual(cerrada.estado.value, "CERRADA")
         self.assertEqual(cerrada.cerradaEn.replace(tzinfo=timezone.utc), cron)
         self.assertFalse(usuario.tieneSancionActivaCache)
+        self.assertIsNone(cerrada.cerradaPorUsuarioId)   # el reporte lo muestra como «Sistema»
 
 
 class SancionManualTest(SancionesBase):

@@ -231,7 +231,7 @@ class PrestamoApplicationService:
         return fin, dias_base, transcurridos - dias_base
 
     def registrar(self, usuario_id, item_ids, modalidad_id, rol_solicitante=None,
-                  fecha_fin=None):
+                  fecha_fin=None, actor=None):
         with self._uow() as uow:
             ctx = self._resolver_contexto(uow, usuario_id, modalidad_id, rol_solicitante)
             fin, dias_plazo, _ = self._fecha_final(uow, ctx, fecha_fin)
@@ -299,6 +299,7 @@ class PrestamoApplicationService:
                     items=[ItemId(i) for i in item_ids], ahora=self.reloj.ahora(),
                     hoy=self.reloj.hoy())
                 prestamo.fechaDevolucionEsperada = fin
+                prestamo.entregadoPorUsuarioId = actor.id if actor is not None else None
             except ErrorDominio as e:
                 raise ErrorAplicacion(str(e), 422)
             guardado = uow.prestamos.save(prestamo)
@@ -363,6 +364,7 @@ class PrestamoApplicationService:
                     items=[ItemId(item_id)], ahora=self.reloj.ahora(), hoy=self.reloj.hoy())
                 prestamo.fechaDevolucionEsperada = fin
                 prestamo.reservaId = ReservaId(reserva_id)
+                prestamo.entregadoPorUsuarioId = actor.id
                 reserva.convertir()
             except ErrorDominio as error:
                 raise ErrorAplicacion(str(error), 422)
@@ -376,7 +378,7 @@ class PrestamoApplicationService:
         return vista
 
     # -- devolución (RF11) -----------------------------------------------------------------------
-    def devolver(self, prestamo_id, condiciones):
+    def devolver(self, prestamo_id, condiciones, actor=None):
         """`condiciones`: lista de {item_id, condicion, observacion?} que cubre todos los ítems."""
         pedidas, observaciones = self._leer_condiciones(condiciones)
         with self._uow() as uow:
@@ -391,6 +393,7 @@ class PrestamoApplicationService:
                 prestamo.registrarDevolucion(
                     pedidas, hoy=hoy, fecha=self.reloj.ahora(),
                     observaciones=observaciones)
+                prestamo.recibidoPorUsuarioId = actor.id if actor is not None else None
             except ErrorDominio as e:
                 raise Conflicto(str(e)) if "ya fue devuelto" in str(e) else ErrorAplicacion(str(e), 422)
 

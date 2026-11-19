@@ -276,6 +276,8 @@ class PrestamoDB(Base):
     )
     fecha_devolucion_esperada: Mapped[date | None] = mapped_column(Date)
     fecha_devolucion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    entregado_por_usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    recibido_por_usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
 
 
 class DetallePrestamoDB(Base):
@@ -396,3 +398,4 @@ class SancionDB(Base):
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVA")
     cerrada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolucion: Mapped[str | None] = mapped_column(String(300))
+    cerrada_por_usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))

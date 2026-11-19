@@ -50,7 +50,7 @@ class MigracionTest(unittest.TestCase):
                 "id", "usuario_id", "reserva_id", "modalidad_id",
                 "politica_servicio_id", "dias_plazo",
                 "fecha_prestamo", "fecha_devolucion_esperada",
-                "fecha_devolucion",
+                "fecha_devolucion", "entregado_por_usuario_id", "recibido_por_usuario_id",
             })
             columnas_modalidad = {
                 fila[1] for fila in con.execute("PRAGMA table_info('modalidades')")}
@@ -86,7 +86,7 @@ class MigracionTest(unittest.TestCase):
             self.assertEqual(columnas_sancion, {
                 "id", "usuario_id", "prestamo_id", "creada_por_usuario_id",
                 "origen", "motivo", "monto", "moneda", "fecha_inicio", "fecha_fin",
-                "estado", "cerrada_en", "resolucion",
+                "estado", "cerrada_en", "resolucion", "cerrada_por_usuario_id",
             })
             reglas = con.execute("""
                 SELECT p.rol_aplicable, m.nombre, p.dias_prestamo
@@ -179,7 +179,7 @@ class MigracionTest(unittest.TestCase):
                              [("Externa (a domicilio)", 1)])
             self.assertEqual(c2.get("/api/items").json["total"], 26)
             con = sqlite3.connect(Path(d) / "nueva.sqlite")
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0015")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0016")
             self.assertEqual(con.execute(
                 "SELECT dias_prestamo FROM politicas_servicio p JOIN modalidades m "
                 "ON m.id=p.modalidad_id WHERE p.rol_aplicable='ESTUDIANTE' "
