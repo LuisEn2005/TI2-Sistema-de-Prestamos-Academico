@@ -32,7 +32,7 @@ LUIS, LORENZO = "luis.ramos@escuela.edu", "lorenzo.quispe@escuela.edu"
 DOCENTE = "yessenia.yari@escuela.edu"
 DIEGO, RODRIGO = "diego.canqui@escuela.edu", "rodrigo.ramos@escuela.edu"
 IN_SITU, EXTERNA = "In situ (en sala)", "Externa (a domicilio)"
-INICIO, HOY = date(2026, 10, 1), date(2026, 11, 18)
+INICIO, HOY = date(2026, 10, 1), date(2026, 11, 19)
 FERIADO = date(2026, 10, 8)
 CUPO = {"ESTUDIANTE": 3, "DOCENTE": 5}
 
@@ -481,6 +481,32 @@ class Simulacion:
         # Solicitudes de fin de jornada que quedan pendientes para el día siguiente.
         self.agendar(HOY, "17:35", self.solicitud_pendiente)
         self.agendar(HOY, "17:48", self.solicitud_pendiente)
+        # Reservas para la semana próxima y principios de diciembre: las de la mañana se
+        # confirman en el día; las de la tarde de hoy quedan pendientes al cierre.
+        for dia in (d(11, 17), d(11, 18), HOY):
+            for _ in range(self.rnd.randint(3, 4)):
+                self.agendar(dia, self.hora(9, 14), self.reserva_futura)
+        self.agendar(HOY, "10:30", self.reserva_futura, docente=True)
+        self.agendar(HOY, "17:10", self.reserva_futura)
+        self.agendar(HOY, "17:25", self.reserva_futura)
+
+    def reserva_futura(self, docente=False):
+        correo = DOCENTE if docente else self.rnd.choice(self.estudiantes)
+        if not self.habilitado(correo):
+            return
+        desde = siguiente_laborable(self.hoy, self.rnd.randint(3, 12))
+        if docente and self.rnd.random() < 0.6:            # equipo para una clase futura
+            codigo = self.elegir({"EQ-PRO-001": 3, "EQ-CAM-001": 1}, desde, desde)
+            return codigo and self.reservar(correo, codigo, desde, desde, IN_SITU)
+        if docente or self.rnd.random() < 0.6:             # libro a domicilio
+            maximo = 14 if docente else 7
+            hasta = a_laborable(desde + timedelta(days=self.rnd.randint(3, maximo)))
+            if (hasta - desde).days > maximo:
+                return
+            codigo = self.elegir(LIBROS, desde, hasta)
+            return codigo and self.reservar(correo, codigo, desde, hasta, EXTERNA)
+        codigo = self.elegir(EN_SALA, desde, desde)        # equipo en sala, un día
+        return codigo and self.reservar(correo, codigo, desde, desde, IN_SITU)
 
     def solicitud_pendiente(self):
         desde = siguiente_laborable(self.hoy, 2)
