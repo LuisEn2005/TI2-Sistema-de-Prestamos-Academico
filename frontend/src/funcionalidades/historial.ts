@@ -12,7 +12,7 @@ const usuario = await exigirSesion();
 const global = tienePermiso(usuario, 'CONSULTAR_HISTORIAL_GLOBAL');
 let pagina = 1;
 let listaItems: { id: number; nombre: string; codigo: string }[] = [];
-let listaUsuarios: { id: number; nombre: string }[] = [];
+let listaUsuarios: { id: number; nombre: string; roles: string[] }[] = [];
 
 const ESTADOS_PRESTAMO: [string, string][] = [
   ['activo', 'Activo'], ['vencido', 'Vencido'], ['devuelto', 'Devuelto']];
@@ -88,11 +88,26 @@ async function cargarItems() {
 }
 
 async function cargarUsuarios() {
-  const ruta = tienePermiso(usuario, 'CONSULTAR_PRESTATARIOS')
-    ? '/api/usuarios/prestatarios' : '/api/usuarios';
-  listaUsuarios = await api.get<{ id: number; nombre: string }[]>(ruta);
-  opciones($<HTMLSelectElement>('#usuario'),
-    listaUsuarios.map((u) => [String(u.id), u.nombre]), 'Todos');
+  // Todos los prestatarios (incluidos sancionados), nunca el administrador.
+  listaUsuarios = await api.get<typeof listaUsuarios>(
+    '/api/usuarios/prestatarios', { todos: 'true' });
+  poblarUsuarios();
+}
+
+/** Usuarios del tipo elegido (ESTUDIANTE, DOCENTE, ADMINISTRATIVO); vacío = todos. */
+function deTipo(selector: string): [string, string][] {
+  const tipo = $<HTMLSelectElement>(selector).value;
+  return listaUsuarios
+    .filter((u) => !tipo || u.roles.includes(tipo))
+    .map((u) => [String(u.id), u.nombre]);
+}
+
+function poblarUsuarios() {
+  const select = $<HTMLSelectElement>('#usuario');
+  const anterior = select.value;
+  const valores = deTipo('#tipo-usuario');
+  opciones(select, valores, 'Todos');
+  if (valores.some(([id]) => id === anterior)) select.value = anterior;
 }
 
 function validarRango(desde: string, hasta: string): string | null {
@@ -106,9 +121,10 @@ function validarRango(desde: string, hasta: string): string | null {
 
 function poblarObjetivo() {
   const ambito = $<HTMLSelectElement>('#rep-ambito').value;
+  $('#rep-zona-tipo-usuario').hidden = ambito === 'item';
   const valores: [string, string][] = ambito === 'item'
     ? listaItems.map((i) => [String(i.id), `${i.nombre} (${i.codigo})`])
-    : listaUsuarios.map((u) => [String(u.id), u.nombre]);
+    : deTipo('#rep-tipo-usuario');
   opciones($<HTMLSelectElement>('#rep-objetivo'), valores, 'Seleccione…');
 }
 
@@ -139,7 +155,13 @@ async function descargarReporte() {
 }
 
 if (usuario) {
-  if (global) $('#zona-usuario').hidden = false;
+  if (global) {
+    $('#zona-usuario').hidden = false;
+    $('#zona-tipo-usuario').hidden = false;
+    $('#tipo-usuario').addEventListener('change', () => {
+      poblarUsuarios(); pagina = 1; void cargar();
+    });
+  }
   refrescarEstados();
   $('#tipo').addEventListener('change', () => { refrescarEstados(); pagina = 1; void cargar(); });
   for (const id of ['#estado', '#item', '#usuario']) {
@@ -157,6 +179,7 @@ if (usuario) {
     $('#rep-zona-objetivo').hidden = false;
     poblarObjetivo();
     $('#rep-ambito').addEventListener('change', poblarObjetivo);
+    $('#rep-tipo-usuario').addEventListener('change', poblarObjetivo);
   }
   void cargar();
 }

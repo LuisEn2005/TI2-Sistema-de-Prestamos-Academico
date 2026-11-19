@@ -5,32 +5,23 @@ import Base from '../layouts/Base.astro';
 <Base titulo="Historial">
   <div class="encabezado-pagina">
     <h1>Historial</h1>
-    <p>Línea de tiempo unificada de préstamos, reservas y sanciones. Filtre por tipo,
-      estado, fecha y recurso.</p>
-  </div>
-
-  <div class="barra filtros-operativos">
-    <div><label for="tipo">Tipo</label><select id="tipo">
-      <option value="">Todos</option>
-      <option value="PRESTAMO">Préstamos</option>
-      <option value="RESERVA">Reservas</option>
-      <option value="SANCION">Sanciones</option>
-    </select></div>
-    <div><label for="estado">Estado</label><select id="estado"><option value="">Todos</option></select></div>
-    <div id="zona-usuario" hidden><label for="usuario">Usuario</label><select id="usuario"><option value="">Todos</option></select></div>
-    <div><label for="item">Recurso</label><select id="item"><option value="">Todos</option></select></div>
-    <div><label for="desde">Desde</label><input id="desde" type="date" /></div>
-    <div><label for="hasta">Hasta</label><input id="hasta" type="date" /></div>
-    <button id="actualizar" type="button" class="secundario">Filtrar</button>
+    <p>Línea de tiempo unificada de préstamos, reservas y sanciones. Filtre los
+      movimientos o genere un reporte PDF.</p>
   </div>
 
   <section class="seccion-operativa">
     <h2>Generar reporte PDF</h2>
     <p class="tenue pequeno">Reporte de acciones en un rango de hasta 90 días.</p>
-    <div class="barra">
+    <div class="filtros-historial">
       <div id="rep-zona-ambito" hidden><label for="rep-ambito">Ámbito</label><select id="rep-ambito">
         <option value="usuario">Por usuario</option>
         <option value="item">Por recurso</option>
+      </select></div>
+      <div id="rep-zona-tipo-usuario" hidden><label for="rep-tipo-usuario">Tipo de usuario</label><select id="rep-tipo-usuario">
+        <option value="">Todos</option>
+        <option value="ESTUDIANTE">Estudiante</option>
+        <option value="DOCENTE">Docente</option>
+        <option value="ADMINISTRATIVO">Administrativo</option>
       </select></div>
       <div id="rep-zona-objetivo" hidden><label for="rep-objetivo">Seleccionar</label><select id="rep-objetivo"></select></div>
       <div><label for="rep-desde">Desde</label><input id="rep-desde" type="date" /></div>
@@ -39,7 +30,27 @@ import Base from '../layouts/Base.astro';
     </div>
   </section>
 
-  <h2 class="seccion-separada">Movimientos</h2>
+  <h2>Movimientos</h2>
+  <div class="filtros-operativos filtros-historial">
+    <div><label for="tipo">Tipo</label><select id="tipo">
+      <option value="">Todos</option>
+      <option value="PRESTAMO">Préstamos</option>
+      <option value="RESERVA">Reservas</option>
+      <option value="SANCION">Sanciones</option>
+    </select></div>
+    <div><label for="estado">Estado</label><select id="estado"><option value="">Todos</option></select></div>
+    <div id="zona-tipo-usuario" hidden><label for="tipo-usuario">Tipo de usuario</label><select id="tipo-usuario">
+      <option value="">Todos</option>
+      <option value="ESTUDIANTE">Estudiante</option>
+      <option value="DOCENTE">Docente</option>
+      <option value="ADMINISTRATIVO">Administrativo</option>
+    </select></div>
+    <div id="zona-usuario" hidden><label for="usuario">Usuario</label><select id="usuario"><option value="">Todos</option></select></div>
+    <div><label for="item">Recurso</label><select id="item"><option value="">Todos</option></select></div>
+    <div><label for="desde">Desde</label><input id="desde" type="date" /></div>
+    <div><label for="hasta">Hasta</label><input id="hasta" type="date" /></div>
+    <button id="actualizar" type="button" class="secundario">Filtrar</button>
+  </div>
   <ul id="lista" class="indice"></ul>
   <div class="paginacion">
     <button id="anterior" type="button" class="secundario">Anterior</button>

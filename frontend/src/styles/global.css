@@ -121,6 +121,13 @@ button.pequeno { min-height: 29px; padding: .28rem .55rem; font-size: .75rem; }
 .barra > button { flex: none; }
 .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: .75rem; align-items: end; margin-bottom: .7rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--linea); }
 .filtros label { margin-top: 0; }
+.filtros-historial { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .75rem 1rem; align-items: end; }
+.filtros-historial label { margin-top: 0; }
+.filtros-historial > [hidden] { display: none; }
+.filtros-historial > button { justify-self: start; }
+.filtros-historial :is(input, select) { height: 38px; }
+/* Con los filtros de usuario visibles (8 controles): dos filas parejas de 4. */
+.filtros-historial:has(#zona-usuario:not([hidden])) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .filtros-operativos { margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--linea); }
 .barra-resultados { min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }

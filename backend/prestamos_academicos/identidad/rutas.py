@@ -4,7 +4,7 @@ from flask import Blueprint, g, jsonify, request
 
 from .dominio import Permiso
 from ..compartido import validacion as v
-from ..compartido import NoAutenticado
+from ..compartido import NoAutenticado, SinPermiso
 from ..compartido.autenticacion import (
     requiere_autenticacion, requiere_permiso, servicios,
 )
@@ -75,6 +75,7 @@ def prestatario_a_json(usuario):
         "id": usuario.id.valor,
         "nombre": usuario.nombre,
         "correo": usuario.correoElectronico,
+        "roles": [r.value for r in usuario.rolesPrestatarios()],
     }
 
 
@@ -155,12 +156,22 @@ def obtener_usuario(usuario_id):
 
 
 @bp.get("/usuarios/prestatarios")
-@requiere_permiso(Permiso.CONSULTAR_PRESTATARIOS)
+@requiere_autenticacion
 def listar_prestatarios():
-    parametros_permitidos("q")
+    parametros_permitidos("q", "todos")
+    # todos=true (historial): también sancionados o inhabilitados, sin tope; basta el
+    # historial global, que el espacio de administración tiene sin CONSULTAR_PRESTATARIOS.
+    # Por defecto (préstamos, sanciones): solo habilitados, 50 como máximo para la búsqueda.
+    todos = booleano_consulta("todos") is True
+    if not (Permiso.CONSULTAR_PRESTATARIOS in g.permisos
+            or (todos and Permiso.CONSULTAR_HISTORIAL_GLOBAL in g.permisos)):
+        raise SinPermiso()
     usuarios = servicios().identidad.listar_usuarios(
-        texto=texto_consulta("q", maximo=120), habilitado=True)
-    return jsonify([prestatario_a_json(u) for u in usuarios[:50]])
+        texto=texto_consulta("q", maximo=120), habilitado=None if todos else True)
+    # Solo quien puede recibir préstamos (estudiante, docente, administrativo).
+    prestatarios = [u for u in usuarios if u.esPrestatario()]
+    return jsonify([prestatario_a_json(u) for u in
+                    (prestatarios if todos else prestatarios[:50])])
 
 
 @bp.post("/usuarios")

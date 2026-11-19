@@ -1,4 +1,4 @@
-from .ayudas import ADMIN, CLAVE, ESTUDIANTE, GESTOR, GESTOR_2, ApiBase
+from .ayudas import ADMIN, CLAVE, DOCENTE, ESTUDIANTE, GESTOR, GESTOR_2, ApiBase
 
 
 class AutenticacionTest(ApiBase):
@@ -173,7 +173,21 @@ class GestionUsuariosTest(ApiBase):
         self.assertEqual(self.cliente.get("/api/usuarios", headers=gestor).status_code, 403)
         prestatarios = self.cliente.get("/api/usuarios/prestatarios", headers=gestor)
         self.assertEqual(prestatarios.status_code, 200)
-        self.assertEqual(set(prestatarios.json[0]), {"id", "nombre", "correo"})
+        self.assertEqual(set(prestatarios.json[0]), {"id", "nombre", "correo", "roles"})
+        roles = {u["correo"]: u["roles"] for u in prestatarios.json}
+        self.assertEqual((roles[ESTUDIANTE], roles[DOCENTE]), (["ESTUDIANTE"], ["DOCENTE"]))
+        self.assertNotIn(ADMIN, [u["correo"] for u in prestatarios.json])
+        # Espacio de administración: solo el listado completo del historial.
+        administracion = self.ingresar(ADMIN, espacio="ADMINISTRACION")
+        self.assertEqual(self.cliente.get(
+            "/api/usuarios/prestatarios", headers=administracion).status_code, 403)
+        historial = self.cliente.get(
+            "/api/usuarios/prestatarios?todos=true", headers=administracion)
+        self.assertEqual(historial.status_code, 200)
+        self.assertIn(ESTUDIANTE, [u["correo"] for u in historial.json])
+        self.assertNotIn(ADMIN, [u["correo"] for u in historial.json])
+        self.assertEqual(self.cliente.get(
+            "/api/usuarios/prestatarios?todos=true", headers=h).status_code, 403)
         filtrados = self.cliente.get(
             "/api/usuarios/prestatarios?q=villasante", headers=gestor).json
         self.assertEqual([u["nombre"] for u in filtrados], ["Jesus Gustavo Perez Villasante"])

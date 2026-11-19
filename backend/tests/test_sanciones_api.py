@@ -52,6 +52,11 @@ class SancionAutomaticaTest(SancionesBase):
         bloqueado = self.prestar(inventario, "LIB-CLEAN")
         self.assertEqual(bloqueado.status_code, 422)
         self.assertIn("sanción activa", bloqueado.json["error"])
+        correos = lambda ruta: [u["correo"] for u in self.cliente.get(ruta, headers=inventario).json]
+        self.assertNotIn(ESTUDIANTE, correos("/api/usuarios/prestatarios"))
+        todos = correos("/api/usuarios/prestatarios?todos=true")   # historial
+        self.assertIn(ESTUDIANTE, todos)
+        self.assertNotIn(ADMIN, todos)
         reserva = self.cliente.post("/api/reservas", headers=estudiante, json={
             "item_id": self.item_id("LIB-CLEAN"), "fecha_reserva": "2026-10-22"})
         self.assertEqual(reserva.status_code, 422)
