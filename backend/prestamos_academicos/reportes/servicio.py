@@ -23,6 +23,8 @@ ETIQUETA_EVENTO_RESERVA = {
     "ENTREGADA": "Reserva entregada (préstamo creado)",
 }
 
+ORIGEN_SANCION = {"RETRASO": "Por atraso", "DANO": "Por daño", "PERDIDA": "Por pérdida"}
+
 
 @dataclass
 class Accion:
@@ -33,10 +35,12 @@ class Accion:
     responsable: Optional[str]
     item: Optional[str]   # código del recurso, cuando aplica
     detalle: str
+    usuario: Optional[str] = None  # prestatario afectado por la acción
 
     @property
     def orden(self):
-        return (self.fecha, self.hora or "00:00")
+        # Sin hora (sanciones): al final del día, tras la acción que la originó.
+        return (self.fecha, self.hora or "99:99")
 
 
 class ReporteApplicationService:
@@ -76,7 +80,7 @@ class ReporteApplicationService:
     # -- ensamblado --------------------------------------------------------------
     def _armar(self, actor, tipo, sujeto, desde, hasta, acciones):
         acciones = [a for a in acciones if desde.isoformat() <= a.fecha <= hasta.isoformat()]
-        acciones.sort(key=lambda a: a.orden, reverse=True)
+        acciones.sort(key=lambda a: a.orden)
         return {
             "tipo": tipo, "sujeto": sujeto,
             "desde": desde, "hasta": hasta,
@@ -113,7 +117,11 @@ class ReporteApplicationService:
                 categoria="RESERVA",
                 accion=ETIQUETA_EVENTO_RESERVA.get(e["tipo"], e["tipo"]),
                 responsable=e["actor"], item=it.codigo if it else None,
-                detalle=e["motivo"] or f"Reserva #{e['reserva_id']}"))
+                usuario=e["usuario_nombre"],
+                detalle=" · ".join(filter(None, (
+                    f"Reserva #{e['reserva_id']}",
+                    f"del {e['fecha_inicio'].isoformat()} al {e['fecha_fin'].isoformat()}",
+                    e["motivo"])))))
         return acciones
 
     def _acciones_prestamo(self, uow, *, usuario_id=None, item_id=None):
@@ -126,7 +134,10 @@ class ReporteApplicationService:
         items = uow.items.find_by_ids(
             [d.itemId.valor for p in prestamos for d in p.detalles])
         acciones = []
+        nombres = {}
         for p in prestamos:
+            numero = f"Préstamo #{p.id.valor}"
+            prestatario = self._nombre(uow, p.usuarioId, nombres)
             codigos = [items[d.itemId.valor].codigo for d in p.detalles
                        if d.itemId.valor in items]
             if item_id is not None and item_id in items:
@@ -137,10 +148,16 @@ class ReporteApplicationService:
             acciones.append(Accion(
                 fecha=entrega.isoformat(), hora=self._hora(p.fechaEntrega),
                 categoria="PRESTAMO", accion="Préstamo entregado",
-                responsable=None, item=visible,
-                detalle=(f"{len(p.detalles)} recurso(s): {', '.join(codigos)}"
-                         + (f" · límite {p.fechaDevolucionEsperada.isoformat()}"
-                            if p.fechaDevolucionEsperada else ""))))
+                responsable=None, item=visible, usuario=prestatario,
+                detalle=" · ".join(filter(None, (
+                    numero,
+                    f"modalidad {p.modalidadNombre}" if p.modalidadNombre else None,
+                    f"plazo {p.diasPlazo} día(s)" if p.diasPlazo else None,
+                    (f"límite {p.fechaDevolucionEsperada.isoformat()}"
+                     if p.fechaDevolucionEsperada else None),
+                    f"{len(p.detalles)} recurso(s): {', '.join(codigos)}",
+                    (f"estado {p.estado.value}"
+                     if p.estado and p.estado.value != "DEVUELTO" else None))))))
             if p.fechaDevolucionReal is not None:
                 devuelto = self.reloj.fecha_local(p.fechaDevolucionReal)
                 atraso = (max(0, (devuelto - p.fechaDevolucionEsperada).days)
@@ -149,34 +166,56 @@ class ReporteApplicationService:
                     fecha=devuelto.isoformat(), hora=self._hora(p.fechaDevolucionReal),
                     categoria="PRESTAMO",
                     accion="Préstamo devuelto con atraso" if atraso else "Préstamo devuelto a tiempo",
-                    responsable=None, item=visible,
-                    detalle=(f"Devuelto con {atraso} día(s) de atraso" if atraso
-                             else "Devuelto dentro del plazo")))
+                    responsable=None, item=visible, usuario=prestatario,
+                    detalle=f"{numero} · " + (f"devuelto con {atraso} día(s) de atraso"
+                                               if atraso else "devuelto dentro del plazo")))
             for apl in uow.prestamos.listar_aplazamientos(p.id.valor):
                 aplicado = self.reloj.fecha_local(datetime.fromisoformat(apl["aplicado_en"]))
                 acciones.append(Accion(
                     fecha=aplicado.isoformat(),
                     hora=self._hora(datetime.fromisoformat(apl["aplicado_en"])),
                     categoria="PRESTAMO", accion="Reprogramación por cierre",
-                    responsable=None, item=visible,
-                    detalle=(f"{apl['fecha_anterior']} → {apl['fecha_nueva']} · "
+                    responsable="Sistema", item=visible, usuario=prestatario,
+                    detalle=(f"{numero} · límite {apl['fecha_anterior']} → {apl['fecha_nueva']} · "
                              f"{apl['motivo']}")))
         return acciones
 
     def _acciones_sancion(self, uow, usuario_id):
         acciones = []
+        nombres = {}
         for s in uow.sanciones.listar(usuario_id=usuario_id, estado=None):
+            # Sin creador registrado = sanción automática por atraso.
+            responsable = self._nombre(uow, s.creadaPorUsuarioId, nombres) or "Sistema"
+            afectado = self._nombre(uow, s.usuarioId, nombres)
+            vigencia = (f"vigente del {s.fechaInicio.isoformat()} al {s.fechaFin.isoformat()}"
+                        if s.fechaFin else f"vigente desde {s.fechaInicio.isoformat()}")
             acciones.append(Accion(
                 fecha=s.fechaInicio.isoformat(), hora=None, categoria="SANCION",
-                accion="Sanción aplicada", responsable=None, item=None,
-                detalle=f"{s.origen.value} · {s.motivo}"))
+                accion="Sanción aplicada", responsable=responsable, item=None,
+                usuario=afectado,
+                detalle=" · ".join(filter(None, (
+                    ORIGEN_SANCION.get(s.origen.value, s.origen.value), s.motivo, vigencia,
+                    f"S/ {s.monto.cantidad:.2f}" if s.monto else None,
+                    f"préstamo #{s.prestamoId.valor}" if s.prestamoId else None)))))
             if s.estado.value == "CERRADA":
-                cierre = s.fechaFin or s.fechaInicio
+                cierre = (self.reloj.fecha_local(s.cerradaEn) if s.cerradaEn
+                          else s.fechaFin or s.fechaInicio)
                 acciones.append(Accion(
-                    fecha=cierre.isoformat(), hora=None, categoria="SANCION",
-                    accion="Sanción cerrada", responsable=None, item=None,
+                    fecha=cierre.isoformat(), hora=self._hora(s.cerradaEn),
+                    categoria="SANCION", accion="Sanción cerrada",
+                    # El cierre no guarda quién lo hizo.
+                    responsable=None, item=None, usuario=afectado,
                     detalle=s.resolucion or "Sanción levantada"))
         return acciones
+
+    @staticmethod
+    def _nombre(uow, usuario_id, cache):
+        if usuario_id is None:
+            return None
+        if usuario_id.valor not in cache:
+            u = uow.usuarios.find_by_id(usuario_id.valor)
+            cache[usuario_id.valor] = u.nombre if u else None
+        return cache[usuario_id.valor]
 
     def _hora(self, instante):
         if instante is None:

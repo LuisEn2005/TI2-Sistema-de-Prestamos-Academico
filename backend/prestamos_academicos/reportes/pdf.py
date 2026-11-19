@@ -8,7 +8,7 @@ redondeados sutiles, en línea con la estética de la aplicación."""
 from datetime import timezone
 from zoneinfo import ZoneInfo
 
-from fpdf import FPDF
+from fpdf import FPDF, FontFace
 
 _LIMA = ZoneInfo("America/Lima")
 
@@ -18,6 +18,7 @@ AMBAR = (179, 121, 27)
 AMBAR_FUERTE = (147, 95, 18)
 LINEA = (227, 215, 196)
 TENUE = (122, 114, 98)
+FONDO_ENCABEZADO = (246, 239, 226)
 
 RESUMEN_ETIQUETAS = [
     ("total", "Acciones en total"),
@@ -33,7 +34,8 @@ RESUMEN_ETIQUETAS = [
 
 def _txt(valor):
     """Deja el texto en el juego latin-1 que admiten las fuentes núcleo."""
-    return str(valor or "").encode("latin-1", "replace").decode("latin-1")
+    texto = str(valor or "").replace("—", "-").replace("→", "->")
+    return texto.encode("latin-1", "replace").decode("latin-1")
 
 
 class _Reporte(FPDF):
@@ -111,40 +113,37 @@ def _resumen(pdf, resumen):
             pdf.ln(fila_h)
 
 
-def _entrada(pdf, accion, primera):
-    sangria = pdf.l_margin
-    partes = [p for p in (accion.item, accion.responsable, accion.detalle) if p]
-    meta = "   ·   ".join(partes)
+TIPO = {"RESERVA": "Reserva", "PRESTAMO": "Préstamo", "SANCION": "Sanción"}
 
-    pdf.set_font("Helvetica", "", 8.5)
-    alto_meta = pdf.multi_cell(pdf.epw, 4.4, _txt(meta), dry_run=True,
-                               output="HEIGHT") if meta else 0
-    alto = 5.5 + alto_meta + 3.5
 
-    if pdf.get_y() + alto > pdf.h - 18:
-        pdf.add_page()
-        primera = True
-
-    if not primera:
-        pdf.ln(1.5)
-        _regla(pdf, 0.15, LINEA)
-        pdf.ln(2.5)
-
-    y = pdf.get_y()
-    cuando = accion.fecha + (f"  {accion.hora}" if accion.hora else "")
-    pdf.set_xy(sangria, y)
-    pdf.set_font("Helvetica", "B", 8.5)
-    pdf.set_text_color(*AMBAR_FUERTE)
-    ancho_fecha = pdf.get_string_width(_txt(cuando)) + 3
-    pdf.cell(ancho_fecha, 5, _txt(cuando))
-    pdf.set_font("Helvetica", "B", 9.5)
+def _tabla(pdf, acciones, tipo):
+    """Tabla de acciones con líneas horizontales finas; repite el encabezado en cada página."""
+    quinta = ("Recurso", lambda a: a.item) if tipo == "usuario" else ("Usuario", lambda a: a.usuario)
+    columnas = [
+        ("Fecha", 17, lambda a: a.fecha),
+        ("Hora", 10, lambda a: a.hora),
+        ("Tipo", 15, lambda a: TIPO.get(a.categoria, a.categoria)),
+        ("Acción", 30, lambda a: a.accion),
+        (quinta[0], 22, quinta[1]),
+        ("Responsable", 24, lambda a: a.responsable),
+        ("Detalle", 56, lambda a: a.detalle),
+    ]
+    pdf.set_draw_color(*LINEA)
+    pdf.set_fill_color(255, 255, 255)   # _titulo_seccion deja el relleno en ámbar.
+    pdf.set_line_width(0.15)
     pdf.set_text_color(*NAVY)
-    pdf.cell(0, 5, _txt(accion.accion), new_x="LMARGIN", new_y="NEXT")
-    if meta:
-        pdf.set_x(sangria)
-        pdf.set_font("Helvetica", "", 8.5)
-        pdf.set_text_color(*TENUE)
-        pdf.multi_cell(pdf.epw, 4.4, _txt(meta))
+    pdf.set_font("Helvetica", "", 7.8)
+    encabezado = FontFace(emphasis="BOLD", color=NAVY, fill_color=FONDO_ENCABEZADO)
+    with pdf.table(col_widths=[c[1] for c in columnas], headings_style=encabezado,
+                   borders_layout="HORIZONTAL_LINES", line_height=4.2, padding=1.2,
+                   text_align="LEFT", first_row_as_headings=True) as t:
+        fila = t.row()
+        for nombre, _, _ in columnas:
+            fila.cell(_txt(nombre))
+        for a in acciones:
+            fila = t.row()
+            for _, _, valor in columnas:
+                fila.cell(_txt(valor(a) or "—"))
 
 
 def generar_pdf(datos) -> bytes:
@@ -171,7 +170,7 @@ def generar_pdf(datos) -> bytes:
         pdf.set_text_color(*TENUE)
         pdf.multi_cell(0, 5, _txt("No hay acciones registradas en este rango."),
                        new_x="LMARGIN", new_y="NEXT")
-    for i, a in enumerate(datos["acciones"]):
-        _entrada(pdf, a, primera=i == 0)
+    else:
+        _tabla(pdf, datos["acciones"], datos["tipo"])
 
     return bytes(pdf.output())

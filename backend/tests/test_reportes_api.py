@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, ApiBase
+from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR, ApiBase
 
 RANGO = "desde=2026-09-01&hasta=2026-10-31"
 
@@ -10,7 +10,7 @@ RANGO = "desde=2026-09-01&hasta=2026-10-31"
 class ReportesBase(ApiBase):
     def _sembrar(self):
         self.estudiante = self.ingresar(ESTUDIANTE)
-        gestor = self.ingresar(GESTOR_DOCENTE)
+        gestor = self.ingresar(GESTOR)
         self.estudiante_id = self.usuario_id(ESTUDIANTE, self.ingresar(ADMIN))
         self.item_reserva = self.item_id("LIB-CLRS")
         self.item_prestamo = self.item_id("LIB-GOF")
@@ -67,7 +67,7 @@ class ReportesPdfTest(ReportesBase):
 
     def test_prestatario_no_genera_reporte_ajeno(self):
         self._sembrar()
-        ajeno = self.usuario_id(GESTOR_DOCENTE, self.ingresar(ADMIN))
+        ajeno = self.usuario_id(GESTOR, self.ingresar(ADMIN))
         self.assertEqual(self.cliente.get(
             f"/api/reportes/usuario/{ajeno}?{RANGO}", headers=self.estudiante
         ).status_code, 403)
@@ -100,3 +100,13 @@ class ReportesPdfTest(ReportesBase):
         self.assertEqual(resumen["total"], len(datos["acciones"]))
         self.assertTrue(all(a.categoria in ("RESERVA", "PRESTAMO", "SANCION")
                             for a in datos["acciones"]))
+        acciones = datos["acciones"]
+        self.assertEqual([a.orden for a in acciones], sorted(a.orden for a in acciones))
+        entrega = next(a for a in acciones if a.accion == "Préstamo entregado")
+        self.assertIn("modalidad", entrega.detalle)
+        self.assertIn("plazo", entrega.detalle)
+        sancion = next(a for a in acciones if a.accion == "Sanción aplicada")
+        self.assertIn("Por daño", sancion.detalle)
+        self.assertNotIn(sancion.responsable, (None, "Sistema"))
+        reserva = next(a for a in acciones if a.accion == "Reserva solicitada")
+        self.assertIn("del 2026-10-20 al 2026-10-26", reserva.detalle)

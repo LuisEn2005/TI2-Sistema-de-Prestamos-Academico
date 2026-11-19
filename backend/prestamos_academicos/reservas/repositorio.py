@@ -3,6 +3,7 @@
 from datetime import timezone
 
 from sqlalchemy import case, func, select
+from sqlalchemy.orm import aliased
 
 from .dominio import ESTADOS_ACTIVOS, EstadoReserva, IReservaRepository
 from ..base_datos import mapeadores
@@ -152,18 +153,22 @@ class SqlAlchemyReservaRepository(IReservaRepository):
             condiciones.append(ReservaDB.usuario_id == usuario_id)
         if item_id is not None:
             condiciones.append(ReservaDB.item_id == item_id)
+        duenio = aliased(UsuarioDB)
         filas = self.sesion.execute(
-            select(EventoReservaDB, ReservaDB.usuario_id, ReservaDB.item_id, UsuarioDB.nombre)
+            select(EventoReservaDB, ReservaDB.usuario_id, ReservaDB.item_id, UsuarioDB.nombre,
+                   duenio.nombre, ReservaDB.fecha_inicio, ReservaDB.fecha_fin)
             .join(ReservaDB, ReservaDB.id == EventoReservaDB.reserva_id)
             .outerjoin(UsuarioDB, UsuarioDB.id == EventoReservaDB.actor_usuario_id)
+            .outerjoin(duenio, duenio.id == ReservaDB.usuario_id)
             .where(*condiciones)
             .order_by(EventoReservaDB.creado_en, EventoReservaDB.id)
         ).all()
         return [{
             "reserva_id": evento.reserva_id, "usuario_id": usuario, "item_id": item,
+            "usuario_nombre": nombre_duenio, "fecha_inicio": inicio, "fecha_fin": fin,
             "tipo": evento.tipo, "actor": nombre or "Sistema",
             "motivo": evento.motivo, "creado_en": evento.creado_en,
-        } for evento, usuario, item, nombre in filas]
+        } for evento, usuario, item, nombre, nombre_duenio, inicio, fin in filas]
 
     def listar_eventos(self, reserva_id):
         filas = self.sesion.execute(
