@@ -144,7 +144,7 @@ class ReporteApplicationService:
             if item_id is not None and item_id in items:
                 visible = items[item_id].codigo
             else:
-                visible = codigos[0] if codigos else None
+                visible = ", ".join(codigos) or None
             entrega = self.reloj.fecha_local(p.fechaEntrega)
             acciones.append(Accion(
                 fecha=entrega.isoformat(), hora=self._hora(p.fechaEntrega),

@@ -118,7 +118,9 @@ TIPO = {"RESERVA": "Reserva", "PRESTAMO": "Préstamo", "SANCION": "Sanción"}
 
 def _tabla(pdf, acciones, tipo):
     """Tabla de acciones con líneas horizontales finas; repite el encabezado en cada página."""
-    quinta = ("Recurso", lambda a: a.item) if tipo == "usuario" else ("Usuario", lambda a: a.usuario)
+    # Un código por línea: en la columna angosta, «A, B» partía la coma a otra línea.
+    quinta = (("Recurso", lambda a: (a.item or "").replace(", ", "\n")) if tipo == "usuario"
+              else ("Usuario", lambda a: a.usuario))
     columnas = [
         ("Fecha", 17, lambda a: a.fecha),
         ("Hora", 10, lambda a: a.hora),

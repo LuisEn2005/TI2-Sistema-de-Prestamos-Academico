@@ -83,6 +83,24 @@ class ReportesPdfTest(ReportesBase):
         self.assertEqual(self.cliente.get(
             f"/api/reportes/usuario/999999?{RANGO}", headers=gestor).status_code, 404)
 
+    def test_prestamo_con_varios_recursos_muestra_todos_los_codigos(self):
+        gestor = self.ingresar(GESTOR)
+        estudiante_id = self.usuario_id(ESTUDIANTE, self.ingresar(ADMIN))
+        r = self.cliente.post("/api/prestamos", headers=gestor, json={
+            "usuario_id": estudiante_id,
+            "item_ids": [self.item_id("LIB-GOF"), self.item_id("LIB-CLEAN")],
+            "modalidad_id": self.modalidad_id(EXTERNA)})
+        self.assertEqual(r.status_code, 201, r.json)
+        servicios = self.app.extensions["servicios"]
+        uid, version, espacio = servicios.tokens.verificar(gestor["Authorization"].split()[1])
+        with self.app.app_context():
+            actor = servicios.identidad.usuario_de_sesion(uid, version)
+            servicios.identidad.activar_espacio(actor, espacio)
+            datos = servicios.reportes.datos_usuario(
+                actor, estudiante_id, date(2026, 9, 1), date(2026, 10, 31))
+        entrega = next(a for a in datos["acciones"] if a.accion == "Préstamo entregado")
+        self.assertEqual(entrega.item, "LIB-GOF, LIB-CLEAN")
+
     def test_datos_incluyen_acciones_y_resumen(self):
         gestor = self._sembrar()
         prestamo = self.cliente.get("/api/prestamos", headers=gestor).json["prestamos"][0]
@@ -124,4 +142,5 @@ class ReportesPdfTest(ReportesBase):
         self.assertEqual((entrega.responsable, devolucion.responsable, cierre.responsable),
                          (gestor_nombre, gestor_nombre, "Administrador"))
         reserva = next(a for a in acciones if a.accion == "Reserva solicitada")
+        self.assertEqual(entrega.item, "LIB-GOF")
         self.assertIn("del 2026-10-20 al 2026-10-26", reserva.detalle)
