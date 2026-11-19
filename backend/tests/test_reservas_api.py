@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, ApiBase
+from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR, ApiBase
 
 
 class ReservasBase(ApiBase):
@@ -93,7 +93,7 @@ class FlujoReservaTest(ReservasBase):
 
     def test_varias_solicitudes_compiten_y_una_confirmacion_resuelve_el_conflicto(self):
         primera = self.reservar(self.ingresar(ESTUDIANTE))
-        segunda = self.reservar(self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL"))
+        segunda = self.reservar(self.ingresar(GESTOR, espacio="PERSONAL"))
         self.assertEqual((primera.status_code, segunda.status_code), (201, 201))
         confirmada = self.cliente.post(
             f"/api/reservas/{segunda.json['id']}/confirmacion",
@@ -127,7 +127,7 @@ class SeguridadYValidacionReservasTest(ReservasBase):
         self.assertEqual(self.cliente.post(
             f"/api/reservas/{reserva['id']}/confirmacion",
             headers=estudiante, json={}).status_code, 403)
-        gestor = self.ingresar(GESTOR_DOCENTE)
+        gestor = self.ingresar(GESTOR)
         self.assertEqual(self.cliente.get("/api/reservas", headers=gestor).json["total"], 1)
 
     def test_valida_cuerpo_fecha_estado_y_transiciones(self):
@@ -160,7 +160,7 @@ class SeguridadYValidacionReservasTest(ReservasBase):
         administrador = self.ingresar(ADMIN, espacio="INVENTARIO")
         self.entregar(administrador)
         reserva = self.reservar(
-            self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL"), fecha="2026-10-20",
+            self.ingresar(GESTOR, espacio="PERSONAL"), fecha="2026-10-20",
             fecha_fin="2026-10-27")
         respuesta = reserva
         self.assertEqual(respuesta.status_code, 409)

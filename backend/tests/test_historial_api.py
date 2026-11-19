@@ -1,13 +1,13 @@
 """Historial unificado de préstamos, reservas y sanciones (RF17)."""
 
-from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, ApiBase
+from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR, ApiBase
 
 
 class HistorialBase(ApiBase):
     def _sembrar(self):
         """Genera una reserva, un préstamo y una sanción para el estudiante."""
         estudiante = self.ingresar(ESTUDIANTE)
-        gestor = self.ingresar(GESTOR_DOCENTE)
+        gestor = self.ingresar(GESTOR)
         self.estudiante_id = self.usuario_id(ESTUDIANTE, self.ingresar(ADMIN))
         self.item_reserva = self.item_id("LIB-CLRS")
         self.item_prestamo = self.item_id("LIB-GOF")

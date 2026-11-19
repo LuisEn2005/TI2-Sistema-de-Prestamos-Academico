@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from prestamos_academicos.base_datos.modelos import ModalidadDB, PrestamoDB
 
-from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, IN_SITU, ApiBase
+from .ayudas import ADMIN, DOCENTE, ESTUDIANTE, EXTERNA, GESTOR, IN_SITU, ApiBase
 
 BUEN = "BUEN_ESTADO"
 
@@ -47,9 +47,9 @@ class PermisosTest(PrestamosBase):
                                           headers=h).status_code, 403)
 
     def test_gestor_opera_prestamos_sin_administrar_usuarios(self):
-        gestor = self.ingresar(GESTOR_DOCENTE)
+        gestor = self.ingresar(GESTOR)
         prestatarios = self.cliente.get("/api/usuarios/prestatarios", headers=gestor).json
-        jesus = next(u for u in prestatarios if u["nombre"] == "Jesus Perez")
+        jesus = next(u for u in prestatarios if u["nombre"] == "Jesus Gustavo Perez Villasante")
         entrega = self.cliente.post("/api/prestamos", headers=gestor, json={
             "usuario_id": jesus["id"], "item_ids": [self.item_id("LIB-CLRS")],
             "modalidad_id": self.modalidad_id()})
@@ -91,10 +91,10 @@ class EntregaTest(PrestamosBase):
         self.assertEqual((en_sala["dias_plazo"], en_sala["fecha_limite"]),
                          (1, "2026-10-19"))                           # hasta el final del día
         docente_en_sala = self.entregar(
-            h, GESTOR_DOCENTE, ("LIB-CLEAN",), IN_SITU).json
+            h, DOCENTE, ("LIB-CLEAN",), IN_SITU).json
         self.assertEqual((docente_en_sala["dias_plazo"], docente_en_sala["fecha_limite"]),
                          (1, "2026-10-19"))                           # igual para docentes
-        docente = self.entregar(h, GESTOR_DOCENTE, ("EQ-META",), EXTERNA).json
+        docente = self.entregar(h, DOCENTE, ("EQ-META",), EXTERNA).json
         self.assertEqual((docente["dias_plazo"], docente["fecha_limite"]),
                          (14, "2026-11-02"))                          # docente: 14 días
         self.assertEqual(docente["rol_solicitante"], "DOCENTE")
@@ -158,7 +158,7 @@ class EntregaTest(PrestamosBase):
         h = self.ingresar(espacio="INVENTARIO")
         for n in range(5):
             self.crear_item(h, f"LIB-D{n}")
-        cinco = self.entregar(h, GESTOR_DOCENTE, tuple(f"LIB-D{n}" for n in range(5)))
+        cinco = self.entregar(h, DOCENTE, tuple(f"LIB-D{n}" for n in range(5)))
         self.assertEqual(cinco.status_code, 201, cinco.json)   # docente: hasta 5
 
     def test_la_politica_restringe_los_tipos_de_recurso(self):
@@ -167,12 +167,12 @@ class EntregaTest(PrestamosBase):
         estudiante = self.entregar(h, ESTUDIANTE, ("MOB-1",))
         self.assertEqual(estudiante.status_code, 422)
         self.assertIn("MOB-1", estudiante.json["error"])
-        self.assertEqual(self.entregar(h, GESTOR_DOCENTE, ("MOB-1",)).status_code, 201)
+        self.assertEqual(self.entregar(h, DOCENTE, ("MOB-1",)).status_code, 201)
 
     def test_un_item_no_se_presta_dos_veces_ni_en_otro_estado(self):
         h = self.ingresar(espacio="INVENTARIO")
         self.assertEqual(self.entregar(h).status_code, 201)
-        repetido = self.entregar(h, GESTOR_DOCENTE)
+        repetido = self.entregar(h, GESTOR)
         self.assertEqual(repetido.status_code, 409)
         self.assertIn("LIB-CLRS (PRESTADO)", repetido.json["error"])
         self.cliente.post(f"/api/items/{self.item_id('EQ-META')}/estado", headers=h,
@@ -361,7 +361,7 @@ class ConsultaTest(PrestamosBase):
     def test_cada_usuario_ve_solo_sus_prestamos_y_el_gestor_todos(self):
         h = self.ingresar(espacio="INVENTARIO")
         propio = self.entregar(h, ESTUDIANTE, ("LIB-CLRS",)).json
-        ajeno = self.entregar(h, GESTOR_DOCENTE, ("EQ-META",)).json
+        ajeno = self.entregar(h, DOCENTE, ("EQ-META",)).json
         est = self.ingresar(ESTUDIANTE)
         propios = self.cliente.get("/api/prestamos", headers=est).json
         self.assertEqual([p["id"] for p in propios["prestamos"]], [propio["id"]])
@@ -373,7 +373,7 @@ class ConsultaTest(PrestamosBase):
     def test_filtro_por_estado_y_paginacion(self):
         h = self.ingresar(espacio="INVENTARIO")
         a = self.entregar(h, ESTUDIANTE, ("LIB-CLRS",)).json
-        self.entregar(h, GESTOR_DOCENTE, ("EQ-META",))
+        self.entregar(h, DOCENTE, ("EQ-META",))
         self.devolver(h, a)
         listar = lambda q: self.cliente.get(f"/api/prestamos{q}", headers=h).json  # noqa: E731
         self.assertEqual([p["estado"] for p in listar("?estado=activo")["prestamos"]], ["activo"])

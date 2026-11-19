@@ -1,4 +1,4 @@
-from .ayudas import ADMIN, CLAVE, ESTUDIANTE, GESTOR_DOCENTE, ApiBase
+from .ayudas import ADMIN, CLAVE, ESTUDIANTE, GESTOR, GESTOR_2, ApiBase
 
 
 class AutenticacionTest(ApiBase):
@@ -113,10 +113,10 @@ class EspaciosDeTrabajoTest(ApiBase):
             self._login(ESTUDIANTE, espacio="INVENTARIO").json["usuario"]["espacio_activo"], "PERSONAL")
 
     def test_el_estudiante_gestor_alterna_entre_personal_e_inventario(self):
-        personal = self._login(GESTOR_DOCENTE).json["usuario"]
+        personal = self._login(GESTOR).json["usuario"]
         self.assertEqual(personal["espacio_activo"], "PERSONAL")   # prioriza el perfil prestatario
         self.assertEqual(set(personal["espacios_disponibles"]), {"PERSONAL", "INVENTARIO"})
-        h = self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL")
+        h = self.ingresar(GESTOR, espacio="PERSONAL")
         cambio = self.cliente.post("/api/auth/espacio", headers=h, json={"espacio": "INVENTARIO"})
         self.assertEqual(cambio.status_code, 200, cambio.json)
         self.assertEqual(cambio.json["usuario"]["espacio_activo"], "INVENTARIO")
@@ -125,7 +125,7 @@ class EspaciosDeTrabajoTest(ApiBase):
             self.cliente.get("/api/auth/yo", headers=inventario).json["espacio_activo"], "INVENTARIO")
 
     def test_cambiar_a_un_espacio_no_disponible_devuelve_403(self):
-        gestor = self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL")
+        gestor = self.ingresar(GESTOR, espacio="PERSONAL")
         negado = self.cliente.post(
             "/api/auth/espacio", headers=gestor, json={"espacio": "ADMINISTRACION"})
         self.assertEqual(negado.status_code, 403, negado.json)
@@ -136,11 +136,11 @@ class EspaciosDeTrabajoTest(ApiBase):
     def test_el_espacio_activo_restringe_las_operaciones_del_rol(self):
         libro = {"tipo": "LIBRO", "codigo": "LIB-ESP", "nombre": "Espacios de trabajo",
                  "categoria": "Pruebas", "atributos": {"isbn": "9", "autor": "Autoría"}}
-        personal = self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL")
+        personal = self.ingresar(GESTOR, espacio="PERSONAL")
         # en Personal no puede operar inventario aunque su rol de gestor lo permita
         self.assertEqual(
             self.cliente.post("/api/items", headers=personal, json=libro).status_code, 403)
-        inventario = self.ingresar(GESTOR_DOCENTE, espacio="INVENTARIO")
+        inventario = self.ingresar(GESTOR, espacio="INVENTARIO")
         self.assertEqual(
             self.cliente.post("/api/items", headers=inventario, json=libro).status_code, 201)
 
@@ -169,14 +169,14 @@ class GestionUsuariosTest(ApiBase):
         self.assertEqual(self.cliente.get("/api/usuarios", headers=h).status_code, 403)
         self.assertEqual(self.cliente.post("/api/usuarios", headers=h, json=self.NUEVO).status_code, 403)
         self.assertEqual(self.cliente.get("/api/usuarios").status_code, 401)
-        gestor = self.ingresar(GESTOR_DOCENTE)
+        gestor = self.ingresar(GESTOR)
         self.assertEqual(self.cliente.get("/api/usuarios", headers=gestor).status_code, 403)
         prestatarios = self.cliente.get("/api/usuarios/prestatarios", headers=gestor)
         self.assertEqual(prestatarios.status_code, 200)
         self.assertEqual(set(prestatarios.json[0]), {"id", "nombre", "correo"})
         filtrados = self.cliente.get(
-            "/api/usuarios/prestatarios?q=jesus", headers=gestor).json
-        self.assertEqual([u["nombre"] for u in filtrados], ["Jesus Perez"])
+            "/api/usuarios/prestatarios?q=villasante", headers=gestor).json
+        self.assertEqual([u["nombre"] for u in filtrados], ["Jesus Gustavo Perez Villasante"])
 
     def test_registrar_usuario_usa_politicas_por_rol_y_modalidad(self):
         h = self.ingresar()
@@ -259,7 +259,7 @@ class GestionUsuariosTest(ApiBase):
                                json={"perfiles": {"ESTUDIANTE": {"matricula_vigente": False}}})
         self.assertEqual(r.status_code, 200, r.json)
         self.assertFalse(r.json["habilitado"])
-        self.assertEqual(r.json["perfiles"]["ESTUDIANTE"]["codigo_estudiante"], "EST-2026-001")
+        self.assertEqual(r.json["perfiles"]["ESTUDIANTE"]["codigo_estudiante"], "20230447")
         habilitados = self.cliente.get("/api/usuarios?habilitado=true", headers=h).json
         self.assertNotIn(ESTUDIANTE, [u["correo"] for u in habilitados])
 
@@ -306,12 +306,12 @@ class GestionUsuariosTest(ApiBase):
     def test_filtros_de_listado(self):
         h = self.ingresar()
         gestores = self.cliente.get("/api/usuarios?rol=GESTOR_INVENTARIO", headers=h).json
-        self.assertEqual({u["correo"] for u in gestores}, {GESTOR_DOCENTE})
+        self.assertEqual({u["correo"] for u in gestores}, {GESTOR, GESTOR_2})
         administradores = self.cliente.get(
             "/api/usuarios?rol=ADMINISTRADOR_SISTEMA", headers=h).json
         self.assertEqual({u["correo"] for u in administradores}, {ADMIN})
         self.assertEqual([u["correo"] for u in
-                          self.cliente.get("/api/usuarios?q=jesus", headers=h).json], [ESTUDIANTE])
+                          self.cliente.get("/api/usuarios?q=villasante", headers=h).json], [ESTUDIANTE])
         self.assertEqual(self.cliente.get("/api/usuarios?rol=XX", headers=h).status_code, 400)
         self.assertEqual(self.cliente.get("/api/usuarios?activo=quizas", headers=h).status_code, 400)
 

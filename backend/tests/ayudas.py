@@ -9,7 +9,9 @@ from prestamos_academicos.web import create_app
 CLAVE = "demo1234"
 ADMIN = "admin@escuela.edu"
 ESTUDIANTE = "jesus.perez@escuela.edu"
-GESTOR_DOCENTE = "luis.ramos@escuela.edu"
+GESTOR = "luis.ramos@escuela.edu"
+GESTOR_2 = "lorenzo.quispe@escuela.edu"
+DOCENTE = "yessenia.yari@escuela.edu"
 IN_SITU = "In situ (en sala)"
 EXTERNA = "Externa (a domicilio)"
 
@@ -41,7 +43,7 @@ class ApiBase(unittest.TestCase):
             espacio = {
                 ADMIN: "ADMINISTRACION",
                 ESTUDIANTE: "PERSONAL",
-                GESTOR_DOCENTE: "INVENTARIO",
+                GESTOR: "INVENTARIO",
             }.get(correo)
         cuerpo = {"correo": correo, "password": password}
         if espacio:

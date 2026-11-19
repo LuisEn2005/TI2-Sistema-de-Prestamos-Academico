@@ -1,7 +1,9 @@
 """Datos iniciales. Los usuarios y recursos de demostración son opcionales (DATOS_DEMO)."""
 
+from functools import cache
+
 from sqlalchemy import update
-from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash
 
 from ..configuracion_servicio.servicio import ConfiguracionApplicationService
 from ..identidad.servicio import IdentidadApplicationService
@@ -12,6 +14,81 @@ from .unidad_trabajo import SqlAlchemyUnitOfWork
 
 PASSWORD_DEMO = "demo1234"
 CORREO_ADMIN_DEMO = "admin@escuela.edu"
+
+# Padrón del curso: (nombre, usuario del correo, código de estudiante).
+_ESTUDIANTES_DEMO = [
+    ("Jesus Alberto Alfaro Buiza", "jesus.alfaro", "20230114"),
+    ("Marco Antonio Armendariz Paredes", "marco.armendariz", "20230127"),
+    ("Albert Gussepe Blanco Cana", "albert.blanco", "20220389"),
+    ("Karina Paola Calcina Chuquipalla", "karina.calcina", "20240152"),
+    ("Diego Canqui Ecos", "diego.canqui", "20230166"),
+    ("Anderson Samuel Carpio Chura", "anderson.carpio", "20240173"),
+    ("Moises Robert Ccaso Idme", "moises.ccaso", "20230198"),
+    ("Elyud Edgar Chayña Calcina", "elyud.chayna", "20210455"),
+    ("Luis Antonio Chipana Chura", "luis.chipana", "20230211"),
+    ("Aldair Daniel Condori Ataucuri", "aldair.condori", "20240236"),
+    ("Emilio Alejandro Condori Pallardel", "emilio.condori", "20230249"),
+    ("Stephano Gian Pierre Delgado Chavez", "stephano.delgado", "20230262"),
+    ("Mauricio Alejandro Farfan Huayta", "mauricio.farfan", "20240278"),
+    ("Fernando Antonio Gama Llicahua", "fernando.gama", "20230291"),
+    ("Carlos Enrique Gutierrez Castilla", "carlos.gutierrez", "20220417"),
+    ("Johan Diego Huamani Sabina", "johan.huamani", "20240305"),
+    ("Estrella de Jesús Emilia Fabiana Huarsaya Márquez", "estrella.huarsaya", "20230318"),
+    ("Lizzy Arlette Huayhua Perez", "lizzy.huayhua", "20230324"),
+    ("Roid Niro Huaylla Guzman", "roid.huaylla", "20230337"),
+    ("Daysi Jara Arisaca", "daysi.jara", "20240349"),
+    ("Hellen Grace Juan de Dios Delgado", "hellen.juandedios", "20230356"),
+    ("Natalie Marleny Lazo Paxi", "natalie.lazo", "20230363"),
+    ("Fernando Enrique Llosa Manchego", "fernando.llosa", "20220442"),
+    ("Mariana Valery Luis Jimenez", "mariana.luis", "20240381"),
+    ("Diego de Alessandro Mamani Salazar", "diego.mamani", "20230394"),
+    ("Luis Fernando Morales Tacca", "luis.morales", "20230402"),
+    ("Neill Elverth Olazabal Chavez", "neill.olazabal", "20240415"),
+    ("Alvaro Johan Panibra Choctaya", "alvaro.panibra", "20230428"),
+    ("Javier Alonzo Peñalva Humire", "javier.penalva", "20230436"),
+    ("Jesus Gustavo Perez Villasante", "jesus.perez", "20230447"),
+    ("Juan Carlos Postigo Cabana", "juan.postigo", "20220463"),
+    ("Claudia Roxana Quisocala Cruz", "claudia.quisocala", "20230459"),
+    ("Sharmely Yesenia Quispe Chavez", "sharmely.quispe", "20240467"),
+    ("David Augusto Quispe Lloccallasi", "david.quispe", "20230471"),
+    ("Angelo Josue Quispe Suarez", "angelo.quispe", "20230484"),
+    ("Job Lorenzo Quispe Torrez", "lorenzo.quispe", "20240841"),
+    ("Luis Enrique Ramos Chambi", "luis.ramos", "20230497"),
+    ("Rodrigo Abraham Ramos Mamani", "rodrigo.ramos", "20230503"),
+    ("Omar Joaquin Rivera Olivera", "omar.rivera", "20240516"),
+    ("Edu Andre Sucari Ccansaya", "edu.sucari", "20230529"),
+    ("Cristhian Luis Taipe Huanca", "cristhian.taipe", "20220534"),
+    ("Lizeth Angelica Tito Vilca", "lizeth.tito", "20230542"),
+    ("Jhair Alejandro Torres Chavez", "jhair.torres", "20230555"),
+    ("Micaela Belen Uribe Zuñiga", "micaela.uribe", "20230568"),
+    ("Ronald Reynaldo Valdez Agüero", "ronald.valdez", "20230571"),
+    ("Diego Mauricio Villanueva Flores", "diego.villanueva", "20240584"),
+    ("Marving Alonzo Zamata Huaracha", "marving.zamata", "20230597"),
+    ("Eduardo Josue Zela Quispe", "eduardo.zela", "20230603"),
+]
+# Estudiantes que además atienden el inventario (practicantes de laboratorio).
+_GESTORES_DEMO = {"luis.ramos": "GES-001", "lorenzo.quispe": "GES-002"}
+
+
+def _padron_demo():
+    """(nombre, correo, perfiles) de cada persona de demostración."""
+    for nombre, usuario, codigo in _ESTUDIANTES_DEMO:
+        perfiles = {"ESTUDIANTE": {"codigo_estudiante": codigo, "matricula_vigente": True},
+                    "DOCENTE": None}
+        if usuario in _GESTORES_DEMO:
+            perfiles["GESTOR_INVENTARIO"] = {"codigo_empleado": _GESTORES_DEMO[usuario],
+                                             "area_responsable": "Laboratorios"}
+        yield nombre, f"{usuario}@escuela.edu", perfiles
+    yield "Yessenia Deysi Yari Ramos", "yessenia.yari@escuela.edu", {
+        "DOCENTE": {"codigo_empleado": "DOC-001", "tipo_contrato": "Tiempo completo",
+                     "vinculacion_vigente": True}}
+
+
+@cache
+def _hash_demo():
+    # Un solo hash para todo el padrón: scrypt tarda ~70 ms por cálculo.
+    return generate_password_hash(PASSWORD_DEMO)
+
 
 _ITEMS_DEMO = [
     dict(tipo="LIBRO", codigo="LIB-CLRS", nombre="Introduction to Algorithms (CLRS)",
@@ -138,7 +215,8 @@ def preparar_datos(fabrica_sesiones, *, datos_demo, admin_correo=None, admin_pas
 
 def _actualizar_nombres_demo_anteriores(fabrica_sesiones):
     with fabrica_sesiones.begin() as sesion:
-        for viejo, nuevo in (("Ana Torres", "Jesus Perez"), ("Luis Rivera", "Luis Ramos")):
+        for viejo, nuevo in (("Ana Torres", "Jesus Gustavo Perez Villasante"),
+                             ("Luis Rivera", "Luis Enrique Ramos Chambi")):
             sesion.execute(update(UsuarioDB).where(UsuarioDB.nombre == viejo).values(nombre=nuevo))
 
 
@@ -146,25 +224,16 @@ def _cargar_demo(uow, identidad):
     with uow() as u:
         administrador = next(iter(u.usuarios.listar(
             rol=RolUsuario.ADMINISTRADOR_SISTEMA)), None)
-    _asegurar_usuario_demo(
-        uow, identidad, administrador,
-        nombre="Jesus Perez", correo="jesus.perez@escuela.edu",
-        perfiles={"ESTUDIANTE": {
-            "codigo_estudiante": "EST-2026-001", "matricula_vigente": True}},
-    )
-    _asegurar_usuario_demo(
-        uow, identidad, administrador,
-        nombre="Luis Ramos", correo="luis.ramos@escuela.edu",
-        perfiles={
-            # Los usuarios del MVP recibieron un perfil de estudiante provisional.
-            # Luis es el gestor/docente de demostración, por lo que se reemplaza.
-            "ESTUDIANTE": None,
-            "DOCENTE": {"codigo_empleado": "DOC-001", "tipo_contrato": "Tiempo completo",
-                         "vinculacion_vigente": True},
-            "GESTOR_INVENTARIO": {"codigo_empleado": "DOC-001",
-                                   "area_responsable": "Laboratorios"},
-        },
-    )
+    padron = list(_padron_demo())
+    for nombre, correo, perfiles in padron:
+        _asegurar_usuario_demo(uow, identidad, administrador,
+                               nombre=nombre, correo=correo, perfiles=perfiles)
+    with uow() as u:
+        u.sesion.execute(update(UsuarioDB)
+                         .where(UsuarioDB.password_hash.is_(None),
+                                UsuarioDB.correo.in_([c for _, c, _ in padron]))
+                         .values(password_hash=_hash_demo()))
+        u.commit()
 
     inventario = InventarioApplicationService(uow)
     for item in _ITEMS_DEMO:
@@ -175,24 +244,23 @@ def _cargar_demo(uow, identidad):
 
 
 def _asegurar_usuario_demo(uow, identidad, administrador, *, nombre, correo, perfiles):
-    """Crea o repara una cuenta demo sin perder su id ni su historial heredado."""
+    """Crea o repara una cuenta demo sin perder su id ni su historial heredado.
+
+    La contraseña la asigna después `_cargar_demo` en bloque a las cuentas sin una."""
     with uow() as u:
         usuario = u.usuarios.find_by_email(correo)
         if usuario is None:
             usuario = next((x for x in u.usuarios.listar(texto=nombre)
                             if x.nombre == nombre
                             and x.correoElectronico.endswith("@sin-correo.local")), None)
-        password_hash = (u.usuarios.password_hash_de(usuario.id.valor)
-                         if usuario is not None else None)
 
     if usuario is None:
         identidad.registrar_usuario({
-            "nombre": nombre, "correo": correo, "password": PASSWORD_DEMO,
+            "nombre": nombre, "correo": correo,
             "perfiles": {rol: datos for rol, datos in perfiles.items() if datos is not None},
         })
         return
-
-    datos = {"nombre": nombre, "correo": correo, "activo": True, "perfiles": perfiles}
-    if not password_hash or not check_password_hash(password_hash, PASSWORD_DEMO):
-        datos["password"] = PASSWORD_DEMO
-    identidad.actualizar_usuario(usuario.id.valor, datos, administrador)
+    identidad.actualizar_usuario(
+        usuario.id.valor,
+        {"nombre": nombre, "correo": correo, "activo": True, "perfiles": perfiles},
+        administrador)

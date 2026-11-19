@@ -126,13 +126,13 @@ class MigracionTest(unittest.TestCase):
 
             usuarios = c.get("/api/usuarios", headers=h).json
             nombres = {u["nombre"] for u in usuarios}
-            self.assertIn("Jesus Perez", nombres)
-            self.assertIn("Luis Ramos", nombres)
-            jesus = next(u for u in usuarios if u["nombre"] == "Jesus Perez")
-            luis = next(u for u in usuarios if u["nombre"] == "Luis Ramos")
+            self.assertIn("Jesus Gustavo Perez Villasante", nombres)
+            self.assertIn("Luis Enrique Ramos Chambi", nombres)
+            jesus = next(u for u in usuarios if u["nombre"] == "Jesus Gustavo Perez Villasante")
+            luis = next(u for u in usuarios if u["nombre"] == "Luis Enrique Ramos Chambi")
             self.assertEqual(jesus["roles"], ["ESTUDIANTE"])
             self.assertNotIn("politica_servicio_id", jesus["perfiles"]["ESTUDIANTE"])
-            self.assertEqual(luis["roles"], ["DOCENTE", "GESTOR_INVENTARIO"])
+            self.assertEqual(luis["roles"], ["ESTUDIANTE", "GESTOR_INVENTARIO"])
             for correo in ("jesus.perez@escuela.edu", "luis.ramos@escuela.edu"):
                 acceso = c.post("/api/auth/login", json={"correo": correo, "password": CLAVE})
                 self.assertEqual(acceso.status_code, 200, acceso.json)

@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, ApiBase
+from .ayudas import ADMIN, DOCENTE, ESTUDIANTE, EXTERNA, GESTOR, ApiBase
 
 
 class CalendarioRangosTest(ApiBase):
@@ -28,7 +28,7 @@ class CalendarioRangosTest(ApiBase):
         primera = self._reserva(
             estudiante, "LIB-CLRS", "2026-10-20", "2026-10-26")
         docente = self._reserva(
-            self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL"),
+            self.ingresar(GESTOR, espacio="PERSONAL"),
             "LIB-CLRS", "2026-10-22", "2026-10-29")
         self.assertEqual((primera.status_code, docente.status_code), (201, 201))
 
@@ -52,7 +52,7 @@ class CalendarioRangosTest(ApiBase):
             query_string={"item_id": self.item_id("LIB-CLRS"),
                           "desde": "2026-10-19", "hasta": "2026-10-31"})
         self.assertEqual(solicitudes.status_code, 200, solicitudes.json)
-        self.assertEqual(solicitudes.json[0]["usuario"], "Jesus Perez")
+        self.assertEqual(solicitudes.json[0]["usuario"], "Jesus Gustavo Perez Villasante")
         # La fecha de solicitud debe llevar zona horaria (UTC) y coincidir con
         # la que expone /api/reservas, para que el navegador no la muestre con
         # un desfase de horas según la zona local.
@@ -128,7 +128,7 @@ class CalendarioRangosTest(ApiBase):
     def test_docente_y_administrativo_tienen_catorce_dias(self):
         admin = self.ingresar(ADMIN, espacio="INVENTARIO")
         condiciones = self.cliente.get("/api/prestamos/condiciones", headers=admin,
-            query_string={"usuario_id": self.usuario_id(GESTOR_DOCENTE, admin),
+            query_string={"usuario_id": self.usuario_id(DOCENTE, admin),
                           "modalidad_id": self.modalidad_id(EXTERNA)}).json
         self.assertEqual((condiciones["dias_plazo"], condiciones["fecha_limite"]),
                          (14, "2026-11-02"))
@@ -163,7 +163,7 @@ class CalendarioRangosTest(ApiBase):
 
     def test_devolucion_tardia_reacomoda_la_reserva_confirmada(self):
         inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
-        docente = self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL")
+        docente = self.ingresar(GESTOR, espacio="PERSONAL")
         # El recurso se presta al estudiante con límite el viernes 23.
         prestamo = self._prestamo(inventario, "LIB-CLRS", fin="2026-10-23").json
         # El docente reserva el mismo recurso para apenas se libere: lun 26 a vie 30.
@@ -217,7 +217,7 @@ class CalendarioRangosTest(ApiBase):
             query_string={"fecha": "2026-10-21", "estado": "RESERVADO"})
         self.assertEqual(vista.status_code, 200, vista.json)
         item = next(i for i in vista.json["items"] if i["codigo"] == "LIB-CLRS")
-        self.assertEqual(item["asignacion"]["usuario"], "Jesus Perez")
+        self.assertEqual(item["asignacion"]["usuario"], "Jesus Gustavo Perez Villasante")
         self.assertEqual(self.cliente.get(
             "/api/inventario?fecha=2026-10-21", headers=estudiante).status_code, 403)
 
@@ -270,7 +270,7 @@ class CalendarioRangosTest(ApiBase):
         self.cliente.post(
             f"/api/reservas/{primera['id']}/confirmacion", headers=inventario, json={})
         segunda = self._reserva(
-            self.ingresar(GESTOR_DOCENTE, espacio="PERSONAL"),
+            self.ingresar(GESTOR, espacio="PERSONAL"),
             "LIB-CLRS", "2026-11-16", "2026-11-18").json
         self.cliente.post(
             f"/api/reservas/{segunda['id']}/confirmacion", headers=inventario, json={})

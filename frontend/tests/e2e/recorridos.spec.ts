@@ -127,7 +127,7 @@ test('el gestor entrega varios recursos y devuelve cada uno con su condición', 
   await ingresar(page, 'luis.ramos@escuela.edu', 'INVENTARIO');
   await page.goto('/prestamos');
   await page.getByLabel('Usuario habilitado').selectOption({
-    label: 'Jesus Perez (jesus.perez@escuela.edu)',
+    label: 'Jesus Gustavo Perez Villasante (jesus.perez@escuela.edu)',
   });
   const modalidad = page.getByLabel('Modalidad / lugar de uso');
   await expect(modalidad.locator('option:checked')).toHaveText('In situ (en sala)');
@@ -248,7 +248,7 @@ test('el administrador configura una política y gestiona una sanción', async (
   await seleccionarEspacio(page, 'INVENTARIO');
   await page.goto('/sanciones');
   await page.getByLabel('Usuario').selectOption({
-    label: 'Jesus Perez (jesus.perez@escuela.edu)',
+    label: 'Jesus Gustavo Perez Villasante (jesus.perez@escuela.edu)',
   });
   await page.getByLabel('Duración (días)').fill('1');
   await page.getByLabel('Motivo').fill('Daño de prueba E2E');

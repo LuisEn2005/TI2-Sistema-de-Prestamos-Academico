@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR_DOCENTE, IN_SITU, ApiBase
+from .ayudas import ADMIN, ESTUDIANTE, EXTERNA, GESTOR, IN_SITU, ApiBase
 
 
 class SancionesBase(ApiBase):
@@ -71,7 +71,7 @@ class SancionAutomaticaTest(SancionesBase):
 
 class SancionManualTest(SancionesBase):
     def test_gestor_registra_y_administrador_cierra_sancion(self):
-        gestor = self.ingresar(GESTOR_DOCENTE)
+        gestor = self.ingresar(GESTOR)
         uid = self.usuario_id(ESTUDIANTE)
         creada = self.cliente.post("/api/sanciones", headers=gestor, json={
             "usuario_id": uid, "origen": "DANO", "motivo": "Pantalla quebrada",
