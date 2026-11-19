@@ -1,9 +1,11 @@
 import { api } from '../compartido/api';
 import {
   ETIQUETA_CONDICION, ETIQUETA_ROL, type CondicionDevolucion, type CondicionesPrestamoDTO,
-  type ItemDTO, type ModalidadDTO, type PaginaItemsDTO, type PaginaPrestamosDTO, type PrestamoDTO,
+  type FechaSistemaDTO, type ModalidadDTO, type PaginaInventarioDTO, type PaginaPrestamosDTO,
+  type PrestamoDTO,
   type Rol, type RolPrestatario,
 } from '../compartido/contratos';
+import { leyendaCalendario, pintarCalendario } from '../compartido/calendario';
 import { exigirSesion, tienePermiso } from '../compartido/sesion';
 import { $, avisar, el, fechaLegible, mensajeDe, opciones, retardo, soloFecha } from '../compartido/ui';
 
@@ -11,7 +13,8 @@ const LIMITE = 15;
 const usuario = await exigirSesion();
 const gestiona = tienePermiso(usuario, 'REGISTRAR_ENTREGA_PRESTAMO');
 let pagina = 1;
-let seleccion: ItemDTO[] = [];
+type ItemElegible = { id: number; codigo: string; nombre: string };
+let seleccion: ItemElegible[] = [];
 let condicionesOk = false;
 let modalidades: ModalidadDTO[] = [];
 
@@ -230,21 +233,35 @@ async function cargarUsuarios() {
 async function cargarItems() {
   const mio = pedidoItems.nueva();
   const selector = $<HTMLSelectElement>('#item');
-  const botonAgregar = $<HTMLButtonElement>('#agregar');
+  const botones = [$<HTMLButtonElement>('#agregar'), $<HTMLButtonElement>('#ver-disponibilidad')];
   selector.disabled = true;
-  botonAgregar.disabled = true;
-  const r = await api.get<PaginaItemsDTO>('/api/items', {
+  botones.forEach((b) => { b.disabled = true; });
+  // Disponibilidad del día (no solo el estado físico): excluye lo devuelto hoy o reservado.
+  const r = await api.get<PaginaInventarioDTO>('/api/inventario', {
     estado: 'DISPONIBLE', limite: 50, q: $<HTMLInputElement>('#buscar-item').value.trim(),
   });
   if (!pedidoItems.vigente(mio)) return;
   const elegidos = new Set(seleccion.map((i) => i.id));
   const libres = r.items.filter((i) => !elegidos.has(i.id));
-  opciones(selector, libres.map((i: ItemDTO) => [String(i.id), `${i.nombre} (${i.codigo})`]));
+  opciones(selector, libres.map((i) => [String(i.id), `${i.nombre} (${i.codigo})`]));
   selector.disabled = libres.length === 0;
-  botonAgregar.disabled = libres.length === 0;
+  botones.forEach((b) => { b.disabled = libres.length === 0; });
   itemsDisponibles = libres;
 }
-let itemsDisponibles: ItemDTO[] = [];
+let itemsDisponibles: ItemElegible[] = [];
+
+async function mostrarDisponibilidad() {
+  const elegido = itemsDisponibles.find((i) => String(i.id) === $<HTMLSelectElement>('#item').value);
+  if (!elegido) return;
+  const mes = $<HTMLInputElement>('#disponibilidad-mes');
+  const pintar = () => pintarCalendario(elegido.id, mes.value, $('#disponibilidad-calendario'))
+    .catch((error) => avisar(mensajeDe(error), true));
+  $('#disponibilidad-titulo').textContent = `${elegido.nombre} (${elegido.codigo})`;
+  mes.value = (await api.get<FechaSistemaDTO>('/api/calendario/hoy')).fecha.slice(0, 7);
+  mes.onchange = () => void pintar();
+  await pintar();
+  $<HTMLDialogElement>('#dialogo-disponibilidad').showModal();
+}
 
 async function cargarFormulario() {
   modalidades = (await api.get<ModalidadDTO[]>('/api/modalidades')).filter((m) => m.activo);
@@ -280,6 +297,12 @@ if (usuario) {
     selModalidad().addEventListener('change', () => void actualizarCondiciones());
     selRol().addEventListener('change', () => void actualizarCondiciones());
 
+    $('#disponibilidad-leyenda').replaceChildren(leyendaCalendario());
+    $('#disponibilidad-cerrar').addEventListener('click', () =>
+      $<HTMLDialogElement>('#dialogo-disponibilidad').close());
+    $('#ver-disponibilidad').addEventListener('click', () => {
+      mostrarDisponibilidad().catch(alFallar);
+    });
     $('#agregar').addEventListener('click', () => {
       const elegido = itemsDisponibles.find((i) => String(i.id) === $<HTMLSelectElement>('#item').value);
       if (!elegido) return;

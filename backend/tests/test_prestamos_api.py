@@ -356,6 +356,19 @@ class DevolucionTest(PrestamosBase):
         self.reloj.instante += timedelta(days=7)                  # justo el día límite
         self.assertEqual(self.devolver(h, p).json["dias_atraso"], 0)
 
+    def test_el_recurso_devuelto_no_figura_disponible_hasta_el_siguiente_laborable(self):
+        h = self.ingresar(espacio="INVENTARIO")   # lunes 19-oct
+        item = self.item_id("LIB-CLRS")
+        self.devolver(h, self.entregar(h).json)
+        disponibles = lambda: [i["codigo"] for i in self.cliente.get(
+            "/api/inventario?estado=DISPONIBLE&limite=100", headers=h).json["items"]]
+        self.assertNotIn("LIB-CLRS", disponibles())
+        dias = self.cliente.get(f"/api/items/{item}/calendario",
+                                query_string={"desde": "2026-10-19", "hasta": "2026-10-20"}).json["dias"]
+        self.assertEqual([d["estado"] for d in dias], ["NO_DISPONIBLE", "DISPONIBLE"])
+        self.reloj.instante += timedelta(days=1)
+        self.assertIn("LIB-CLRS", disponibles())
+
 
 class ConsultaTest(PrestamosBase):
     def test_cada_usuario_ve_solo_sus_prestamos_y_el_gestor_todos(self):

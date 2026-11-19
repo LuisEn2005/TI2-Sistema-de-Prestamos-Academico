@@ -22,6 +22,7 @@ import Base from '../layouts/Base.astro';
         <div class="barra">
           <div><label for="buscar-item">Buscar recurso</label><input id="buscar-item" type="search" maxlength="120" placeholder="Código o nombre" /></div>
           <div><label for="item">Recurso disponible</label><select id="item"></select></div>
+          <button id="ver-disponibilidad" type="button" class="secundario">Ver disponibilidad</button>
           <button id="agregar" type="button" class="secundario">Agregar</button>
         </div>
         <p class="tenue pequeno">Se muestran hasta 50 coincidencias por búsqueda. Puede agregar varios recursos a la misma entrega.</p>
@@ -61,6 +62,17 @@ import Base from '../layouts/Base.astro';
         <button type="submit" id="devolucion-confirmar">Confirmar devolución</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="dialogo-disponibilidad" aria-labelledby="disponibilidad-titulo">
+    <div class="contenido">
+      <h2 id="disponibilidad-titulo">Disponibilidad</h2>
+      <div class="barra">
+        <div><label for="disponibilidad-mes">Mes</label><input id="disponibilidad-mes" type="month" /></div>
+      </div>
+      <div id="disponibilidad-leyenda"></div>
+      <div id="disponibilidad-calendario" class="calendario" aria-label="Disponibilidad del recurso"></div>
+      <div class="pie"><button type="button" class="secundario" id="disponibilidad-cerrar">Cerrar</button></div>
+    </div>
   </dialog>
   <script>import '../funcionalidades/prestamos.ts';</script>
 </Base>

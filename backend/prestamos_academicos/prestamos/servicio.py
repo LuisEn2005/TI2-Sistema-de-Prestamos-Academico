@@ -7,7 +7,6 @@ permitidos se aplican por perfil (RF03, RF13); la devolución registra la condic
 """
 
 from dataclasses import dataclass
-from datetime import timedelta
 from typing import Optional
 
 from ..configuracion_servicio import Modalidad, PoliticaServicio
@@ -265,10 +264,8 @@ class PrestamoApplicationService:
                 raise Conflicto(f"No están disponibles: {', '.join(sorted(ocupados))}.")
 
             for item_id in item_ids:
-                ultima = uow.prestamos.ultima_devolucion_item(item_id)
-                if ultima is not None:
-                    disponible = self.calendario.siguiente_laborable(
-                        uow, self.reloj.fecha_local(ultima) + timedelta(days=1))
+                disponible = self.calendario.disponible_desde(uow, item_id)
+                if disponible is not None:
                     if self.reloj.hoy() < disponible:
                         raise Conflicto(
                             f"El recurso {items[item_id].codigo} estará disponible el "

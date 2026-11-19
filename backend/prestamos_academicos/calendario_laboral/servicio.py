@@ -47,6 +47,13 @@ class CalendarioLaboralApplicationService:
             return False
         return not uow.calendario.listar(fecha, fecha, solo_activos=True)
 
+    def disponible_desde(self, uow, item_id):
+        """Día desde el que un recurso devuelto vuelve a prestarse (laborable siguiente)."""
+        ultima = uow.prestamos.ultima_devolucion_item(item_id)
+        if ultima is None:
+            return None
+        return self.siguiente_laborable(uow, self.reloj.fecha_local(ultima) + timedelta(days=1))
+
     def siguiente_laborable(self, uow, fecha):
         candidato = fecha
         while not self.es_laborable(uow, candidato):
@@ -246,12 +253,14 @@ class CalendarioLaboralApplicationService:
                          if any(d.itemId.valor == item_id for d in p.detalles)]
             prestado_sin_plazo = item.estado == EstadoItem.PRESTADO and not any(
                 p.fechaDevolucionEsperada is not None for p in prestamos)
+            libre_desde = self.disponible_desde(uow, item_id)
             dias = []
             fecha = desde
             while fecha <= hasta:
                 estado = "DISPONIBLE"
                 if (item.estado in NO_PRESTABLES or prestado_sin_plazo
-                        or not self.es_laborable(uow, fecha)):
+                        or not self.es_laborable(uow, fecha)
+                        or (libre_desde is not None and fecha < libre_desde)):
                     estado = "NO_DISPONIBLE"
                 elif any(p.fechaDevolucionEsperada is not None
                          and self.reloj.fecha_local(p.fechaEntrega) <= fecha
@@ -297,7 +306,9 @@ class CalendarioLaboralApplicationService:
             for item in items:
                 asignacion = None
                 estado_fecha = "DISPONIBLE"
-                if item.estado in NO_PRESTABLES or not self.es_laborable(uow, fecha):
+                libre_desde = self.disponible_desde(uow, item.id.valor)
+                if (item.estado in NO_PRESTABLES or not self.es_laborable(uow, fecha)
+                        or (libre_desde is not None and fecha < libre_desde)):
                     estado_fecha = "NO_DISPONIBLE"
                 else:
                     prestamo = next((p for p in prestamos if any(
