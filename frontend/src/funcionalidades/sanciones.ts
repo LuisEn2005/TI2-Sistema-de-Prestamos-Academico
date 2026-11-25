@@ -11,7 +11,7 @@ const origen = (valor: SancionDTO['origen']) => ({
 
 function fila(s: SancionDTO) {
   const acciones = el('div', { class: 'acciones' });
-  if (puedeCerrar && s.estado === 'ACTIVA') {
+  if (s.estado === 'ACTIVA') {
     const cerrar = el('button', { type: 'button', class: 'pequeno secundario' }, 'Cerrar');
     cerrar.addEventListener('click', async () => {
       const resolucion = window.prompt('Indique cómo se resolvió la sanción:');
@@ -34,7 +34,7 @@ function fila(s: SancionDTO) {
     el('td', {}, detalle), el('td', {}, vigencia),
     el('td', {}, el('span', { class: `estado ${s.estado === 'ACTIVA' ? 'malo' : 'ok'}` },
       s.estado === 'ACTIVA' ? 'Activa' : 'Cerrada')),
-    el('td', {}, acciones));
+    ...(puedeCerrar ? [el('td', {}, acciones)] : []));
 }
 
 async function cargar() {
@@ -45,7 +45,7 @@ async function cargar() {
     const filas = $('#filas');
     filas.replaceChildren(...sanciones.map(fila));
     if (!sanciones.length) filas.append(el('tr', {},
-      el('td', { colspan: '6', class: 'vacio' }, 'No hay sanciones con este estado.')));
+      el('td', { colspan: puedeCerrar ? '6' : '5', class: 'vacio' }, 'No hay sanciones con este estado.')));
   } catch (error) { avisar(mensajeDe(error), true); }
 }
 
@@ -53,6 +53,7 @@ const sesion = await exigirSesion();
 if (sesion) {
   const puedeRegistrar = tienePermiso(sesion, 'GENERAR_SANCION_MANUAL');
   puedeCerrar = tienePermiso(sesion, 'LEVANTAR_SANCION');
+  $('#col-acciones').hidden = !puedeCerrar;
   if (puedeRegistrar) {
     $('#registro').hidden = false;
     try {

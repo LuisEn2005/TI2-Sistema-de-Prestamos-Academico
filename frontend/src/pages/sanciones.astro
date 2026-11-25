@@ -30,7 +30,7 @@ import Base from '../layouts/Base.astro';
     </select></div>
   </div>
   <div class="tabla-envoltura"><table>
-    <thead><tr><th>Usuario</th><th>Origen</th><th>Detalle</th><th>Vigencia</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <thead><tr><th>Usuario</th><th>Origen</th><th>Detalle</th><th>Vigencia</th><th>Estado</th><th id="col-acciones" hidden>Acciones</th></tr></thead>
     <tbody id="filas"></tbody>
   </table></div>
   <script>import '../funcionalidades/sanciones.ts';</script>
