@@ -56,8 +56,8 @@ function abrirDetalle(item: ItemDTO) {
     el('dl', {}, ...filas.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])),
     el('h3', {}, 'Calendario de disponibilidad'),
     el('div', { class: 'barra' }, el('div', {}, el('label', {}, 'Mes', mes)), consultar),
-    leyendaCalendario(),
     calendario,
+    leyendaCalendario(),
     el('div', { class: 'pie' }, cerrar),
   );
   dialogo.showModal();

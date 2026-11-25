@@ -34,12 +34,12 @@ import Base from '../layouts/Base.astro';
         <div><label for="cal-mes">Mes</label><input id="cal-mes" type="month" /></div>
         <button id="actualizar-calendario" type="button" class="secundario">Actualizar</button>
       </div>
+      <div id="calendario" class="calendario" aria-label="Disponibilidad mensual"></div>
       <div class="leyenda-calendario pequeno">
         <span class="cal-disponible">Disponible</span>
         <span class="cal-reservado">Reservado</span>
         <span class="cal-no-disponible">No disponible</span>
       </div>
-      <div id="calendario" class="calendario" aria-label="Disponibilidad mensual"></div>
       <div id="solicitudes-calendario" hidden>
         <h3>Solicitudes pendientes del recurso</h3>
         <div id="solicitudes" class="tabla-envoltura"></div>

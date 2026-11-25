@@ -179,8 +179,13 @@ td select { min-height: 31px; padding: .25rem .45rem; font-size: .77rem; }
 .cal-reservado { background: var(--aviso-fondo) !important; color: var(--aviso); }
 .cal-no-disponible { background: var(--error-fondo) !important; color: var(--error); }
 .calendario .cal-disponible, .calendario .cal-reservado, .calendario .cal-no-disponible { display: flex; flex-direction: column; gap: .12rem; }
-.leyenda-calendario { display: flex; gap: 1rem; }
-.leyenda-calendario span { border-left: 3px solid currentColor; padding: .08rem 0 .08rem .4rem; background: transparent !important; }
+.leyenda-calendario { display: flex; flex-wrap: wrap; justify-content: center; gap: .45rem 1.4rem; margin-top: .85rem; }
+.leyenda-calendario span { display: inline-flex; align-items: center; gap: .45rem; padding: 0; background: transparent !important; color: var(--tenue); letter-spacing: .01em; }
+/* Muestra del color tal como se ve el día en el calendario. */
+.leyenda-calendario span::before { content: ''; width: .7rem; height: .7rem; border-radius: 3px; border: 1px solid var(--muestra); background: var(--muestra-fondo); }
+.leyenda-calendario .cal-disponible { --muestra: var(--ok); --muestra-fondo: var(--ok-fondo); }
+.leyenda-calendario .cal-reservado { --muestra: var(--aviso); --muestra-fondo: var(--aviso-fondo); }
+.leyenda-calendario .cal-no-disponible { --muestra: var(--error); --muestra-fondo: var(--error-fondo); }
 
 /* Mensajes y diálogos */
 .mensaje:empty { display: none; }
