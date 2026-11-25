@@ -139,6 +139,13 @@ button.pequeno { min-height: 29px; padding: .28rem .55rem; font-size: .75rem; }
 .filtros-historial :is(input, select) { height: 38px; }
 /* Con los filtros de usuario visibles (8 controles): dos filas parejas de 4. */
 .filtros-historial:has(#zona-usuario:not([hidden])) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* Reporte del prestatario (solo Desde/Hasta): ocupa todo el ancho. */
+.filtros-historial:has(> #rep-zona-ambito[hidden]) { grid-template-columns: 1fr 1fr auto; gap: 1rem 1.25rem; }
+.filtros-historial:has(> #rep-zona-ambito[hidden]) > button { height: 38px; padding-inline: 1.4rem; }
+@media (max-width: 640px) {
+  .filtros-historial:has(> #rep-zona-ambito[hidden]) { grid-template-columns: 1fr 1fr; }
+  .filtros-historial:has(> #rep-zona-ambito[hidden]) > button { grid-column: 1 / -1; justify-self: stretch; }
+}
 .filtros-operativos { margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--linea); }
 .barra-resultados { min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }

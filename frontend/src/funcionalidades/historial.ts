@@ -158,6 +158,8 @@ if (usuario) {
   if (global) {
     $('#zona-usuario').hidden = false;
     $('#zona-tipo-usuario').hidden = false;
+    $('#rep-zona-ambito').hidden = false;
+    $('#rep-zona-objetivo').hidden = false;
     $('#tipo-usuario').addEventListener('change', () => {
       poblarUsuarios(); pagina = 1; void cargar();
     });
@@ -175,8 +177,6 @@ if (usuario) {
     await Promise.all([cargarItems(), global ? cargarUsuarios() : Promise.resolve()]);
   } catch (error) { avisar(mensajeDe(error), true); }
   if (global) {
-    $('#rep-zona-ambito').hidden = false;
-    $('#rep-zona-objetivo').hidden = false;
     poblarObjetivo();
     $('#rep-ambito').addEventListener('change', poblarObjetivo);
     $('#rep-tipo-usuario').addEventListener('change', poblarObjetivo);
