@@ -22,8 +22,9 @@ class HistorialBase(ApiBase):
             "modalidad_id": self.modalidad_id(EXTERNA)})
         self.assertEqual(prestamo.status_code, 201, prestamo.json)
 
+        recurso = self.recibir(gestor, prestamo.json["id"], self.item_prestamo)
         sancion = self.cliente.post("/api/sanciones", headers=gestor, json={
-            "usuario_id": self.estudiante_id, "origen": "DANO",
+            "usuario_id": self.estudiante_id, **recurso,
             "motivo": "Daño reportado en prueba", "dias": 3})
         self.assertEqual(sancion.status_code, 201, sancion.json)
         return estudiante, gestor
@@ -62,12 +63,12 @@ class HistorialUnificadoTest(HistorialBase):
             self.cliente.get("/api/historial?tipo=OTRO", headers=estudiante).status_code,
             400)
 
-    def test_filtro_por_item_excluye_sanciones(self):
+    def test_filtro_por_item_incluye_su_sancion(self):
         estudiante, _ = self._sembrar()
         datos = self.historial(estudiante, item_id=self.item_prestamo)
-        self.assertEqual(datos["total"], 1)
-        self.assertEqual(datos["movimientos"][0]["tipo"], "PRESTAMO")
-        self.assertTrue(all(m["tipo"] != "SANCION" for m in datos["movimientos"]))
+        self.assertEqual(sorted(m["tipo"] for m in datos["movimientos"]),
+                         ["PRESTAMO", "SANCION"])
+        self.assertTrue(all(m["item_id"] == self.item_prestamo for m in datos["movimientos"]))
 
     def test_filtro_por_rango_de_fechas(self):
         estudiante, _ = self._sembrar()

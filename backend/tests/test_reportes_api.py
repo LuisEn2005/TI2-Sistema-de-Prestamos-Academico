@@ -18,11 +18,12 @@ class ReportesBase(ApiBase):
         self.cliente.post("/api/reservas", headers=self.estudiante, json={
             "item_id": self.item_reserva, "modalidad_id": modalidad,
             "fecha_inicio": "2026-10-20", "fecha_fin": "2026-10-26"})
-        self.cliente.post("/api/prestamos", headers=gestor, json={
+        prestamo = self.cliente.post("/api/prestamos", headers=gestor, json={
             "usuario_id": self.estudiante_id, "item_ids": [self.item_prestamo],
-            "modalidad_id": modalidad})
+            "modalidad_id": modalidad}).json
+        recurso = self.recibir(gestor, prestamo["id"], self.item_prestamo)
         self.cliente.post("/api/sanciones", headers=gestor, json={
-            "usuario_id": self.estudiante_id, "origen": "DANO",
+            "usuario_id": self.estudiante_id, **recurso,
             "motivo": "Daño reportado en prueba", "dias": 3})
         return gestor
 
@@ -103,11 +104,6 @@ class ReportesPdfTest(ReportesBase):
 
     def test_datos_incluyen_acciones_y_resumen(self):
         gestor = self._sembrar()
-        prestamo = self.cliente.get("/api/prestamos", headers=gestor).json["prestamos"][0]
-        self.assertEqual(self.cliente.post(
-            f"/api/prestamos/{prestamo['id']}/devolucion", headers=gestor,
-            json={"condiciones": [{"item_id": self.item_prestamo, "condicion": "BUEN_ESTADO"}]}
-        ).status_code, 200)
         admin = self.ingresar(ADMIN, espacio="ADMINISTRACION")
         sancion_id = self.cliente.get("/api/sanciones", headers=admin).json[0]["id"]
         self.assertEqual(self.cliente.post(

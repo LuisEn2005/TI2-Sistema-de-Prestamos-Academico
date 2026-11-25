@@ -36,8 +36,9 @@ class HistorialApplicationService:
                 movimientos += self._reservas(uow, objetivo, item_id)
             if tipo in (None, TipoEvento.PRESTAMO):
                 movimientos += self._prestamos(uow, objetivo, item_id)
-            if tipo in (None, TipoEvento.SANCION) and item_id is None:
-                movimientos += self._sanciones(uow, objetivo)
+            if tipo in (None, TipoEvento.SANCION):
+                movimientos += [m for m in self._sanciones(uow, objetivo)
+                                if item_id is None or m.item_id == item_id]
             uow.commit()  # persiste el cierre automático de sanciones vencidas
 
         if estado:
@@ -119,8 +120,10 @@ class HistorialApplicationService:
             self.reloj.hoy(), self.reloj.ahora(), usuario_id)
         sanciones = uow.sanciones.listar(usuario_id=usuario_id, estado=None)
         nombres = uow.usuarios.nombres_de([s.usuarioId.valor for s in sanciones])
+        items = uow.items.find_by_ids([s.itemId.valor for s in sanciones if s.itemId])
         movimientos = []
         for s in sanciones:
+            item = items.get(s.itemId.valor) if s.itemId else None
             detalle = f"{s.origen.value} · {s.motivo}"
             if s.fechaFin:
                 detalle += f" · hasta {s.fechaFin.isoformat()}"
@@ -129,5 +132,7 @@ class HistorialApplicationService:
             movimientos.append(HistorialMovimiento(
                 tipo=TipoEvento.SANCION, referencia_id=s.id.valor,
                 fecha=s.fechaInicio, estado=s.estado.value, detalle=detalle,
-                usuario_id=s.usuarioId.valor, usuario=nombres.get(s.usuarioId.valor)))
+                usuario_id=s.usuarioId.valor, usuario=nombres.get(s.usuarioId.valor),
+                item_id=s.itemId.valor if s.itemId else None,
+                codigo=item.codigo if item else None, item=item.nombre if item else None))
         return movimientos

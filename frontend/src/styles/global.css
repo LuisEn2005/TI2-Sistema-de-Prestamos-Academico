@@ -216,6 +216,10 @@ dd { margin: 0; font-weight: 500; }
 .devolucion-item:first-child { border-top: 0; }
 .devolucion-item .dos-columnas { align-items: end; }
 .resumen-condiciones { min-height: 1.4rem; }
+.formulario-sancion { max-width: 760px; }
+.formulario-sancion > p { margin: .4rem 0 0; }
+.formulario-sancion button[type='submit'] { margin-top: 1.1rem; }
+.resumen-recurso { margin-top: .75rem !important; padding: .55rem .75rem; border-left: 3px solid var(--acento); border-radius: 0 var(--r-sm) var(--r-sm) 0; background: var(--superficie-2); color: var(--tinta); }
 .resumen-condiciones.error { color: var(--error); }
 
 @media (prefers-reduced-motion: reduce) {

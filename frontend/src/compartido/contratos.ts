@@ -61,10 +61,17 @@ export type PoliticaRolDTO = {
 };
 export type SancionDTO = {
   id: number; usuario_id: number; usuario: string; prestamo_id: number | null;
+  item_id: number | null; recurso: string | null;
   origen: 'RETRASO' | 'DANO' | 'PERDIDA'; motivo: string;
   monto: string | null; moneda: string | null;
   fecha_inicio: string; fecha_fin: string | null; estado: 'ACTIVA' | 'CERRADA';
   resolucion: string | null;
+};
+/** Recurso devuelto dañado o perdido que aún puede vincularse a una sanción manual. */
+export type RecursoSancionableDTO = {
+  prestamo_id: number; item_id: number; codigo: string; nombre: string;
+  condicion: 'DANADO' | 'PERDIDO'; origen: 'DANO' | 'PERDIDA'; observacion: string | null;
+  fecha_devolucion: string | null;
 };
 export type EstadoReserva =
   | 'PENDIENTE' | 'CONFIRMADA' | 'EXPIRADA' | 'CANCELADA' | 'CONVERTIDA'

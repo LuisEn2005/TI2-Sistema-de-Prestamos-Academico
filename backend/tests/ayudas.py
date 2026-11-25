@@ -70,5 +70,19 @@ class ApiBase(unittest.TestCase):
         return next(m["id"] for m in self.cliente.get("/api/modalidades", headers=h).json
                     if m["nombre"] == nombre)
 
+    def incidencia(self, gestor, codigo, condicion="DANADO", correo=ESTUDIANTE):
+        """Presta `codigo` y lo recibe dañado o perdido; devuelve lo que pide una sanción manual."""
+        prestamo = self.cliente.post("/api/prestamos", headers=gestor, json={
+            "usuario_id": self.usuario_id(correo), "item_ids": [self.item_id(codigo)],
+            "modalidad_id": self.modalidad_id(EXTERNA)})
+        self.assertEqual(prestamo.status_code, 201, prestamo.json)
+        return self.recibir(gestor, prestamo.json["id"], self.item_id(codigo), condicion)
+
+    def recibir(self, gestor, prestamo_id, item_id, condicion="DANADO"):
+        r = self.cliente.post(f"/api/prestamos/{prestamo_id}/devolucion", headers=gestor,
+                              json={"condiciones": [{"item_id": item_id, "condicion": condicion}]})
+        self.assertEqual(r.status_code, 200, r.json)
+        return {"prestamo_id": prestamo_id, "item_id": item_id}
+
     def estado_item(self, codigo):
         return self.cliente.get(f"/api/items/{self.item_id(codigo)}").json["estado"]

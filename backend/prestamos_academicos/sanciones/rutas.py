@@ -6,7 +6,8 @@ from .dominio import EstadoSancion
 from ..compartido import ErrorAplicacion
 from ..compartido import validacion as v
 from ..compartido.autenticacion import requiere_autenticacion, requiere_permiso, servicios
-from ..compartido.http import cuerpo_json, id_positivo, id_ruta, parametros_permitidos, texto_consulta
+from ..compartido.http import (
+    cuerpo_json, entero_consulta, id_positivo, id_ruta, parametros_permitidos, texto_consulta)
 from ..identidad import Permiso
 
 bp = Blueprint("sanciones", __name__, url_prefix="/api")
@@ -25,19 +26,27 @@ def listar():
     return jsonify(servicios().sanciones.listar(g.usuario, estado))
 
 
+@bp.get("/sanciones/recursos")
+@requiere_permiso(Permiso.GENERAR_SANCION_MANUAL)
+def recursos():
+    """Recursos devueltos dañados o perdidos que pueden vincularse a una sanción manual."""
+    parametros_permitidos("usuario_id")
+    usuario_id = entero_consulta("usuario_id", None, maximo=2**31 - 1)
+    if usuario_id is None:
+        raise ErrorAplicacion("Indique el usuario («usuario_id»).", 400)
+    return jsonify(servicios().sanciones.recursos_sancionables(usuario_id))
+
+
 @bp.post("/sanciones")
 @requiere_permiso(Permiso.GENERAR_SANCION_MANUAL)
 def registrar():
     datos = cuerpo_json()
-    v.campos(datos, {"usuario_id", "prestamo_id", "origen", "motivo", "dias", "monto"})
-    prestamo_id = datos.get("prestamo_id")
-    if prestamo_id is not None:
-        prestamo_id = id_positivo(prestamo_id, "prestamo_id")
+    v.campos(datos, {"usuario_id", "prestamo_id", "item_id", "motivo", "dias", "monto"})
     sancion = servicios().sanciones.registrar_manual(
         g.usuario,
         usuario_id=id_positivo(datos.get("usuario_id"), "usuario_id"),
-        prestamo_id=prestamo_id,
-        origen=v.texto(datos, "origen", maximo=20),
+        prestamo_id=id_positivo(datos.get("prestamo_id"), "prestamo_id"),
+        item_id=id_positivo(datos.get("item_id"), "item_id"),
         motivo=v.texto(datos, "motivo", maximo=300),
         dias=datos.get("dias"), monto=datos.get("monto"),
     )

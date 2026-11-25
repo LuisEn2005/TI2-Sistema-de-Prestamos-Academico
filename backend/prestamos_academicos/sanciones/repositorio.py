@@ -4,7 +4,7 @@ from sqlalchemy import func, select, update
 
 from .dominio import EstadoSancion, ISancionRepository, Monto, OrigenSancion, Sancion
 from ..base_datos.modelos import SancionDB, UsuarioDB
-from ..compartido import PrestamoId, SancionId, UsuarioId
+from ..compartido import ItemId, PrestamoId, SancionId, UsuarioId
 
 RESOLUCION_AUTOMATICA = "Cierre automático por cumplimiento del plazo."
 
@@ -15,6 +15,7 @@ def _a_dominio(fila):
     return Sancion(
         id=SancionId(fila.id), usuarioId=UsuarioId(fila.usuario_id),
         prestamoId=PrestamoId(fila.prestamo_id) if fila.prestamo_id else None,
+        itemId=ItemId(fila.item_id) if fila.item_id else None,
         creadaPorUsuarioId=(UsuarioId(fila.creada_por_usuario_id)
                             if fila.creada_por_usuario_id else None),
         origen=OrigenSancion(fila.origen), motivo=fila.motivo,
@@ -35,6 +36,7 @@ class SqlAlchemySancionRepository(ISancionRepository):
         fila = self.sesion.get(SancionDB, sancion.id.valor) if sancion.id else SancionDB()
         fila.usuario_id = sancion.usuarioId.valor
         fila.prestamo_id = sancion.prestamoId.valor if sancion.prestamoId else None
+        fila.item_id = sancion.itemId.valor if sancion.itemId else None
         fila.creada_por_usuario_id = (
             sancion.creadaPorUsuarioId.valor if sancion.creadaPorUsuarioId else None)
         fila.origen = sancion.origen.value

@@ -10,17 +10,20 @@ import Base from '../layouts/Base.astro';
 
   <section id="registro" class="seccion-operativa" hidden>
     <h2>Registrar sanción manual</h2>
-    <form id="formulario" class="barra">
-      <div><label for="usuario">Usuario</label><select id="usuario" required></select></div>
-      <div><label for="origen">Origen</label><select id="origen">
-        <option value="DANO">Daño</option><option value="PERDIDA">Pérdida</option>
-      </select></div>
-      <div><label for="dias">Duración (días)</label><input id="dias" type="number" min="1" max="365" /></div>
-      <div><label for="monto">Monto (S/)</label><input id="monto" type="number" min="0.01" max="99999999.99" step="0.01" /></div>
-      <div><label for="motivo">Motivo</label><input id="motivo" maxlength="300" required /></div>
-      <button type="submit">Registrar</button>
+    <form id="formulario" class="formulario-sancion">
+      <div class="dos-columnas">
+        <div><label for="usuario">Usuario</label><select id="usuario" required></select></div>
+        <div><label for="recurso">Recurso dañado o perdido</label><select id="recurso" required></select></div>
+      </div>
+      <p id="resumen-recurso" class="resumen-recurso pequeno" hidden></p>
+      <div class="dos-columnas">
+        <div><label for="dias">Duración (días)</label><input id="dias" type="number" min="1" max="365" /></div>
+        <div><label for="monto">Monto (S/)</label><input id="monto" type="number" min="0.01" max="99999999.99" step="0.01" /></div>
+      </div>
+      <p class="tenue pequeno">Indique al menos una duración o un monto.</p>
+      <div><label for="motivo">Motivo</label><input id="motivo" maxlength="300" required placeholder="Describa qué ocurrió" /></div>
+      <button type="submit">Registrar sanción</button>
     </form>
-    <p class="tenue pequeno">Indique al menos una duración o un monto.</p>
   </section>
 
   <div class="barra filtros-operativos seccion-separada">

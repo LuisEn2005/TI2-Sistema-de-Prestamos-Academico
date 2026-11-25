@@ -153,6 +153,9 @@ class IPrestamoRepository(ABC):
     def save(self, prestamo: Prestamo) -> Prestamo: ...
 
     @abstractmethod
+    def devoluciones_con_incidencia(self, usuario_id: int) -> list: ...
+
+    @abstractmethod
     def find_by_id(self, prestamo_id: int) -> Optional[Prestamo]: ...
 
     @abstractmethod

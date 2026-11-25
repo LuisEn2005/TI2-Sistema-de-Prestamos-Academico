@@ -7,7 +7,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 
-from ..compartido import ErrorDominio, PrestamoId, SancionId, UsuarioId
+from ..compartido import ErrorDominio, ItemId, PrestamoId, SancionId, UsuarioId
 
 
 class EstadoSancion(str, Enum):
@@ -32,6 +32,7 @@ class Sancion:
     id: Optional[SancionId] = None
     usuarioId: Optional[UsuarioId] = None
     prestamoId: Optional[PrestamoId] = None
+    itemId: Optional[ItemId] = None
     creadaPorUsuarioId: Optional[UsuarioId] = None
     origen: Optional[OrigenSancion] = None
     motivo: Optional[str] = None
@@ -58,7 +59,7 @@ class Sancion:
 
     @classmethod
     def manual(cls, *, usuario_id, actor_id, origen, motivo, hoy,
-               dias=None, monto=None, prestamo_id=None):
+               dias=None, monto=None, prestamo_id=None, item_id=None):
         origen = OrigenSancion(origen)
         if origen not in (OrigenSancion.DANO, OrigenSancion.PERDIDA):
             raise ErrorDominio("Una sanción manual debe originarse por daño o pérdida.")
@@ -66,9 +67,12 @@ class Sancion:
             raise ErrorDominio("El motivo de la sanción es obligatorio.")
         if dias is None and monto is None:
             raise ErrorDominio("Indique una duración o un monto para la sanción.")
+        if item_id is not None and prestamo_id is None:
+            raise ErrorDominio("Indique el préstamo en que se devolvió el recurso.")
         return cls(
             usuarioId=UsuarioId(usuario_id),
             prestamoId=PrestamoId(prestamo_id) if prestamo_id else None,
+            itemId=ItemId(item_id) if item_id else None,
             creadaPorUsuarioId=UsuarioId(actor_id), origen=origen,
             motivo=motivo.strip(), monto=monto, fechaInicio=hoy,
             fechaFin=(hoy + timedelta(days=dias - 1)

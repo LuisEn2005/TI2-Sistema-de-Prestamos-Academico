@@ -24,6 +24,33 @@ async function ingresar(page: Page, correo = 'admin@escuela.edu', espacio?: Espa
   else await expect(page).not.toHaveURL('/');
 }
 
+/** Presta a Jesús un libro disponible y lo recibe dañado, vía API como el gestor. */
+async function recursoDevueltoDanado(page: Page) {
+  const login = await page.request.post('/api/auth/login', {
+    data: { correo: 'luis.ramos@escuela.edu', password: CLAVE, espacio: 'INVENTARIO' },
+  });
+  const headers = { Authorization: `Bearer ${(await login.json()).token}` };
+  const api = async (ruta: string, data?: object) => {
+    const r = data ? await page.request.post(ruta, { headers, data })
+      : await page.request.get(ruta, { headers });
+    expect(r.ok(), `${ruta}: ${await r.text()}`).toBeTruthy();
+    return r.json();
+  };
+  const usuarios = await api('/api/usuarios/prestatarios');
+  const usuario = usuarios.find((u: { correo: string }) => u.correo === 'jesus.perez@escuela.edu');
+  const modalidad = (await api('/api/modalidades'))
+    .find((m: { nombre: string }) => m.nombre === 'Externa (a domicilio)');
+  const item = (await api('/api/items?limite=100')).items
+    .find((i: { codigo: string; estado: string }) => i.codigo.startsWith('LIB-') && i.estado === 'DISPONIBLE');
+  const prestamo = await api('/api/prestamos', {
+    usuario_id: usuario.id, item_ids: [item.id], modalidad_id: modalidad.id,
+  });
+  await api(`/api/prestamos/${prestamo.id}/devolucion`, {
+    condiciones: [{ item_id: item.id, condicion: 'DANADO', observacion: 'Daño de prueba E2E' }],
+  });
+  return item.codigo as string;
+}
+
 // Cambia de espacio desde el selector de la barra lateral y espera el destino.
 async function seleccionarEspacio(page: Page, espacio: Espacio) {
   await page.getByLabel('Espacio de trabajo').selectOption(espacio);
@@ -244,14 +271,21 @@ test('el administrador configura una política y gestiona una sanción', async (
     name: 'Guardar reglas de Estudiante',
   }).click();
 
+  // La sanción manual parte de un recurso devuelto dañado: se prepara por API.
+  const codigo = await recursoDevueltoDanado(page);
+
   // El registro operativo de una sanción vive en Inventario.
   await seleccionarEspacio(page, 'INVENTARIO');
   await page.goto('/sanciones');
   await page.getByLabel('Usuario').selectOption({
     label: 'Jesus Gustavo Perez Villasante (jesus.perez@escuela.edu)',
   });
+  const recurso = page.getByLabel('Recurso dañado o perdido');
+  const opcion = recurso.locator('option', { hasText: `${codigo} · ` });
+  await recurso.selectOption((await opcion.getAttribute('value'))!);
+  await expect(page.locator('#resumen-recurso')).toContainText('Sanción por daño');
+  await expect(page.getByLabel('Motivo')).toHaveValue('Daño de prueba E2E');
   await page.getByLabel('Duración (días)').fill('1');
-  await page.getByLabel('Motivo').fill('Daño de prueba E2E');
   await page.getByRole('button', { name: 'Registrar' }).click();
   await expect(page.locator('#mensaje')).toContainText('Sanción registrada');
   const sancion = page.getByRole('row').filter({ hasText: 'Daño de prueba E2E' });

@@ -388,6 +388,7 @@ class SancionDB(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
     prestamo_id: Mapped[int | None] = mapped_column(ForeignKey("prestamos.id"))
+    item_id: Mapped[int | None] = mapped_column(ForeignKey("items.id"))
     creada_por_usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     origen: Mapped[str] = mapped_column(String(20), nullable=False)
     motivo: Mapped[str] = mapped_column(String(300), nullable=False)

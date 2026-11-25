@@ -72,8 +72,10 @@ class ReporteApplicationService:
             item = uow.items.find_by_id(item_id)
             if item is None:
                 raise NoEncontrado("El recurso no existe.")
+            # Sanciones manuales vinculadas a este recurso (daño o pérdida).
             acciones = (self._acciones_reserva(uow, item_id=item_id)
-                        + self._acciones_prestamo(uow, item_id=item_id))
+                        + self._acciones_prestamo(uow, item_id=item_id)
+                        + [a for a in self._acciones_sancion(uow, None) if a.item == item.codigo])
             uow.commit()
         sujeto = f"{item.codigo} — {item.nombre}"
         return self._armar(actor, "item", sujeto, desde, hasta, acciones)
@@ -184,7 +186,11 @@ class ReporteApplicationService:
     def _acciones_sancion(self, uow, usuario_id):
         acciones = []
         nombres = {}
-        for s in uow.sanciones.listar(usuario_id=usuario_id, estado=None):
+        sanciones = uow.sanciones.listar(usuario_id=usuario_id, estado=None)
+        items = uow.items.find_by_ids([s.itemId.valor for s in sanciones if s.itemId])
+        for s in sanciones:
+            item = items.get(s.itemId.valor) if s.itemId else None
+            codigo = item.codigo if item else None
             # Sin creador registrado = sanción automática por atraso.
             responsable = self._nombre(uow, s.creadaPorUsuarioId, nombres) or "Sistema"
             afectado = self._nombre(uow, s.usuarioId, nombres)
@@ -192,7 +198,7 @@ class ReporteApplicationService:
                         if s.fechaFin else f"vigente desde {s.fechaInicio.isoformat()}")
             acciones.append(Accion(
                 fecha=s.fechaInicio.isoformat(), hora=None, categoria="SANCION",
-                accion="Sanción aplicada", responsable=responsable, item=None,
+                accion="Sanción aplicada", responsable=responsable, item=codigo,
                 usuario=afectado,
                 detalle=" · ".join(filter(None, (
                     ORIGEN_SANCION.get(s.origen.value, s.origen.value), s.motivo, vigencia,
@@ -207,7 +213,7 @@ class ReporteApplicationService:
                     responsable=(self._nombre(uow, s.cerradaPorUsuarioId, nombres)
                                  or ("Sistema" if s.resolucion == RESOLUCION_AUTOMATICA
                                      else None)),
-                    item=None, usuario=afectado,
+                    item=codigo, usuario=afectado,
                     detalle=s.resolucion or "Sanción levantada"))
         return acciones
 

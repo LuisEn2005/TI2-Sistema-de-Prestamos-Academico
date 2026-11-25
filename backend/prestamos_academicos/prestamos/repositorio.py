@@ -70,6 +70,17 @@ class SqlAlchemyPrestamoRepository(IPrestamoRepository):
             .limit(limite).offset((pagina - 1) * limite))
         return self._a_dominio(list(filas)), total
 
+    def devoluciones_con_incidencia(self, usuario_id):
+        """Recursos que el usuario devolvió dañados o perdidos, del más reciente al más antiguo."""
+        return self.sesion.execute(
+            select(DetallePrestamoDB.prestamo_id, DetallePrestamoDB.item_id,
+                   DetallePrestamoDB.condicion, DetallePrestamoDB.observacion,
+                   PrestamoDB.fecha_devolucion)
+            .join(PrestamoDB, PrestamoDB.id == DetallePrestamoDB.prestamo_id)
+            .where(PrestamoDB.usuario_id == usuario_id,
+                   DetallePrestamoDB.condicion.in_(("DANADO", "PERDIDO")))
+            .order_by(PrestamoDB.fecha_devolucion.desc(), DetallePrestamoDB.id)).all()
+
     def contar_items_activos(self, usuario_id):
         return self.sesion.scalar(
             select(func.count()).select_from(DetallePrestamoDB)

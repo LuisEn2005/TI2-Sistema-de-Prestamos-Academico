@@ -102,11 +102,13 @@ class SancionManualTest(SancionesBase):
     def test_gestor_registra_y_administrador_cierra_sancion(self):
         gestor = self.ingresar(GESTOR)
         uid = self.usuario_id(ESTUDIANTE)
+        recurso = self.incidencia(gestor, "LIB-CLRS", "DANADO")
         creada = self.cliente.post("/api/sanciones", headers=gestor, json={
-            "usuario_id": uid, "origen": "DANO", "motivo": "Pantalla quebrada",
+            "usuario_id": uid, **recurso, "motivo": "Pantalla quebrada",
             "dias": 5, "monto": "120.50",
         })
         self.assertEqual(creada.status_code, 201, creada.json)
+        self.assertEqual(creada.json["origen"], "DANO")   # sale de la devolución
         self.assertEqual((creada.json["monto"], creada.json["moneda"]), ("120.50", "PEN"))
         self.assertEqual(creada.json["fecha_fin"], "2026-10-23")
         self.assertEqual(self.cliente.post(
@@ -120,41 +122,74 @@ class SancionManualTest(SancionesBase):
         self.assertEqual(cerrada.status_code, 200, cerrada.json)
         self.assertEqual(cerrada.json["estado"], "CERRADA")
         inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
-        self.assertEqual(self.prestar(inventario).status_code, 201)
+        self.assertEqual(self.prestar(inventario, "LIB-CLEAN").status_code, 201)
 
     def test_sanciones_nuevas_se_encadenan_sin_superponerse(self):
         gestor = self.ingresar(GESTOR)
         uid = self.usuario_id(ESTUDIANTE)
-        base = {"usuario_id": uid, "origen": "DANO", "motivo": "Daño"}
-        primera = self.cliente.post("/api/sanciones", headers=gestor, json={**base, "dias": 10})
-        segunda = self.cliente.post("/api/sanciones", headers=gestor, json={**base, "dias": 5})
-        self.assertEqual((primera.json["fecha_inicio"], primera.json["fecha_fin"]),
+        # Primero las devoluciones: con una sanción activa ya no se le podría prestar.
+        r1, r2, r3, r4 = (self.incidencia(gestor, c) for c in
+                          ("LIB-CLRS", "LIB-CLEAN", "LIB-GOF", "EQ-META"))
+        sancionar = lambda recurso, **extra: self.cliente.post(
+            "/api/sanciones", headers=gestor,
+            json={"usuario_id": uid, **recurso, "motivo": "Daño", **extra}).json
+        primera, segunda = sancionar(r1, dias=10), sancionar(r2, dias=5)
+        self.assertEqual((primera["fecha_inicio"], primera["fecha_fin"]),
                          ("2026-10-19", "2026-10-28"))
-        self.assertEqual((segunda.json["fecha_inicio"], segunda.json["fecha_fin"]),
+        self.assertEqual((segunda["fecha_inicio"], segunda["fecha_fin"]),
                          ("2026-10-29", "2026-11-02"))
         # Una sanción sin plazo (solo monto) no desplaza a las siguientes.
-        self.cliente.post("/api/sanciones", headers=gestor, json={**base, "monto": "50"})
-        tercera = self.cliente.post("/api/sanciones", headers=gestor, json={**base, "dias": 1})
-        self.assertEqual(tercera.json["fecha_inicio"], "2026-11-03")
+        sancionar(r3, monto="50")
+        self.assertEqual(sancionar(r4, dias=1)["fecha_inicio"], "2026-11-03")
+
+    def test_sancion_manual_se_vincula_al_recurso_devuelto_perdido(self):
+        gestor = self.ingresar(GESTOR)
+        uid = self.usuario_id(ESTUDIANTE)
+        sano = self.incidencia(gestor, "LIB-CLEAN", "BUEN_ESTADO")
+        recurso = self.incidencia(gestor, "LIB-CLRS", "PERDIDO")
+
+        recursos = self.cliente.get(f"/api/sanciones/recursos?usuario_id={uid}", headers=gestor)
+        self.assertEqual(recursos.status_code, 200, recursos.json)
+        self.assertEqual([(r["prestamo_id"], r["item_id"], r["origen"]) for r in recursos.json],
+                         [(recurso["prestamo_id"], recurso["item_id"], "PERDIDA")])
+
+        base = {"usuario_id": uid, "motivo": "Lo perdió", "dias": 3}
+        enviar = lambda cuerpo: self.cliente.post("/api/sanciones", headers=gestor, json=cuerpo)
+        self.assertEqual(enviar({**base, **sano}).status_code, 422)       # volvió en buen estado
+        self.assertEqual(enviar({**base, **recurso, "origen": "DANO"}).status_code, 400)
+        creada = enviar({**base, **recurso})
+        self.assertEqual(creada.status_code, 201, creada.json)
+        self.assertEqual((creada.json["origen"], creada.json["item_id"]),
+                         ("PERDIDA", recurso["item_id"]))
+        self.assertTrue(creada.json["recurso"].startswith("LIB-CLRS"))
+        # Ya sancionado: no se ofrece de nuevo ni se puede repetir.
+        self.assertEqual(self.cliente.get(
+            f"/api/sanciones/recursos?usuario_id={uid}", headers=gestor).json, [])
+        self.assertEqual(enviar({**base, **recurso}).status_code, 409)
+        self.assertEqual(self.cliente.get(
+            "/api/sanciones/recursos", headers=gestor).status_code, 400)
+        self.assertEqual(self.cliente.get(
+            f"/api/sanciones/recursos?usuario_id={uid}",
+            headers=self.ingresar(ESTUDIANTE)).status_code, 403)
 
     def test_valida_sanciones_y_visibilidad(self):
         administracion = self.ingresar()
         uid = self.usuario_id(ESTUDIANTE, administracion)
         inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
-        base = {"usuario_id": uid, "origen": "PERDIDA", "motivo": "No devuelto"}
-        for cuerpo in (
-                base,
-                {**base, "origen": "RETRASO", "dias": 2},
-                {**base, "dias": 0},
-                {**base, "monto": -1},
-                {**base, "monto": "NaN"},
-                {**base, "dias": 2, "otro": True}):
+        recurso = self.incidencia(inventario, "LIB-CLRS", "PERDIDO")
+        base = {"usuario_id": uid, **recurso, "motivo": "No devuelto"}
+        sin_recurso = {"usuario_id": uid, "motivo": "No devuelto", "dias": 2}
+        for cuerpo, esperado in (
+                (sin_recurso, 400),                      # el recurso es obligatorio
+                ({**base, "dias": 0}, 400),
+                ({**base, "monto": -1}, 400),
+                ({**base, "monto": "NaN"}, 400),
+                ({**base, "dias": 2, "otro": True}, 400),
+                (base, 422)):                            # sin duración ni monto
             with self.subTest(cuerpo=cuerpo):
                 respuesta = self.cliente.post(
                     "/api/sanciones", headers=inventario, json=cuerpo)
-                invalido = ("otro" in cuerpo or cuerpo.get("dias") == 0
-                            or cuerpo.get("monto") in (-1, "NaN"))
-                self.assertEqual(respuesta.status_code, 400 if invalido else 422)
+                self.assertEqual(respuesta.status_code, esperado, respuesta.json)
         self.assertEqual(self.cliente.get("/api/sanciones").status_code, 401)
         self.assertEqual(self.cliente.get(
             "/api/sanciones?estado=OTRA", headers=inventario).status_code, 400)
