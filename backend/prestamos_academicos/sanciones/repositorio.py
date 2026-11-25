@@ -83,6 +83,12 @@ class SqlAlchemySancionRepository(ISancionRepository):
                 self.actualizar_cache_usuario(uid)
         return len(usuarios)
 
+    def fin_ultima_activa(self, usuario_id):
+        # Las sanciones sin fecha de fin no se encadenan: duran hasta que se cierran.
+        return self.sesion.scalar(select(func.max(SancionDB.fecha_fin)).where(
+            SancionDB.usuario_id == usuario_id,
+            SancionDB.estado == EstadoSancion.ACTIVA.value))
+
     def actualizar_cache_usuario(self, usuario_id):
         activa = bool(self.sesion.scalar(
             select(func.count()).select_from(SancionDB).where(

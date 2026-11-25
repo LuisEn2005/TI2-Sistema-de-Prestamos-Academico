@@ -75,6 +75,13 @@ class Sancion:
                       if dias is not None else None),
         )
 
+    @staticmethod
+    def inicioEncadenado(hoy: date, fin_vigente: Optional[date]) -> date:
+        """Una sanción nueva empieza al terminar la vigente, para no superponerse."""
+        if fin_vigente is None or fin_vigente < hoy:
+            return hoy
+        return fin_vigente + timedelta(days=1)
+
     def estaActiva(self, hoy: date) -> bool:
         return self.estado == EstadoSancion.ACTIVA and (
             self.fechaFin is None or hoy <= self.fechaFin)
@@ -107,6 +114,9 @@ class ISancionRepository(ABC):
 
     @abstractmethod
     def sincronizar_vencidas(self, hoy: date, ahora: datetime, usuario_id=None) -> int: ...
+
+    @abstractmethod
+    def fin_ultima_activa(self, usuario_id: int) -> Optional[date]: ...
 
     @abstractmethod
     def actualizar_cache_usuario(self, usuario_id: int) -> bool: ...

@@ -408,9 +408,11 @@ class PrestamoApplicationService:
                 politica = (uow.politicas.find_by_id(prestamo.politicaServicioId.valor)
                             if prestamo.politicaServicioId else None)
                 factor = politica.diasSancionPorDiaAtraso if politica else 1
+                inicio = Sancion.inicioEncadenado(
+                    hoy, uow.sanciones.fin_ultima_activa(prestamo.usuarioId.valor))
                 sancion = uow.sanciones.save(Sancion.porAtraso(
                     usuario_id=prestamo.usuarioId.valor, prestamo_id=prestamo.id.valor,
-                    dias_atraso=dias_atraso, factor=factor, hoy=hoy))
+                    dias_atraso=dias_atraso, factor=factor, hoy=inicio))
                 uow.sanciones.actualizar_cache_usuario(prestamo.usuarioId.valor)
                 vista["sancion_generada_id"] = sancion.id.valor
             uow.commit()

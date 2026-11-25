@@ -122,6 +122,21 @@ class SancionManualTest(SancionesBase):
         inventario = self.ingresar(ADMIN, espacio="INVENTARIO")
         self.assertEqual(self.prestar(inventario).status_code, 201)
 
+    def test_sanciones_nuevas_se_encadenan_sin_superponerse(self):
+        gestor = self.ingresar(GESTOR)
+        uid = self.usuario_id(ESTUDIANTE)
+        base = {"usuario_id": uid, "origen": "DANO", "motivo": "Daño"}
+        primera = self.cliente.post("/api/sanciones", headers=gestor, json={**base, "dias": 10})
+        segunda = self.cliente.post("/api/sanciones", headers=gestor, json={**base, "dias": 5})
+        self.assertEqual((primera.json["fecha_inicio"], primera.json["fecha_fin"]),
+                         ("2026-10-19", "2026-10-28"))
+        self.assertEqual((segunda.json["fecha_inicio"], segunda.json["fecha_fin"]),
+                         ("2026-10-29", "2026-11-02"))
+        # Una sanción sin plazo (solo monto) no desplaza a las siguientes.
+        self.cliente.post("/api/sanciones", headers=gestor, json={**base, "monto": "50"})
+        tercera = self.cliente.post("/api/sanciones", headers=gestor, json={**base, "dias": 1})
+        self.assertEqual(tercera.json["fecha_inicio"], "2026-11-03")
+
     def test_valida_sanciones_y_visibilidad(self):
         administracion = self.ingresar()
         uid = self.usuario_id(ESTUDIANTE, administracion)

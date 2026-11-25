@@ -80,10 +80,12 @@ class SancionApplicationService:
                     raise NoEncontrado("El préstamo no existe.")
                 if prestamo.usuarioId.valor != usuario_id:
                     raise ErrorAplicacion("El préstamo no pertenece al usuario.", 422)
+            inicio = Sancion.inicioEncadenado(
+                self.reloj.hoy(), uow.sanciones.fin_ultima_activa(usuario_id))
             try:
                 sancion = Sancion.manual(
                     usuario_id=usuario_id, actor_id=actor.id.valor,
-                    origen=origen, motivo=motivo, hoy=self.reloj.hoy(),
+                    origen=origen, motivo=motivo, hoy=inicio,
                     dias=dias, monto=self._monto(monto), prestamo_id=prestamo_id)
             except ErrorDominio as error:
                 raise ErrorAplicacion(str(error), 422)
