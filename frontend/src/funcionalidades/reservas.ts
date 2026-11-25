@@ -289,6 +289,11 @@ if (usuario) {
       opciones($<HTMLSelectElement>('#rol'), roles.map((r) => [r, ETIQUETA_ROL[r]]));
     }
     $('#buscar-item').addEventListener('input', retardo(() => void cargarItems()));
+    // El calendario sigue al recurso elegido en la reserva.
+    $('#item').addEventListener('change', () => {
+      $<HTMLSelectElement>('#cal-item').value = $<HTMLSelectElement>('#item').value;
+      void cargarCalendario();
+    });
     $('#modalidad').addEventListener('change', actualizarRango);
     $('#rol').addEventListener('change', actualizarRango);
     inicio.addEventListener('change', actualizarRango);
