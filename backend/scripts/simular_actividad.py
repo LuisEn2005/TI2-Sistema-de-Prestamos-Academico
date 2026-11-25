@@ -1,4 +1,8 @@
-"""Simula actividad realista del 1-oct al 18-nov-2026 sobre la base de demostración.
+"""Simula actividad realista del 1-oct al 24-nov-2026 sobre la base de demostración.
+
+Préstamos, devoluciones, sanciones y solicitudes ocurren hasta el 24-nov. Al cierre quedan
+reservas ya confirmadas o pendientes que empiezan del 25 al 30-nov y algunas en diciembre,
+préstamos activos y vencidos, y sanciones vigentes (por atraso, daño y pérdida).
 
 Borra solo las acciones (reservas, préstamos, sanciones, cierres), conserva ítems y
 usuarios (el padrón de `datos_demo`), y genera la historia a través de la API real con
@@ -32,7 +36,7 @@ LUIS, LORENZO = "luis.ramos@escuela.edu", "lorenzo.quispe@escuela.edu"
 DOCENTE = "yessenia.yari@escuela.edu"
 DIEGO, RODRIGO = "diego.canqui@escuela.edu", "rodrigo.ramos@escuela.edu"
 IN_SITU, EXTERNA = "In situ (en sala)", "Externa (a domicilio)"
-INICIO, HOY = date(2026, 10, 1), date(2026, 11, 19)
+INICIO, HOY = date(2026, 10, 1), date(2026, 11, 24)
 FERIADO = date(2026, 10, 8)
 CUPO = {"ESTUDIANTE": 3, "DOCENTE": 5}
 
@@ -69,6 +73,12 @@ CIERRES = ["Presentó constancia médica que justifica el atraso.",
 DANOS = {"EQ": ["Carcasa rajada en una esquina.", "No enciende; posible daño en la fuente.",
                 "Puerto USB flojo."],
          "MAT": ["Conectores rotos.", "Cable pelado en un extremo.", "Pines doblados."]}
+PERDIDAS = ["Reporta que lo dejó olvidado en el transporte público.",
+            "Indica que se le extravió durante una mudanza.",
+            "Lo perdió en el campus; no apareció en objetos perdidos."]
+REPOSICIONES = ["Repuso el ejemplar con uno nuevo de la misma edición.",
+                "Pagó el costo de reposición en tesorería; se adjunta el recibo.",
+                "Entregó un ejemplar equivalente aprobado por la coordinación."]
 
 
 class RelojSimulado(Reloj):
@@ -283,7 +293,7 @@ class Simulacion:
         self._prestamo_entregado(p, correo, codigos, modalidad, **plan)
 
     def _prestamo_entregado(self, p, correo, codigos, modalidad, ya_contado=False,
-                            atraso=None, danado=False, nunca=False):
+                            atraso=None, danado=False, nunca=False, perdido=None):
         limite = date.fromisoformat(p["fecha_limite"])
         if not ya_contado:
             self.carga[correo] = self.carga.get(correo, 0) + len(codigos)
@@ -312,9 +322,9 @@ class Simulacion:
         for codigo in codigos:
             self.ocupar(codigo, f"p{p['id']}", self.hoy, hasta)
         if dia <= HOY:
-            self.agendar(dia, hora, self._devolver, p["id"], correo, codigos, danado)
+            self.agendar(dia, hora, self._devolver, p["id"], correo, codigos, danado, perdido)
 
-    def _devolver(self, prestamo_id, correo, codigos, danado):
+    def _devolver(self, prestamo_id, correo, codigos, danado, perdido=None):
         for c in codigos:
             self.liberar(c, f"p{prestamo_id}")
         # Solo se daña lo que puede pasar unos días en mantenimiento sin afectar reservas.
@@ -322,12 +332,25 @@ class Simulacion:
         if danado or (correo not in (LORENZO, RODRIGO) and self.rnd.random() < 0.04):
             roto = next((c for c in codigos if c.startswith(("EQ", "MAT"))
                          and self.libre(c, self.hoy, self.hoy + timedelta(days=10))), None)
+        # Un libro llevado a casa se pierde rara vez (el estudiante viene a reportarlo).
+        # `perdido` es la reposición del guion: (fecha, monto) o False para no reponer.
+        if perdido is None and not roto and correo not in (LORENZO, RODRIGO) \
+                and self.rnd.random() < 0.02:
+            libro = next((c for c in codigos if c.startswith("LIB")
+                          and self.libre(c, self.hoy, self.hoy + timedelta(days=30))), None)
+            if libro:
+                perdido = (siguiente_laborable(self.hoy, self.rnd.randint(4, 9))
+                           if self.rnd.random() < 0.5 else False, None)
+        extraviado = next((c for c in codigos if c.startswith("LIB")), None) if perdido else None
         for c in codigos:   # lo devuelto recién se presta desde el siguiente día laborable
             self.ocupar(c, f"p{prestamo_id}", self.hoy, self.hoy)
         condiciones = [
             {"item_id": self.items[c], "condicion": "DANADO",
              "observacion": self.rnd.choice(DANOS[c.split("-")[0]])}
-            if c == roto else {"item_id": self.items[c], "condicion": "BUEN_ESTADO"}
+            if c == roto else
+            {"item_id": self.items[c], "condicion": "PERDIDO",
+             "observacion": self.rnd.choice(PERDIDAS)}
+            if c == extraviado else {"item_id": self.items[c], "condicion": "BUEN_ESTADO"}
             for c in codigos]
         r = self._llamar("post", f"/api/prestamos/{prestamo_id}/devolucion",
                          self.gestor(correo), {"condiciones": condiciones})
@@ -344,12 +367,37 @@ class Simulacion:
         if roto:
             hora = self.mas_tarde(10, 25, tope="23:00")
             self.agendar(self.hoy, hora, self._sancion_dano, correo, prestamo_id, roto)
+        if extraviado:
+            self.en_mantenimiento.add(extraviado)          # extraviado: no se ofrece más
+            hora = self.mas_tarde(10, 25, tope="23:00")
+            self.agendar(self.hoy, hora, self._sancion_perdida, correo, prestamo_id,
+                         extraviado, *perdido)
+
+    def _sancion_perdida(self, correo, prestamo_id, codigo, repone, monto):
+        """Solo monto: el usuario queda bloqueado hasta reponer el libro."""
+        s = self._llamar("post", "/api/sanciones", self.gestor(correo), {
+            "usuario_id": self.ids[correo], "prestamo_id": prestamo_id,
+            "item_id": self.items[codigo],
+            "motivo": f"Pérdida del ejemplar {codigo}; debe reponerlo o pagar su costo.",
+            "monto": str(monto or self.rnd.choice([145, 180, 210, 260, 320]))})
+        self.sancion_hasta[correo] = date.max
+        if repone and repone <= HOY:
+            self.agendar(repone, self.hora(9, 16), self._repuesto, s["id"], correo, codigo)
+
+    def _repuesto(self, sancion_id, correo, codigo):
+        self._llamar("post", f"/api/sanciones/{sancion_id}/cierre", ADMIN,
+                     {"resolucion": self.rnd.choice(REPOSICIONES)})
+        self.sancion_hasta[correo] = self.hoy
+        self._llamar("post", f"/api/items/{self.items[codigo]}/estado", self.gestor(),
+                     {"estado": "DISPONIBLE"})
+        self.en_mantenimiento.discard(codigo)
 
     def _sancion_dano(self, correo, prestamo_id, codigo):
         dias = self.rnd.randint(3, 7)
         nombre = {"EQ": "el equipo", "MAT": "el material"}[codigo.split("-")[0]]
         self._llamar("post", "/api/sanciones", self.gestor(correo), {
-            "usuario_id": self.ids[correo], "prestamo_id": prestamo_id, "origen": "DANO",
+            "usuario_id": self.ids[correo], "prestamo_id": prestamo_id,
+            "item_id": self.items[codigo],
             "motivo": f"Devolvió {nombre} {codigo} dañado.", "dias": dias})
         self.sancion_hasta[correo] = max(self.sancion_hasta.get(correo, date.min),
                                          self.hoy + timedelta(days=dias + 1))
@@ -450,7 +498,8 @@ class Simulacion:
         apartados = [("LIB-CLRS", d(10, 5), d(10, 9)), ("EQ-LAP-002", d(10, 15), d(10, 15)),
                      ("EQ-RPI-001", d(10, 19), d(10, 30)), ("LIB-GOF", d(11, 4), d(11, 10)),
                      ("LIB-OS", d(11, 12), d(11, 19)), ("EQ-META", d(11, 20), d(11, 20)),
-                     ("LIB-CLEAN", d(10, 1), d(10, 9)), ("EQ-ESP-001", d(11, 4), d(11, 17))]
+                     ("LIB-CLEAN", d(10, 1), d(10, 9)), ("EQ-ESP-001", d(11, 9), d(11, 24)),
+                     ("LIB-NET", d(10, 26), d(11, 6)), ("LIB-AIMA", d(11, 12), d(12, 31))]
         for codigo, desde, hasta in apartados:    # que el azar no se los lleve
             self.ocupar(codigo, f"guion-{codigo}", desde, hasta)
 
@@ -476,14 +525,24 @@ class Simulacion:
 
         # Vence el 8-10: el feriado que se registra el 5-10 lo reprograma.
         self.agendar(d(10, 1), "08:15", prestar, DIEGO, "LIB-CLEAN", EXTERNA, atraso=0)
-        # Devuelve el 16-11 con 5 días de atraso: sanción vigente al cierre.
-        self.agendar(d(11, 4), "10:05", prestar, RODRIGO, "EQ-ESP-001", EXTERNA, atraso=5)
+        # Devuelve con atraso pocos días antes del cierre: sanción vigente al 24-11.
+        self.agendar(d(11, 9), "10:05", prestar, RODRIGO, "EQ-ESP-001", EXTERNA, atraso=5)
+
+        # Pérdidas: una repuesta a los pocos días y otra que sigue pendiente al cierre.
+        def prestar_a_quien_pueda(codigo, **plan):
+            correo = next(c for c in self.estudiantes if self.habilitado(c))
+            # Sin liberar lo apartado: nadie más debe reservar un libro que se perderá.
+            self.prestar(correo, [codigo], EXTERNA, atraso=0, **plan)
+        self.agendar(d(10, 26), "11:20", prestar_a_quien_pueda, "LIB-NET",
+                     perdido=(d(11, 5), 185))
+        self.agendar(d(11, 12), "15:40", prestar_a_quien_pueda, "LIB-AIMA",
+                     perdido=(False, 240))
         # Solicitudes de fin de jornada que quedan pendientes para el día siguiente.
         self.agendar(HOY, "17:35", self.solicitud_pendiente)
         self.agendar(HOY, "17:48", self.solicitud_pendiente)
-        # Reservas para la semana próxima y principios de diciembre: las de la mañana se
+        # Reservas que empiezan del 25 al 30-11 y algunas en diciembre: las de la mañana se
         # confirman en el día; las de la tarde de hoy quedan pendientes al cierre.
-        for dia in (d(11, 17), d(11, 18), HOY):
+        for dia in (d(11, 18), d(11, 19), d(11, 20), d(11, 23), HOY):
             for _ in range(self.rnd.randint(3, 4)):
                 self.agendar(dia, self.hora(9, 14), self.reserva_futura)
         self.agendar(HOY, "10:30", self.reserva_futura, docente=True)
@@ -494,7 +553,10 @@ class Simulacion:
         correo = DOCENTE if docente else self.rnd.choice(self.estudiantes)
         if not self.habilitado(correo):
             return
-        desde = siguiente_laborable(self.hoy, self.rnd.randint(3, 12))
+        # Casi todas empiezan dentro de la semana siguiente al cierre; pocas, en diciembre.
+        desde = siguiente_laborable(self.hoy, self.rnd.choice([1, 2, 3, 4, 5, 5, 6, 8, 11]))
+        if desde <= HOY:
+            return
         if docente and self.rnd.random() < 0.6:            # equipo para una clase futura
             codigo = self.elegir({"EQ-PRO-001": 3, "EQ-CAM-001": 1}, desde, desde)
             return codigo and self.reservar(correo, codigo, desde, desde, IN_SITU)
